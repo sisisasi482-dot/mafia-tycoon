@@ -32,23 +32,25 @@ export function GameEngine() {
         <Canvas shadows camera={{ position: [0, 10, 10], fov: 60 }} gl={{ antialias: false }}>
           {/* Night atmosphere */}
           <color attach="background" args={['#050810']} />
-          <fog attach="fog" args={['#1a1510', 20, 150]} />
+          <fog attach="fog" args={['#080818', 60, 350]} />
           <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />
           
           {/* Lighting */}
-          <ambientLight intensity={0.2} color="#1a1510" />
+          <ambientLight intensity={0.6} color="#b0c0e0" />
           <directionalLight
             castShadow
             position={[50, 100, 50]}
-            intensity={0.4}
-            color="#c8d8ff"
+            intensity={1.2}
+            color="#d0e0ff"
             shadow-mapSize={[1024, 1024]}
-            shadow-camera-left={-100}
-            shadow-camera-right={100}
-            shadow-camera-top={100}
-            shadow-camera-bottom={-100}
-            shadow-camera-far={200}
+            shadow-camera-left={-200}
+            shadow-camera-right={200}
+            shadow-camera-top={200}
+            shadow-camera-bottom={-200}
+            shadow-camera-far={400}
           />
+          {/* Warm fill light from below to simulate city glow */}
+          <hemisphereLight args={['#1a2040', '#ff8c20', 0.4]} />
           
           <City />
           <Player ref={targetRef} />
