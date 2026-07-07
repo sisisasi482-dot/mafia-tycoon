@@ -1,22 +1,28 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Constantine Mafia game API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: player
+    description: Player profile and save/load
+  - name: assets
+    description: Purchasable assets (vehicles, properties)
+  - name: missions
+    description: Game missions
+  - name: leaderboard
+    description: Leaderboard
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +30,195 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /game/player:
+    post:
+      operationId: createPlayer
+      tags: [player]
+      summary: Create a new player profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /game/player/{playerId}:
+    get:
+      operationId: getPlayer
+      tags: [player]
+      summary: Get player profile
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: savePlayer
+      tags: [player]
+      summary: Save player progress
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerSave"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /game/assets:
+    get:
+      operationId: listAssets
+      tags: [assets]
+      summary: List all purchasable assets
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [vehicle, property, weapon]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameAsset"
+
+  /game/player/{playerId}/assets:
+    post:
+      operationId: purchaseAsset
+      tags: [assets]
+      summary: Purchase an asset
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseInput"
+      responses:
+        "200":
+          description: Purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "400":
+          description: Insufficient funds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /game/missions:
+    get:
+      operationId: listMissions
+      tags: [missions]
+      summary: List all missions
+      parameters:
+        - name: district
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ali_mendjeli, centre_ville, old_city, ain_mlila, airport]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mission"
+
+  /game/missions/{missionId}/complete:
+    post:
+      operationId: completeMission
+      tags: [missions]
+      summary: Mark a mission as completed and award reward
+      parameters:
+        - name: missionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MissionCompleteInput"
+      responses:
+        "200":
+          description: Mission completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionResult"
+
+  /game/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get top players
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +229,234 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        money:
+          type: integer
+        level:
+          type: integer
+        xp:
+          type: integer
+        careerPath:
+          type: string
+          enum: [street_thug, gangster, crime_boss, business_tycoon]
+        currentMissionId:
+          type: ["string", "null"]
+        district:
+          type: string
+        ownedAssetIds:
+          type: array
+          items:
+            type: string
+        completedMissionIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - username
+        - money
+        - level
+        - xp
+        - careerPath
+        - currentMissionId
+        - district
+        - ownedAssetIds
+        - completedMissionIds
+        - createdAt
+        - updatedAt
+
+    PlayerInput:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - username
+
+    PlayerSave:
+      type: object
+      properties:
+        money:
+          type: integer
+        level:
+          type: integer
+        xp:
+          type: integer
+        careerPath:
+          type: string
+          enum: [street_thug, gangster, crime_boss, business_tycoon]
+        currentMissionId:
+          type: ["string", "null"]
+        district:
+          type: string
+        ownedAssetIds:
+          type: array
+          items:
+            type: string
+        completedMissionIds:
+          type: array
+          items:
+            type: string
+
+    GameAsset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        nameAr:
+          type: string
+        nameFr:
+          type: string
+        category:
+          type: string
+          enum: [vehicle, property, weapon]
+        subcategory:
+          type: string
+        price:
+          type: integer
+        description:
+          type: string
+        district:
+          type: string
+        imageKey:
+          type: string
+      required:
+        - id
+        - name
+        - nameAr
+        - nameFr
+        - category
+        - subcategory
+        - price
+        - description
+        - district
+        - imageKey
+
+    PurchaseInput:
+      type: object
+      properties:
+        assetId:
+          type: string
+      required:
+        - assetId
+
+    Mission:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        titleAr:
+          type: string
+        titleFr:
+          type: string
+        description:
+          type: string
+        descriptionAr:
+          type: string
+        district:
+          type: string
+          enum: [ali_mendjeli, centre_ville, old_city, ain_mlila, airport]
+        type:
+          type: string
+          enum: [theft, gang_trade, police_operation, job, story]
+        difficulty:
+          type: string
+          enum: [easy, medium, hard, extreme]
+        reward:
+          type: integer
+        xpReward:
+          type: integer
+        requiredLevel:
+          type: integer
+        isStoryMission:
+          type: boolean
+      required:
+        - id
+        - title
+        - titleAr
+        - titleFr
+        - description
+        - descriptionAr
+        - district
+        - type
+        - difficulty
+        - reward
+        - xpReward
+        - requiredLevel
+        - isStoryMission
+
+    MissionCompleteInput:
+      type: object
+      properties:
+        playerId:
+          type: string
+      required:
+        - playerId
+
+    MissionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        moneyEarned:
+          type: integer
+        xpEarned:
+          type: integer
+        leveledUp:
+          type: boolean
+        newLevel:
+          type: ["integer", "null"]
+        player:
+          $ref: "#/components/schemas/Player"
+      required:
+        - success
+        - moneyEarned
+        - xpEarned
+        - leveledUp
+        - newLevel
+        - player
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        playerId:
+          type: string
+        username:
+          type: string
+        level:
+          type: integer
+        money:
+          type: integer
+        careerPath:
+          type: string
+      required:
+        - rank
+        - playerId
+        - username
+        - level
+        - money
+        - careerPath

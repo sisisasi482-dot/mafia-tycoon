@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Constantine Mafia: City Under Siege"
+version = "1.0.0"
+id = "artifacts/constantine-mafia"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20949
+
+[services.development]
+run = "pnpm --filter @workspace/constantine-mafia run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/constantine-mafia", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/constantine-mafia/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20949"
+BASE_PATH = "/"
