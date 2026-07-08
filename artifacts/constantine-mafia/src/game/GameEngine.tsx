@@ -40,6 +40,9 @@ export function GameEngine() {
           shadows
           camera={{ position: [0, 10, 10], fov: cameraMode === 'first' ? 80 : 60 }}
           gl={{ antialias: false }}
+          onCreated={({ gl }) => {
+            gl.shadowMap.type = THREE.PCFSoftShadowMap;
+          }}
         >
           <color attach="background" args={['#050810']} />
           <fog attach="fog" args={['#080818', 60, 350]} />
