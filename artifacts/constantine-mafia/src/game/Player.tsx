@@ -5,28 +5,47 @@ import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
 import { DOOR_TRIGGERS, NPC_TALKERS, INTERIORS } from './interiors';
+import { cameraDrag } from './cameraState';
 
-export const ControlsMap = [
-  { name: 'forward',  keys: ['ArrowUp',    'KeyW'] },
-  { name: 'back',     keys: ['ArrowDown',  'KeyS'] },
-  { name: 'left',     keys: ['ArrowLeft',  'KeyA'] },
-  { name: 'right',    keys: ['ArrowRight', 'KeyD'] },
-  { name: 'jump',     keys: ['Space'] },
-  { name: 'sprint',   keys: ['ShiftLeft'] },
-  { name: 'interact', keys: ['KeyE'] },
-  { name: 'attack',   keys: ['KeyF'] },
-  { name: 'map',      keys: ['KeyM'] },
-  { name: 'escape',   keys: ['Escape'] },
-];
+// ─── Default key bindings (loaded from localStorage at module init) ──────────
 
-/* ── Player radius for AABB collision ─────────────────────────────────────── */
+export const DEFAULT_BINDINGS: Record<string, string[]> = {
+  forward:  ['ArrowUp',    'KeyW'],
+  back:     ['ArrowDown',  'KeyS'],
+  left:     ['ArrowLeft',  'KeyA'],
+  right:    ['ArrowRight', 'KeyD'],
+  jump:     ['Space'],
+  sprint:   ['ShiftLeft'],
+  interact: ['KeyE'],
+  attack:   ['KeyF'],
+  map:      ['KeyM'],
+  escape:   ['Escape'],
+};
+
+/** Load per-action overrides from localStorage and merge with defaults */
+function loadKeyBindings(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem('cm_keybindings');
+    if (raw) {
+      const overrides = JSON.parse(raw) as Record<string, string>;
+      return Object.fromEntries(
+        Object.entries(DEFAULT_BINDINGS).map(([action, def]) =>
+          [action, overrides[action] ? [overrides[action], ...def] : def],
+        ),
+      );
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_BINDINGS;
+}
+
+/** Built once at module load — reflects whatever is in localStorage at startup */
+export const ControlsMap = Object.entries(loadKeyBindings()).map(([name, keys]) => ({ name, keys }));
+
+/* ── Player physics constants ─────────────────────────────────────────────── */
 const PLAYER_RADIUS = 0.55;
 
-/**
- * Interior wall clamp margin = player radius + half wall thickness (0.125) + epsilon.
- * Keeps the player origin far enough from wall planes to prevent camera/mesh clipping.
- */
-const WALL_THICK_HALF = 0.125; // matches InteriorRoom WALL_THICK = 0.25
+/** Interior wall clamp margin = player radius + half wall thickness + epsilon */
+const WALL_THICK_HALF = 0.125;
 const INTERIOR_MARGIN = PLAYER_RADIUS + WALL_THICK_HALF + 0.05; // ≈ 0.725
 
 /* ── Outfit colours per career path ─────────────────────────────────────── */
@@ -53,13 +72,19 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   const syncTimer       = useRef(0);
   const prevInVehicle   = useRef(inVehicle);
 
-  // Interaction debounce — only fire once per key press
+  // Interaction debounce
   const interactWasDown = useRef(false);
-  // Track current hint text to avoid calling setInteractionHint every frame
   const currentHint     = useRef<string | null>(null);
-  // NPC dialogue timer so the text auto-clears
   const npcDialogTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showingDialogue = useRef(false);
+
+  // ── Procedural walk animation refs ───────────────────────────────────────
+  const leftLegRef  = useRef<THREE.Group>(null);
+  const rightLegRef = useRef<THREE.Group>(null);
+  const leftArmRef  = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
+  const torsoRef    = useRef<THREE.Group>(null);
+  const walkCycle   = useRef(0);
 
   /* ── Forwarded ref ─────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -91,17 +116,30 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   useFrame((_, delta) => {
     if (!innerRef.current || inVehicle || useGameStore.getState().isPaused) return;
 
-    /* ── Movement ─────────────────────────────────────────────────────────── */
+    /* ── Camera-relative movement ─────────────────────────────────────────── */
     const keys  = getKeys();
     const speed = keys.sprint ? 16 : 8;
 
+    // In third-person, movement is relative to the mouse-dragged camera orbit angle.
+    // In first/second-person the camera tracks the player's own facing direction,
+    // so use the player's current rotation.y as the movement basis instead.
+    const moveYaw = (cameraMode === 'third')
+      ? cameraDrag.yaw
+      : innerRef.current.rotation.y;
+
+    const camFwdX   = -Math.sin(moveYaw);
+    const camFwdZ   = -Math.cos(moveYaw);
+    const camRightX =  Math.cos(moveYaw);
+    const camRightZ = -Math.sin(moveYaw);
+
     direction.current.set(0, 0, 0);
-    if (keys.forward) direction.current.z -= 1;
-    if (keys.back)    direction.current.z += 1;
-    if (keys.left)    direction.current.x -= 1;
-    if (keys.right)   direction.current.x += 1;
+    if (keys.forward) { direction.current.x += camFwdX;   direction.current.z += camFwdZ; }
+    if (keys.back)    { direction.current.x -= camFwdX;   direction.current.z -= camFwdZ; }
+    if (keys.left)    { direction.current.x -= camRightX; direction.current.z -= camRightZ; }
+    if (keys.right)   { direction.current.x += camRightX; direction.current.z += camRightZ; }
     direction.current.normalize();
 
+    // Rotate player model to face movement direction
     if (direction.current.lengthSq() > 0) {
       const targetAngle = Math.atan2(-direction.current.x, -direction.current.z);
       let diff = targetAngle - innerRef.current.rotation.y;
@@ -124,10 +162,9 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
 
     innerRef.current.position.addScaledVector(velocity.current, delta);
 
-    /* ── World bounds ─────────────────────────────────────────────────────── */
+    /* ── World bounds (2× scaled city) ───────────────────────────────────── */
     const pos = innerRef.current.position;
     if (indoors && interiorId) {
-      // Clamp inside room bounds
       const layout = INTERIORS[interiorId];
       if (layout) {
         pos.x = THREE.MathUtils.clamp(
@@ -142,8 +179,8 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
         );
       }
     } else {
-      pos.x = THREE.MathUtils.clamp(pos.x, -300, 250);
-      pos.z = THREE.MathUtils.clamp(pos.z, -150, 250);
+      pos.x = THREE.MathUtils.clamp(pos.x, -620, 500);
+      pos.z = THREE.MathUtils.clamp(pos.z, -210, 460);
     }
 
     /* ── Building AABB collision (outdoors only) ─────────────────────────── */
@@ -154,9 +191,6 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
         const penX = aabb.hw + PLAYER_RADIUS - Math.abs(dx);
         const penZ = aabb.hd + PLAYER_RADIUS - Math.abs(dz);
         if (penX > 0 && penZ > 0) {
-          // Push out on the axis of least penetration.
-          // Fallback normal when player is exactly on a centre-line (sign = 0):
-          // use the velocity direction so penetration always resolves.
           if (penX < penZ) {
             const nx = Math.sign(dx) || (velocity.current.x >= 0 ? 1 : -1);
             pos.x += penX * nx;
@@ -170,19 +204,29 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
       }
     }
 
+    /* ── Procedural walk animation ────────────────────────────────────────── */
+    const horizSpeed = Math.sqrt(velocity.current.x ** 2 + velocity.current.z ** 2);
+    walkCycle.current += horizSpeed * delta * 2.2;
+    const swing = Math.sin(walkCycle.current) * 0.55;
+    const bob   = Math.abs(Math.sin(walkCycle.current)) * 0.03;
+
+    if (leftLegRef.current)  leftLegRef.current.rotation.x  =  swing * 0.65;
+    if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.65;
+    if (leftArmRef.current)  leftArmRef.current.rotation.x  = -swing * 0.45;
+    if (rightArmRef.current) rightArmRef.current.rotation.x =  swing * 0.45;
+    if (torsoRef.current)    torsoRef.current.position.y    =  bob;
+
     /* ── Interaction system ───────────────────────────────────────────────── */
     const interactDown = keys.interact;
     const justPressed  = interactDown && !interactWasDown.current;
     interactWasDown.current = interactDown;
 
     if (indoors && interiorId) {
-      /* ── Interior: look for exit trigger ───────────────────────────── */
       const layout = INTERIORS[interiorId];
       if (layout) {
         const exitX = layout.centerX + layout.exitOffsetX;
         const exitZ = layout.centerZ + layout.exitOffsetZ;
         const dist  = Math.hypot(pos.x - exitX, pos.z - exitZ);
-
         if (dist < 3.0) {
           pushHint(`[E] Exit ${layout.label}`);
           if (justPressed) {
@@ -196,18 +240,15 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
         }
       }
     } else {
-      /* ── Outdoors: door triggers + NPC talkers ──────────────────────── */
       let nearDoor: typeof DOOR_TRIGGERS[0] | null = null;
       let nearNpc:  typeof NPC_TALKERS[0]  | null = null;
       let minDist = Infinity;
 
-      // Nearest door trigger within radius
       for (const dt of DOOR_TRIGGERS) {
         const d = Math.hypot(pos.x - dt.worldX, pos.z - dt.worldZ);
         if (d < dt.radius && d < minDist) { nearDoor = dt; minDist = d; }
       }
 
-      // Nearest NPC talker (only if no door is nearby)
       if (!nearDoor) {
         for (const npc of NPC_TALKERS) {
           const d = Math.hypot(pos.x - npc.worldX, pos.z - npc.worldZ);
@@ -234,11 +275,10 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
           if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
           npcDialogTimer.current = setTimeout(() => {
             showingDialogue.current = false;
-            currentHint.current = null; // force re-push next frame
+            currentHint.current = null;
           }, 3500);
         }
       } else {
-        // Nothing nearby — clear dialogue flag and hint
         if (!showingDialogue.current) pushHint(null);
         if (npcDialogTimer.current && !showingDialogue.current) {
           clearTimeout(npcDialogTimer.current);
@@ -251,75 +291,85 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     syncTimer.current += delta;
     if (syncTimer.current > 0.1) {
       syncTimer.current = 0;
-      setPlayerPosition(
-        [pos.x, pos.y, pos.z],
-        innerRef.current.rotation.y,
-      );
+      setPlayerPosition([pos.x, pos.y, pos.z], innerRef.current.rotation.y);
     }
   });
 
   const outfit = OUTFIT[careerPath] ?? OUTFIT.street_thug;
 
-  // In a vehicle or first-person: hide body mesh
   if (inVehicle || cameraMode === 'first') {
     return <group ref={innerRef} />;
   }
 
+  // Pivot heights for joint rotation:
+  //   leg hip   = 0.755  (center 0.38 + half-height 0.375)
+  //   arm shoulder = 1.28 (center 0.98 + half-height 0.30)
   return (
     <group ref={innerRef}>
-      {/* ── Legs ── */}
-      <mesh castShadow receiveShadow position={[-0.18, 0.38, 0]}>
-        <boxGeometry args={[0.22, 0.75, 0.22]} />
-        <meshStandardMaterial color={outfit.legs} roughness={0.9} />
-      </mesh>
-      <mesh castShadow receiveShadow position={[0.18, 0.38, 0]}>
-        <boxGeometry args={[0.22, 0.75, 0.22]} />
-        <meshStandardMaterial color={outfit.legs} roughness={0.9} />
-      </mesh>
+      {/* ── Legs (pivot at hip) ── */}
+      <group ref={leftLegRef} position={[-0.18, 0.755, 0]}>
+        <mesh castShadow receiveShadow position={[0, -0.375, 0]}>
+          <boxGeometry args={[0.22, 0.75, 0.22]} />
+          <meshStandardMaterial color={outfit.legs} roughness={0.9} />
+        </mesh>
+      </group>
+      <group ref={rightLegRef} position={[0.18, 0.755, 0]}>
+        <mesh castShadow receiveShadow position={[0, -0.375, 0]}>
+          <boxGeometry args={[0.22, 0.75, 0.22]} />
+          <meshStandardMaterial color={outfit.legs} roughness={0.9} />
+        </mesh>
+      </group>
 
-      {/* ── Torso ── */}
-      <mesh castShadow receiveShadow position={[0, 1.05, 0]}>
-        <boxGeometry args={[0.72, 0.72, 0.38]} />
-        <meshStandardMaterial color={outfit.body} roughness={0.85} />
-      </mesh>
+      {/* ── Torso + head (animated bob) ── */}
+      <group ref={torsoRef}>
+        {/* Torso */}
+        <mesh castShadow receiveShadow position={[0, 1.05, 0]}>
+          <boxGeometry args={[0.72, 0.72, 0.38]} />
+          <meshStandardMaterial color={outfit.body} roughness={0.85} />
+        </mesh>
 
-      {/* ── Arms ── */}
-      <mesh castShadow position={[-0.48, 0.98, 0]}>
-        <boxGeometry args={[0.22, 0.6, 0.22]} />
-        <meshStandardMaterial color={outfit.body} roughness={0.85} />
-      </mesh>
-      <mesh castShadow position={[0.48, 0.98, 0]}>
-        <boxGeometry args={[0.22, 0.6, 0.22]} />
-        <meshStandardMaterial color={outfit.body} roughness={0.85} />
-      </mesh>
+        {/* Arms (pivot at shoulder) */}
+        <group ref={leftArmRef} position={[-0.48, 1.28, 0]}>
+          <mesh castShadow position={[0, -0.3, 0]}>
+            <boxGeometry args={[0.22, 0.6, 0.22]} />
+            <meshStandardMaterial color={outfit.body} roughness={0.85} />
+          </mesh>
+        </group>
+        <group ref={rightArmRef} position={[0.48, 1.28, 0]}>
+          <mesh castShadow position={[0, -0.3, 0]}>
+            <boxGeometry args={[0.22, 0.6, 0.22]} />
+            <meshStandardMaterial color={outfit.body} roughness={0.85} />
+          </mesh>
+        </group>
 
-      {/* ── Neck ── */}
-      <mesh castShadow position={[0, 1.54, 0]}>
-        <boxGeometry args={[0.2, 0.18, 0.2]} />
-        <meshStandardMaterial color="#c8855a" roughness={0.8} />
-      </mesh>
+        {/* Neck */}
+        <mesh castShadow position={[0, 1.54, 0]}>
+          <boxGeometry args={[0.2, 0.18, 0.2]} />
+          <meshStandardMaterial color="#c8855a" roughness={0.8} />
+        </mesh>
 
-      {/* ── Head ── */}
-      <mesh castShadow position={[0, 1.88, 0]}>
-        <boxGeometry args={[0.52, 0.52, 0.52]} />
-        <meshStandardMaterial color="#c8855a" roughness={0.75} />
-      </mesh>
+        {/* Head */}
+        <mesh castShadow position={[0, 1.88, 0]}>
+          <boxGeometry args={[0.52, 0.52, 0.52]} />
+          <meshStandardMaterial color="#c8855a" roughness={0.75} />
+        </mesh>
 
-      {/* ── Hair ── */}
-      <mesh position={[0, 2.16, 0]}>
-        <boxGeometry args={[0.54, 0.14, 0.54]} />
-        <meshStandardMaterial color={outfit.hair} roughness={0.9} />
-      </mesh>
+        {/* Hair */}
+        <mesh position={[0, 2.16, 0]}>
+          <boxGeometry args={[0.54, 0.14, 0.54]} />
+          <meshStandardMaterial color={outfit.hair} roughness={0.9} />
+        </mesh>
 
-      {/* ── Eyes ── */}
-      <mesh position={[-0.13, 1.9, -0.27]}>
-        <boxGeometry args={[0.1, 0.08, 0.02]} />
-        <meshStandardMaterial color="#111111" />
-      </mesh>
-      <mesh position={[0.13, 1.9, -0.27]}>
-        <boxGeometry args={[0.1, 0.08, 0.02]} />
-        <meshStandardMaterial color="#111111" />
-      </mesh>
+        {/* Eyes */}
+        <mesh position={[-0.13, 1.9, -0.27]}>
+          <boxGeometry args={[0.1, 0.08, 0.02]} />
+          <meshStandardMaterial color="#111111" />
+        </mesh>
+        <mesh position={[0.13, 1.9, -0.27]}>
+          <boxGeometry args={[0.1, 0.08, 0.02]} />
+          <meshStandardMaterial color="#111111" />
+        </mesh>
+      </group>
     </group>
   );
 });

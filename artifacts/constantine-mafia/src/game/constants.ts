@@ -1,9 +1,10 @@
+// District bounds updated 2× to match the expanded map scale
 export const DISTRICTS = {
-  ali_mendjeli: { id: 'ali_mendjeli', name: 'Ali Mendjeli', bounds: { x: [-200, -50], z: [-100, 100] }, color: '#ff8c00' },
-  centre_ville: { id: 'centre_ville', name: 'Centre-Ville', bounds: { x: [-50, 100], z: [-100, 100] }, color: '#ffd700' },
-  old_city: { id: 'old_city', name: 'Old City', bounds: { x: [100, 250], z: [-50, 50] }, color: '#dc143c' },
-  ain_mlila: { id: 'ain_mlila', name: "Ain M'lila", bounds: { x: [-300, -200], z: [-100, 100] }, color: '#808080' },
-  airport: { id: 'airport', name: 'Airport', bounds: { x: [-200, -100], z: [100, 250] }, color: '#4169e1' },
+  ali_mendjeli: { id: 'ali_mendjeli', name: 'Ali Mendjeli', bounds: { x: [-400, -100], z: [-200, 200] }, color: '#ff8c00' },
+  centre_ville: { id: 'centre_ville', name: 'Centre-Ville', bounds: { x: [-100, 200], z: [-200, 200] }, color: '#ffd700' },
+  old_city:     { id: 'old_city',     name: 'Old City',     bounds: { x: [200,  500], z: [-100, 100] }, color: '#dc143c' },
+  ain_mlila:    { id: 'ain_mlila',    name: "Ain M'lila",   bounds: { x: [-600, -400], z: [-200, 200] }, color: '#808080' },
+  airport:      { id: 'airport',      name: 'Airport',      bounds: { x: [-400, -200], z: [200, 500] },  color: '#4169e1' },
 } as const;
 
 export const CAREER_PATHS = {

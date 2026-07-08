@@ -1,6 +1,8 @@
 /**
  * Door triggers in the city + interior room layouts.
  * All interiors are placed far east (centerX ≥ 700) to avoid overlap with the city.
+ *
+ * Door trigger world positions scaled 2× to match the expanded city map.
  */
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,14 +69,14 @@ export const INTERIORS: Record<string, InteriorLayout> = {
       { pos: [0, 0.5, -2.5], size: [6, 1, 1], color: '#8b6914' },                   // counter
       { pos: [-3.5, 1.2, 0], size: [0.3, 2, 5], color: '#9b7a34' },                 // shelf L
       { pos: [ 3.5, 1.2, 0], size: [0.3, 2, 5], color: '#9b7a34' },                 // shelf R
-      { pos: [-3.2, 0.8, -1.5], size: [0.4, 0.4, 0.4], color: '#cc3333' },          // products
+      { pos: [-3.2, 0.8, -1.5], size: [0.4, 0.4, 0.4], color: '#cc3333' },
       { pos: [-3.2, 0.8,  0.0], size: [0.4, 0.4, 0.4], color: '#3366cc' },
       { pos: [-3.2, 0.8,  1.5], size: [0.4, 0.4, 0.4], color: '#33aa44' },
       { pos: [-3.2, 1.3, -1.5], size: [0.4, 0.4, 0.4], color: '#cc8833' },
       { pos: [-3.2, 1.3,  1.5], size: [0.4, 0.4, 0.4], color: '#8833cc' },
-      { pos: [1.5, 1.05, -2.5], size: [0.6, 0.3, 0.4], color: '#222222',             // cash register
+      { pos: [1.5, 1.05, -2.5], size: [0.6, 0.3, 0.4], color: '#222222',
         emissive: '#00ff44', emissiveIntensity: 0.3 },
-      { pos: [3.8, 1.0, -2], size: [0.5, 2, 1.5], color: '#dddddd', metalness: 0.5 }, // fridge
+      { pos: [3.8, 1.0, -2], size: [0.5, 2, 1.5], color: '#dddddd', metalness: 0.5 },
     ],
   },
 
@@ -86,17 +88,17 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#808090', wallColor: '#c0c8d8',
     exitOffsetX: 0, exitOffsetZ: 6,
     furniture: [
-      { pos: [0, 0.65, -3], size: [8, 1.3, 1.2], color: '#444466' },                  // front desk
-      { pos: [-1.5, 1.35, -3.3], size: [0.8, 0.6, 0.1], color: '#111122',            // monitors
+      { pos: [0, 0.65, -3], size: [8, 1.3, 1.2], color: '#444466' },
+      { pos: [-1.5, 1.35, -3.3], size: [0.8, 0.6, 0.1], color: '#111122',
         emissive: '#2244ff', emissiveIntensity: 0.5 },
       { pos: [ 1.5, 1.35, -3.3], size: [0.8, 0.6, 0.1], color: '#111122',
         emissive: '#2244ff', emissiveIntensity: 0.5 },
-      { pos: [-4.5, 1.5, 1],  size: [0.1, 3, 5],   color: '#444444', metalness: 0.8 }, // cell bars
+      { pos: [-4.5, 1.5, 1],  size: [0.1, 3, 5],   color: '#444444', metalness: 0.8 },
       { pos: [-3.5, 1.5, 3.5], size: [5, 3, 0.1],  color: '#444444', metalness: 0.8 },
-      { pos: [2,  0.25, 1], size: [0.8, 0.5, 0.8], color: '#336688' },                // visitor chairs
+      { pos: [2,  0.25, 1], size: [0.8, 0.5, 0.8], color: '#336688' },
       { pos: [4,  0.25, 1], size: [0.8, 0.5, 0.8], color: '#336688' },
-      { pos: [5.5, 2.5, -5.5], size: [2.5, 1.5, 0.08], color: '#1a3a8a' },           // emblem
-      { pos: [-2, 2.5, -5.5],  size: [1,   1.4, 0.08], color: '#f0e0c0' },           // poster
+      { pos: [5.5, 2.5, -5.5], size: [2.5, 1.5, 0.08], color: '#1a3a8a' },
+      { pos: [-2, 2.5, -5.5],  size: [1,   1.4, 0.08], color: '#f0e0c0' },
     ],
   },
 
@@ -108,17 +110,17 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#5a4020', wallColor: '#8a7060',
     exitOffsetX: 0, exitOffsetZ: 5,
     furniture: [
-      { pos: [-2.5, 0.35, -2.5],  size: [3.5, 0.7, 5.5], color: '#2a2a4a' },  // bed
-      { pos: [-2.5, 0.75, -4.5],  size: [3.5, 0.5, 1.5], color: '#1a1a3a' },  // pillow
-      { pos: [2.5,  0.4,  -3.5],  size: [3,   0.8, 1.5], color: '#6b4210' },  // desk
-      { pos: [2.5,  0.85, -3.5],  size: [0.9, 0.6, 0.1], color: '#111111',   // laptop
+      { pos: [-2.5, 0.35, -2.5],  size: [3.5, 0.7, 5.5], color: '#2a2a4a' },
+      { pos: [-2.5, 0.75, -4.5],  size: [3.5, 0.5, 1.5], color: '#1a1a3a' },
+      { pos: [2.5,  0.4,  -3.5],  size: [3,   0.8, 1.5], color: '#6b4210' },
+      { pos: [2.5,  0.85, -3.5],  size: [0.9, 0.6, 0.1], color: '#111111',
         emissive: '#00aaff', emissiveIntensity: 0.4 },
-      { pos: [4.6, 1.5, -4.5],    size: [0.8, 1,   0.8], color: '#222222', metalness: 0.7 }, // safe
-      { pos: [2.5, 0.25, -2],     size: [0.8, 0.5, 0.8], color: '#4a3010' },  // chair
-      { pos: [0,   1.2,  -4.7],   size: [2,   1.2, 0.1], color: '#111111',   // tv
+      { pos: [4.6, 1.5, -4.5],    size: [0.8, 1,   0.8], color: '#222222', metalness: 0.7 },
+      { pos: [2.5, 0.25, -2],     size: [0.8, 0.5, 0.8], color: '#4a3010' },
+      { pos: [0,   1.2,  -4.7],   size: [2,   1.2, 0.1], color: '#111111',
         emissive: '#1a1a2a', emissiveIntensity: 0.2 },
-      { pos: [-3.5, 0.3,  2],     size: [1.5, 0.6, 1],   color: '#4a3a2a' },  // crate
-      { pos: [4.6,  2,    0],     size: [0.08, 1.5, 2.5], color: '#c0a870' }, // map on wall
+      { pos: [-3.5, 0.3,  2],     size: [1.5, 0.6, 1],   color: '#4a3a2a' },
+      { pos: [4.6,  2,    0],     size: [0.08, 1.5, 2.5], color: '#c0a870' },
     ],
   },
 
@@ -130,18 +132,18 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#303030', wallColor: '#484848',
     exitOffsetX: 0, exitOffsetZ: 7,
     furniture: [
-      { pos: [-5, 1,  -4], size: [3, 2, 2.5], color: '#8b7055' },   // crates
+      { pos: [-5, 1,  -4], size: [3, 2, 2.5], color: '#8b7055' },
       { pos: [-5, 1,  -1], size: [3, 2, 2.5], color: '#7a6045' },
       { pos: [-5, 3, -2.5], size: [3, 2, 5],  color: '#9b8065' },
       { pos: [ 5, 1,  -4], size: [3, 2, 2.5], color: '#6a7a55' },
       { pos: [ 5, 1,  -1], size: [3, 2, 2.5], color: '#5a6a45' },
-      { pos: [ 2, 0.5,  3], size: [1.5, 1, 2.5], color: '#e8a020' }, // forklift body
-      { pos: [ 2, 1.5,  4.5], size: [0.2, 2, 0.2], color: '#cc8010' }, // mast
-      { pos: [-2, 0.5,  3], size: [0.7, 1, 0.7], color: '#1a1a1a',  // drums
+      { pos: [ 2, 0.5,  3], size: [1.5, 1, 2.5], color: '#e8a020' },
+      { pos: [ 2, 1.5,  4.5], size: [0.2, 2, 0.2], color: '#cc8010' },
+      { pos: [-2, 0.5,  3], size: [0.7, 1, 0.7], color: '#1a1a1a',
         emissive: '#ff3300', emissiveIntensity: 0.08 },
       { pos: [-1, 0.5,  3], size: [0.7, 1, 0.7], color: '#1a1a1a' },
       { pos: [-2, 0.5,  2], size: [0.7, 1, 0.7], color: '#1a1a1a' },
-      { pos: [ 5, 0.4,  3], size: [3,   0.8, 1.5], color: '#5a4a3a' }, // table
+      { pos: [ 5, 0.4,  3], size: [3,   0.8, 1.5], color: '#5a4a3a' },
     ],
   },
 
@@ -153,11 +155,11 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#a08060', wallColor: '#e8d8c0',
     exitOffsetX: 0, exitOffsetZ: 5,
     furniture: [
-      { pos: [-2.5, 0.4, -1], size: [1.8, 0.08, 1.2], color: '#5a3a10' }, // tables
+      { pos: [-2.5, 0.4, -1], size: [1.8, 0.08, 1.2], color: '#5a3a10' },
       { pos: [ 2.5, 0.4, -1], size: [1.8, 0.08, 1.2], color: '#5a3a10' },
       { pos: [-2.5, 0.4,  2], size: [1.8, 0.08, 1.2], color: '#5a3a10' },
       { pos: [ 2.5, 0.4,  2], size: [1.8, 0.08, 1.2], color: '#5a3a10' },
-      { pos: [-3.5, 0.25, -1], size: [0.7, 0.5, 0.7], color: '#3a2010' }, // chairs
+      { pos: [-3.5, 0.25, -1], size: [0.7, 0.5, 0.7], color: '#3a2010' },
       { pos: [-1.5, 0.25, -1], size: [0.7, 0.5, 0.7], color: '#3a2010' },
       { pos: [ 1.5, 0.25, -1], size: [0.7, 0.5, 0.7], color: '#3a2010' },
       { pos: [ 3.5, 0.25, -1], size: [0.7, 0.5, 0.7], color: '#3a2010' },
@@ -165,10 +167,10 @@ export const INTERIORS: Record<string, InteriorLayout> = {
       { pos: [-1.5, 0.25,  2], size: [0.7, 0.5, 0.7], color: '#3a2010' },
       { pos: [ 1.5, 0.25,  2], size: [0.7, 0.5, 0.7], color: '#3a2010' },
       { pos: [ 3.5, 0.25,  2], size: [0.7, 0.5, 0.7], color: '#3a2010' },
-      { pos: [0, 0.5, -4], size: [8, 1, 1], color: '#888888', metalness: 0.4 }, // kitchen
-      { pos: [-2, 0.55, -4.3], size: [1.5, 0.2, 0.6], color: '#333333',         // stove
+      { pos: [0, 0.5, -4], size: [8, 1, 1], color: '#888888', metalness: 0.4 },
+      { pos: [-2, 0.55, -4.3], size: [1.5, 0.2, 0.6], color: '#333333',
         emissive: '#ff4400', emissiveIntensity: 0.15 },
-      { pos: [4.8, 2, -4], size: [0.08, 1.5, 2], color: '#1a1a1a',              // menu board
+      { pos: [4.8, 2, -4], size: [0.08, 1.5, 2], color: '#1a1a1a',
         emissive: '#aaff88', emissiveIntensity: 0.15 },
     ],
   },
@@ -181,18 +183,18 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#c4a060', wallColor: '#d4c090',
     exitOffsetX: 0, exitOffsetZ: 4,
     furniture: [
-      { pos: [0, 0.3, 0], size: [5, 0.6, 2], color: '#8b6030' },     // display table
-      { pos: [-2, 1, 0], size: [0.4, 1.5, 0.4], color: '#cc3333' },  // fabric rolls
+      { pos: [0, 0.3, 0], size: [5, 0.6, 2], color: '#8b6030' },
+      { pos: [-2, 1, 0], size: [0.4, 1.5, 0.4], color: '#cc3333' },
       { pos: [-1, 1, 0], size: [0.4, 1.5, 0.4], color: '#3333cc' },
       { pos: [ 0, 1, 0], size: [0.4, 1.5, 0.4], color: '#33aa44' },
       { pos: [ 1, 1, 0], size: [0.4, 1.5, 0.4], color: '#cc8833' },
       { pos: [ 2, 1, 0], size: [0.4, 1.5, 0.4], color: '#8833cc' },
-      { pos: [-1.5, 2.6, -2], size: [0.3, 0.3, 0.3], color: '#ffaa00',  // lanterns
+      { pos: [-1.5, 2.6, -2], size: [0.3, 0.3, 0.3], color: '#ffaa00',
         emissive: '#ffaa00', emissiveIntensity: 2 },
       { pos: [ 1.5, 2.6, -2], size: [0.3, 0.3, 0.3], color: '#ff8800',
         emissive: '#ff8800', emissiveIntensity: 2 },
-      { pos: [0, 1.5, -3.5], size: [6, 0.1, 1], color: '#8b6030' },   // upper shelf
-      { pos: [-2, 1.65, -3.5], size: [0.4, 0.4, 0.4], color: '#c07040' }, // pottery
+      { pos: [0, 1.5, -3.5], size: [6, 0.1, 1], color: '#8b6030' },
+      { pos: [-2, 1.65, -3.5], size: [0.4, 0.4, 0.4], color: '#c07040' },
       { pos: [ 0, 1.65, -3.5], size: [0.5, 0.6, 0.5], color: '#a06030' },
       { pos: [ 2, 1.65, -3.5], size: [0.3, 0.5, 0.3], color: '#d08050' },
     ],
@@ -206,7 +208,7 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#e0e8f0', wallColor: '#f0f4f8',
     exitOffsetX: 0, exitOffsetZ: 6,
     furniture: [
-      { pos: [-6, 0.55, -3], size: [3, 1.1, 1], color: '#3355aa' },    // check-in counters
+      { pos: [-6, 0.55, -3], size: [3, 1.1, 1], color: '#3355aa' },
       { pos: [-2, 0.55, -3], size: [3, 1.1, 1], color: '#3355aa' },
       { pos: [ 2, 0.55, -3], size: [3, 1.1, 1], color: '#3355aa' },
       { pos: [ 6, 0.55, -3], size: [3, 1.1, 1], color: '#3355aa' },
@@ -218,35 +220,35 @@ export const INTERIORS: Record<string, InteriorLayout> = {
         emissive: '#2244ff', emissiveIntensity: 0.6 },
       { pos: [ 6, 1.15, -3.4], size: [0.7, 0.5, 0.08], color: '#111122',
         emissive: '#2244ff', emissiveIntensity: 0.6 },
-      { pos: [0, 3.5, -5.5], size: [10, 1.5, 0.15], color: '#111122',  // departure board
+      { pos: [0, 3.5, -5.5], size: [10, 1.5, 0.15], color: '#111122',
         emissive: '#ffaa00', emissiveIntensity: 0.4 },
-      { pos: [-4, 0.35, 2], size: [4, 0.7, 0.6], color: '#445577' },   // benches
+      { pos: [-4, 0.35, 2], size: [4, 0.7, 0.6], color: '#445577' },
       { pos: [ 4, 0.35, 2], size: [4, 0.7, 0.6], color: '#445577' },
       { pos: [-4, 0.35, 4], size: [4, 0.7, 0.6], color: '#445577' },
       { pos: [ 4, 0.35, 4], size: [4, 0.7, 0.6], color: '#445577' },
-      { pos: [0, 1, 0], size: [0.3, 2, 1.5], color: '#666666', metalness: 0.6 }, // security gate
+      { pos: [0, 1, 0], size: [0.3, 2, 1.5], color: '#666666', metalness: 0.6 },
       { pos: [2, 1, 0], size: [0.3, 2, 1.5], color: '#666666', metalness: 0.6 },
-      { pos: [1, 0.1, 0], size: [2, 0.2, 1.5], color: '#444444', metalness: 0.8 }, // conveyor
+      { pos: [1, 0.1, 0], size: [2, 0.2, 1.5], color: '#444444', metalness: 0.8 },
     ],
   },
 };
 
-// ─── Door triggers in world space ────────────────────────────────────────────
+// ─── Door triggers in world space (2× scale) ─────────────────────────────────
 
 export const DOOR_TRIGGERS: DoorTrigger[] = [
-  { id: 'dt_corner_store',     label: 'Corner Store',     worldX: -118, worldZ:   5, radius: 3.5, interiorId: 'corner_store',     color: '#e8c83a' },
-  { id: 'dt_police_station',   label: 'Police Station',   worldX:   30, worldZ:  42, radius: 3.5, interiorId: 'police_station',   color: '#1a3aee' },
-  { id: 'dt_safe_house',       label: 'Safe House',       worldX:  -85, worldZ: -25, radius: 3.0, interiorId: 'safe_house',       color: '#444444' },
-  { id: 'dt_warehouse',        label: 'Warehouse',        worldX: -262, worldZ:  28, radius: 4.0, interiorId: 'warehouse',        color: '#777777' },
-  { id: 'dt_restaurant',       label: 'Restaurant',       worldX:   18, worldZ:  -8, radius: 3.0, interiorId: 'restaurant',       color: '#cc4411' },
-  { id: 'dt_medina_shop',      label: 'Medina Shop',      worldX:  132, worldZ: -15, radius: 3.0, interiorId: 'medina_shop',      color: '#d4a030' },
-  { id: 'dt_airport_terminal', label: 'Airport Terminal', worldX: -148, worldZ: 140, radius: 5.0, interiorId: 'airport_terminal', color: '#4169e1' },
+  { id: 'dt_corner_store',     label: 'Corner Store',     worldX: -236, worldZ:  10, radius: 4.0, interiorId: 'corner_store',     color: '#e8c83a' },
+  { id: 'dt_police_station',   label: 'Police Station',   worldX:   60, worldZ:  84, radius: 4.0, interiorId: 'police_station',   color: '#1a3aee' },
+  { id: 'dt_safe_house',       label: 'Safe House',       worldX: -170, worldZ: -50, radius: 3.5, interiorId: 'safe_house',       color: '#444444' },
+  { id: 'dt_warehouse',        label: 'Warehouse',        worldX: -524, worldZ:  56, radius: 5.0, interiorId: 'warehouse',        color: '#777777' },
+  { id: 'dt_restaurant',       label: 'Restaurant',       worldX:   36, worldZ: -16, radius: 3.5, interiorId: 'restaurant',       color: '#cc4411' },
+  { id: 'dt_medina_shop',      label: 'Medina Shop',      worldX:  264, worldZ: -30, radius: 3.5, interiorId: 'medina_shop',      color: '#d4a030' },
+  { id: 'dt_airport_terminal', label: 'Airport Terminal', worldX: -296, worldZ: 280, radius: 6.0, interiorId: 'airport_terminal', color: '#4169e1' },
 ];
 
-// ─── Stationary NPC interaction markers ──────────────────────────────────────
+// ─── Stationary NPC interaction markers (2× scale) ───────────────────────────
 
 export const NPC_TALKERS: NpcTalker[] = [
-  { id: 'npc_dealer',  label: 'Street Dealer', worldX: -128, worldZ:  12, radius: 3, dialogue: '"You lookin\' for somethin\'?"' },
-  { id: 'npc_elder',   label: 'Elder',          worldX:  145, worldZ: -18, radius: 3, dialogue: '"Constantine stood long before any of us."' },
-  { id: 'npc_contact', label: 'Contact',        worldX:   22, worldZ:  -5, radius: 3, dialogue: '"Meet me tonight. Usual spot."' },
+  { id: 'npc_dealer',  label: 'Street Dealer', worldX: -256, worldZ:  24, radius: 4, dialogue: '"You lookin\' for somethin\'?"' },
+  { id: 'npc_elder',   label: 'Elder',          worldX:  290, worldZ: -36, radius: 4, dialogue: '"Constantine stood long before any of us."' },
+  { id: 'npc_contact', label: 'Contact',        worldX:   44, worldZ: -10, radius: 4, dialogue: '"Meet me tonight. Usual spot."' },
 ];

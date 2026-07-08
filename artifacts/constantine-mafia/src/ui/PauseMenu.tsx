@@ -1,11 +1,12 @@
-import React from 'react';
-import { useGameStore } from '../game/useGameStore';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useGameStore, FpsCap } from '../game/useGameStore';
 import { useSaveSystem } from '../game/useSaveSystem';
 import { t } from '../game/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapView } from './MapView';
 import { ShopPanel } from './ShopPanel';
 import { MissionPanel } from './MissionPanel';
+import { DEFAULT_BINDINGS } from '../game/Player';
 
 export function PauseMenu() {
   const store = useGameStore();
@@ -17,30 +18,25 @@ export function PauseMenu() {
 
   return (
     <AnimatePresence>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-8"
         dir={rtl ? 'rtl' : 'ltr'}
       >
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           className="w-full max-w-4xl h-full max-h-[800px] bg-[#0a0a0a] border border-white/10 rounded-xl flex flex-col md:flex-row shadow-2xl overflow-hidden"
         >
-          {/* Sidebar / top tab bar
-              – mobile: full-width horizontal strip at the top (flex-row, scrollable)
-              – md+:    fixed-width vertical sidebar on the left (flex-col) */}
+          {/* Sidebar */}
           <div className="md:w-52 bg-[#111] md:border-r border-b md:border-b-0 border-white/10
                           flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible
                           p-2 md:p-4 shrink-0">
-            {/* Title — hidden on mobile to save space */}
             <h2 className="hidden md:block text-sm font-bold text-primary mb-2 uppercase tracking-widest px-2">
               Constantine
             </h2>
-
-            {/* Resume — always first */}
             <button
               onClick={() => store.togglePause()}
               className="shrink-0 px-3 md:px-0 md:w-full py-2 md:py-3 text-center font-black rounded-lg
@@ -49,21 +45,19 @@ export function PauseMenu() {
             >
               ▶ {t('resume', lang)}
             </button>
-
-            <MobileMenuButton active={store.activePanel === 'settings'} onClick={() => store.setActivePanel('settings')}>
+            <MobileMenuButton active={store.activePanel === 'settings'}    onClick={() => store.setActivePanel('settings')}>
               ⚙ <span className="hidden md:inline">{t('settings', lang)}</span><span className="md:hidden">Settings</span>
             </MobileMenuButton>
-            <MobileMenuButton active={store.activePanel === 'map'} onClick={() => store.setActivePanel('map')}>
+            <MobileMenuButton active={store.activePanel === 'map'}         onClick={() => store.setActivePanel('map')}>
               🗺 <span className="hidden md:inline">{t('map', lang)}</span><span className="md:hidden">Map</span>
             </MobileMenuButton>
-            <MobileMenuButton active={store.activePanel === 'missions'} onClick={() => store.setActivePanel('missions')}>
+            <MobileMenuButton active={store.activePanel === 'missions'}    onClick={() => store.setActivePanel('missions')}>
               📋 <span className="hidden md:inline">{t('missions', lang)}</span><span className="md:hidden">Missions</span>
             </MobileMenuButton>
-            <MobileMenuButton active={store.activePanel === 'shop'} onClick={() => store.setActivePanel('shop')}>
+            <MobileMenuButton active={store.activePanel === 'shop'}        onClick={() => store.setActivePanel('shop')}>
               🛒 <span className="hidden md:inline">{t('shop', lang)}</span><span className="md:hidden">Shop</span>
             </MobileMenuButton>
 
-            {/* Spacer + bottom actions only visible on desktop */}
             <div className="hidden md:flex flex-1" />
             <button
               onClick={() => { saveGame(); alert(t('saved', lang)); }}
@@ -80,7 +74,6 @@ export function PauseMenu() {
               ✕ {t('exit_to_menu', lang)}
             </button>
 
-            {/* Mobile-only: save + exit as compact icon buttons */}
             <div className="md:hidden flex gap-1 ml-auto shrink-0">
               <button
                 onClick={() => { saveGame(); alert(t('saved', lang)); }}
@@ -151,15 +144,49 @@ function Opt({ active, onClick, children }: { active: boolean; onClick: () => vo
   );
 }
 
+// ─── Settings Panel ───────────────────────────────────────────────────────────
+
+type SettingsTab = 'general' | 'controls' | 'performance';
+
 function SettingsPanel() {
+  const store = useGameStore();
+  const lang  = store.language;
+  const [tab, setTab] = useState<SettingsTab>('general');
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <h3 className="text-2xl font-bold text-white border-b border-white/10 pb-3">{t('settings', lang)}</h3>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 border-b border-white/8 pb-3">
+        {(['general', 'controls', 'performance'] as SettingsTab[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => setTab(s)}
+            className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition-all ${
+              tab === s ? 'bg-primary text-black' : 'text-gray-500 hover:text-white'
+            }`}
+          >
+            {s === 'general' ? '⚙ General' : s === 'controls' ? '🎮 Controls' : '⚡ Performance'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'general'     && <GeneralSettings />}
+      {tab === 'controls'    && <KeybindingsPanel />}
+      {tab === 'performance' && <PerformancePanel />}
+    </div>
+  );
+}
+
+// ─── General Settings ─────────────────────────────────────────────────────────
+
+function GeneralSettings() {
   const store = useGameStore();
   const lang  = store.language;
 
   return (
-    <div className="space-y-6 max-w-lg overflow-y-auto">
-      <h3 className="text-2xl font-bold text-white border-b border-white/10 pb-3">{t('settings', lang)}</h3>
-
-      {/* ── Language ── */}
+    <div className="space-y-6 overflow-y-auto">
       <OptionRow label={t('language', lang)}>
         {(['en', 'ar', 'fr'] as const).map((l) => (
           <Opt key={l} active={store.language === l} onClick={() => store.setPlayerState({ language: l })}>
@@ -168,7 +195,6 @@ function SettingsPanel() {
         ))}
       </OptionRow>
 
-      {/* ── Graphics ── */}
       <OptionRow label={t('graphics', lang)}>
         {(['low', 'medium', 'high'] as const).map((g) => (
           <Opt key={g} active={store.graphicsQuality === g} onClick={() => store.setPlayerState({ graphicsQuality: g })}>
@@ -177,7 +203,6 @@ function SettingsPanel() {
         ))}
       </OptionRow>
 
-      {/* ── Audio ── */}
       <div className="space-y-2">
         <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">{t('audio', lang)}</label>
         <div className="flex items-center gap-3">
@@ -189,36 +214,30 @@ function SettingsPanel() {
         </div>
       </div>
 
-      {/* ── Camera Mode ── */}
       <OptionRow label="Camera Mode">
         <Opt active={store.cameraMode === 'third'}  onClick={() => store.setPlayerState({ cameraMode: 'third'  })}>Third-Person</Opt>
         <Opt active={store.cameraMode === 'second'} onClick={() => store.setPlayerState({ cameraMode: 'second' })}>Second-Person</Opt>
-        <Opt active={store.cameraMode === 'first'}  onClick={() => store.setPlayerState({ cameraMode: 'first'  })}>First-Person (FPV)</Opt>
+        <Opt active={store.cameraMode === 'first'}  onClick={() => store.setPlayerState({ cameraMode: 'first'  })}>First-Person</Opt>
       </OptionRow>
 
-      {/* ── Vehicle Controls ── */}
       <div className="border-t border-white/8 pt-4 space-y-4">
         <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">Vehicle Controls</h4>
-
         <OptionRow label="Steering">
           <Opt active={store.vehicleSteeringMode === 'wheel'}  onClick={() => store.setPlayerState({ vehicleSteeringMode: 'wheel'  })}>🎡 Wheel</Opt>
           <Opt active={store.vehicleSteeringMode === 'arrows'} onClick={() => store.setPlayerState({ vehicleSteeringMode: 'arrows' })}>⬆ Arrows</Opt>
           <Opt active={store.vehicleSteeringMode === 'tilt'}   onClick={() => store.setPlayerState({ vehicleSteeringMode: 'tilt'   })}>📱 Tilt</Opt>
           <Opt active={store.vehicleSteeringMode === 'slider'} onClick={() => store.setPlayerState({ vehicleSteeringMode: 'slider' })}>↔ Slider</Opt>
         </OptionRow>
-
         <OptionRow label="Pedals">
           <Opt active={store.vehiclePedalMode === 'buttons'} onClick={() => store.setPlayerState({ vehiclePedalMode: 'buttons' })}>Buttons</Opt>
           <Opt active={store.vehiclePedalMode === 'slider'}  onClick={() => store.setPlayerState({ vehiclePedalMode: 'slider'  })}>Slider</Opt>
         </OptionRow>
-
         <OptionRow label="Transmission">
           <Opt active={store.vehicleTransmission === 'auto'}   onClick={() => store.setPlayerState({ vehicleTransmission: 'auto'   })}>Auto</Opt>
           <Opt active={store.vehicleTransmission === 'manual'} onClick={() => store.setPlayerState({ vehicleTransmission: 'manual' })}>Manual</Opt>
         </OptionRow>
       </div>
 
-      {/* ── HUD ── */}
       <div className="border-t border-white/8 pt-4 space-y-3">
         <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">HUD</h4>
         <label className="flex items-center gap-3 cursor-pointer">
@@ -235,6 +254,173 @@ function SettingsPanel() {
           ✏ Edit HUD Layout
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Performance Panel ────────────────────────────────────────────────────────
+
+function PerformancePanel() {
+  const store  = useGameStore();
+
+  return (
+    <div className="space-y-6">
+      <p className="text-gray-500 text-sm">
+        Capping the frame rate reduces GPU load and improves stability on lower-end devices.
+      </p>
+
+      <OptionRow label="FPS Cap">
+        <Opt active={store.fpsCap === 0}  onClick={() => store.setPlayerState({ fpsCap: 0 })}>Unlimited</Opt>
+        <Opt active={store.fpsCap === 60} onClick={() => store.setPlayerState({ fpsCap: 60 })}>60 FPS</Opt>
+        <Opt active={store.fpsCap === 30} onClick={() => store.setPlayerState({ fpsCap: 30 })}>30 FPS</Opt>
+      </OptionRow>
+
+      <div className="rounded-lg bg-white/5 border border-white/8 p-4 text-xs text-gray-500 space-y-1">
+        <p className="font-bold text-gray-400 uppercase tracking-wide">💡 Tip</p>
+        <p>Use <span className="text-white font-semibold">60 FPS</span> for smooth gameplay on mid-range hardware.</p>
+        <p>Use <span className="text-white font-semibold">30 FPS</span> to reduce heat on laptops or weak GPUs.</p>
+        <p>Use <span className="text-white font-semibold">Unlimited</span> on high-end displays (120 Hz+).</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Keybindings Panel ────────────────────────────────────────────────────────
+
+const ACTION_LABELS: Record<string, string> = {
+  forward:  'Move Forward',
+  back:     'Move Backward',
+  left:     'Strafe Left',
+  right:    'Strafe Right',
+  jump:     'Jump',
+  sprint:   'Sprint',
+  interact: 'Interact / Enter',
+  attack:   'Attack',
+  map:      'Toggle Map',
+  escape:   'Pause / Menu',
+};
+
+/** Read overrides from localStorage.  Returns { action → keyCode } */
+function loadOverrides(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('cm_keybindings');
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+/** Friendly display name for a KeyboardEvent.code */
+function friendlyKey(code: string): string {
+  const map: Record<string, string> = {
+    KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D',
+    KeyE: 'E', KeyF: 'F', KeyM: 'M', KeyR: 'R',
+    KeyQ: 'Q', KeyZ: 'Z', KeyX: 'X', KeyC: 'C',
+    Space: 'Space', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift',
+    ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl',
+    AltLeft: 'L-Alt', AltRight: 'R-Alt',
+    ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+    Escape: 'Esc', Enter: 'Enter', Tab: 'Tab', Backspace: 'Bksp',
+    Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4',
+    Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8',
+    Digit9: '9', Digit0: '0',
+  };
+  return map[code] ?? code.replace(/^Key/, '').replace(/^Digit/, '');
+}
+
+function KeybindingsPanel() {
+  const [overrides, setOverrides] = useState<Record<string, string>>(loadOverrides);
+  const [rebinding, setRebinding] = useState<string | null>(null);
+  const [saved, setSaved]         = useState(false);
+
+  // Capture next keydown when rebinding
+  useEffect(() => {
+    if (!rebinding) return;
+    const handler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.code === 'Escape') {
+        setRebinding(null);
+        return;
+      }
+      setOverrides((prev) => ({ ...prev, [rebinding]: e.code }));
+      setRebinding(null);
+    };
+    window.addEventListener('keydown', handler, { capture: true });
+    return () => window.removeEventListener('keydown', handler, { capture: true });
+  }, [rebinding]);
+
+  const save = useCallback(() => {
+    try {
+      localStorage.setItem('cm_keybindings', JSON.stringify(overrides));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch { /* storage unavailable */ }
+  }, [overrides]);
+
+  const reset = useCallback(() => {
+    localStorage.removeItem('cm_keybindings');
+    setOverrides({});
+    setSaved(false);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-gray-500 text-sm">
+        Click a key button, then press any key to remap. Changes take effect on the next game session.
+      </p>
+
+      <div className="space-y-1">
+        {Object.entries(DEFAULT_BINDINGS).map(([action, defaultKeys]) => {
+          const activeKey = overrides[action] ?? defaultKeys[0];
+          const isListening = rebinding === action;
+
+          return (
+            <div key={action} className="flex items-center justify-between py-2 border-b border-white/5">
+              <span className="text-sm text-gray-300 font-medium">
+                {ACTION_LABELS[action] ?? action}
+              </span>
+              <div className="flex items-center gap-2">
+                {/* Default key(s) as grey badge */}
+                <span className="text-[10px] text-gray-600 font-mono hidden sm:block">
+                  default: {defaultKeys.map(friendlyKey).join(' / ')}
+                </span>
+                <button
+                  onClick={() => setRebinding(action)}
+                  className={`min-w-[56px] px-3 py-1.5 rounded border font-mono text-xs font-bold transition-all ${
+                    isListening
+                      ? 'border-primary bg-primary/20 text-primary animate-pulse'
+                      : 'border-white/20 bg-white/5 text-white hover:border-primary/60 hover:text-primary'
+                  }`}
+                >
+                  {isListening ? '…' : friendlyKey(activeKey)}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={save}
+          className={`flex-1 py-2.5 rounded-lg border font-bold text-sm uppercase tracking-widest transition-all ${
+            saved
+              ? 'border-green-500 bg-green-500/20 text-green-400'
+              : 'border-primary/50 text-primary hover:bg-primary/10'
+          }`}
+        >
+          {saved ? '✓ Saved!' : '💾 Save Bindings'}
+        </button>
+        <button
+          onClick={reset}
+          className="px-4 py-2.5 rounded-lg border border-white/10 text-gray-500 text-sm font-medium hover:border-white/30 hover:text-white transition-all"
+        >
+          Reset
+        </button>
+      </div>
+
+      <p className="text-[11px] text-gray-600 italic">
+        ⚠ Saved bindings apply after the game is restarted (Resume → exit to menu → New Game).
+      </p>
     </div>
   );
 }

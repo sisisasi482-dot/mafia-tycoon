@@ -4,6 +4,7 @@ export type CameraMode    = 'third' | 'second' | 'first';
 export type SteeringMode  = 'wheel' | 'arrows' | 'tilt' | 'slider';
 export type PedalMode     = 'buttons' | 'slider';
 export type Transmission  = 'auto' | 'manual';
+export type FpsCap        = 0 | 30 | 60;  // 0 = unlimited
 
 export type GameState = {
   // Player
@@ -34,10 +35,10 @@ export type GameState = {
   // Interior system
   indoors:            boolean;
   interiorId:         string | null;
-  interiorExitPos:    [number, number, number];  // world pos to return to on exit
+  interiorExitPos:    [number, number, number];
 
   // Time
-  dayTime:            number;   // 0–1: 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk
+  dayTime:            number;   // 0–1
 
   // Camera
   cameraMode:         CameraMode;
@@ -69,6 +70,7 @@ export type GameState = {
   sfxVolume:          number;
   graphicsQuality:    'low' | 'medium' | 'high';
   showTouchControls:  boolean;
+  fpsCap:             FpsCap;
 
   // Screen
   screen: 'main_menu' | 'character_creation' | 'playing' | 'game_over';
@@ -115,13 +117,14 @@ const initialState: Omit<GameState,
   currentMissionId:    null,
   gameMode:            'free_world',
 
-  playerPosition:      [-125, 1, 0],
+  // Spawn at central plaza (0, 1, 0) — open area at main road intersection
+  playerPosition:      [0, 1, 0],
   playerRotationY:     0,
   inVehicle:           false,
 
   indoors:             false,
   interiorId:          null,
-  interiorExitPos:     [-125, 1, 0],
+  interiorExitPos:     [0, 1, 0],
 
   dayTime:             0.30,
 
@@ -149,6 +152,7 @@ const initialState: Omit<GameState,
   sfxVolume:           100,
   graphicsQuality:     'medium',
   showTouchControls:   false,
+  fpsCap:              0,
 
   screen:              'main_menu',
 };

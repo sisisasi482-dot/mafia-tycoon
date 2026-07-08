@@ -2,3 +2,5 @@
 - [Zustand selector rules](zustand-selectors.md) — object-creating selectors cause infinite render loops; always use primitives or getState().
 - [Player rotation convention](player-rotation-convention.md) — use atan2(-dir.x, -dir.z) not atan2(dir.x, dir.z); wrong sign flips camera to face.
 - [NPC ref pattern (R3F / Babel)](npc-ref-pattern.md) — JSX cast in ref attr breaks Babel; use onRef callback prop; always write transforms even in wait branch.
+- [Camera-relative movement](camera-relative-movement.md) — use cameraDrag.yaw only in third-person; first/second-person must use player rotation.y as movement basis.
+- [R3F texture lifecycle](r3f-texture-lifecycle.md) — never clone textures inside JSX map; pre-create in useMemo with dispose on cleanup.
