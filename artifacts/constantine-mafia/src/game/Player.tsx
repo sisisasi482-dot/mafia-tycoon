@@ -17,29 +17,35 @@ export const ControlsMap = [
   { name: 'escape',   keys: ['Escape'] },
 ];
 
-export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
-  const innerRef = useRef<THREE.Group>(null);
-  const [, getKeys] = useKeyboardControls();
-  const { playerPosition, playerRotationY, setPlayerPosition, inVehicle, careerPath, cameraMode } = useGameStore();
+/* ── Outfit colours per career path ──────────────────────────────────────── */
+const OUTFIT: Record<string, { body: string; legs: string; hair: string }> = {
+  street_thug:    { body: '#2a2a2a', legs: '#1a1a2e', hair: '#111111' },
+  gangster:       { body: '#1a1a1a', legs: '#0d0d1a', hair: '#0a0a0a' },
+  crime_boss:     { body: '#1c1c30', legs: '#111120', hair: '#080810' },
+  business_tycoon:{ body: '#2c2040', legs: '#1a1428', hair: '#050508' },
+};
 
-  const velocity  = useRef(new THREE.Vector3());
-  const direction = useRef(new THREE.Vector3());
-  const syncTimer = useRef(0);
+export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
+  const innerRef  = useRef<THREE.Group>(null);
+  const [, getKeys] = useKeyboardControls();
+  const { playerPosition, playerRotationY, setPlayerPosition, inVehicle, careerPath, cameraMode } =
+    useGameStore();
+
+  const velocity   = useRef(new THREE.Vector3());
+  const direction  = useRef(new THREE.Vector3());
+  const syncTimer  = useRef(0);
   const prevInVehicle = useRef(inVehicle);
 
-  // Assign forwarded ref
+  /* ── Forwarded ref ─────────────────────────────────────────────────────── */
   useEffect(() => {
     if (typeof ref === 'function') ref(innerRef.current);
     else if (ref) (ref as React.MutableRefObject<THREE.Group | null>).current = innerRef.current;
   }, [ref]);
 
-  // Spawn position
-  useEffect(() => {
-    innerRef.current?.position.set(...playerPosition);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /* ── Spawn position ────────────────────────────────────────────────────── */
+  useEffect(() => { innerRef.current?.position.set(...playerPosition); }, []);
 
-  // Snap position when exiting a vehicle
+  /* ── Snap position when exiting a vehicle ──────────────────────────────── */
   useEffect(() => {
     if (prevInVehicle.current && !inVehicle && innerRef.current) {
       innerRef.current.position.set(...playerPosition);
@@ -47,8 +53,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
       velocity.current.set(0, 0, 0);
     }
     prevInVehicle.current = inVehicle;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inVehicle]);
+  }, [inVehicle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFrame((_, delta) => {
     if (!innerRef.current || inVehicle || useGameStore.getState().isPaused) return;
@@ -64,10 +69,12 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     direction.current.normalize();
 
     if (direction.current.lengthSq() > 0) {
-      const targetAngle = Math.atan2(direction.current.x, direction.current.z);
+      // FIX: negate both components so the body faces the direction of movement
+      // (matches the vehicle convention: local -Z = world forward at rotY=0)
+      const targetAngle = Math.atan2(-direction.current.x, -direction.current.z);
       let diff = targetAngle - innerRef.current.rotation.y;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff > Math.PI)  diff -= Math.PI * 2;
+      while (diff >  Math.PI) diff -= Math.PI * 2;
       innerRef.current.rotation.y += diff * 10 * delta;
     }
 
@@ -88,7 +95,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     innerRef.current.position.x = THREE.MathUtils.clamp(innerRef.current.position.x, -300, 250);
     innerRef.current.position.z = THREE.MathUtils.clamp(innerRef.current.position.z, -150, 250);
 
-    // Sync position + rotationY to store (throttled to ~10 Hz)
+    // Sync position + rotationY to store (throttled ~10 Hz)
     syncTimer.current += delta;
     if (syncTimer.current > 0.1) {
       syncTimer.current = 0;
@@ -99,29 +106,67 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     }
   });
 
-  const color = {
-    street_thug:    '#888888',
-    gangster:       '#444444',
-    crime_boss:     '#222222',
-    business_tycoon:'#1a1a3a',
-  }[careerPath] ?? '#888888';
+  const outfit = OUTFIT[careerPath] ?? OUTFIT.street_thug;
 
-  // In FPV: don't render the body mesh (camera is inside it)
+  // In a vehicle or first-person: hide the body mesh
   if (inVehicle || cameraMode === 'first') {
     return <group ref={innerRef} />;
   }
 
   return (
     <group ref={innerRef}>
-      {/* Body */}
-      <mesh castShadow receiveShadow position={[0, 0.9, 0]}>
-        <boxGeometry args={[0.8, 1.8, 0.8]} />
-        <meshStandardMaterial color={color} />
+      {/* ── Legs ── */}
+      <mesh castShadow receiveShadow position={[-0.18, 0.38, 0]}>
+        <boxGeometry args={[0.22, 0.75, 0.22]} />
+        <meshStandardMaterial color={outfit.legs} roughness={0.9} />
       </mesh>
-      {/* Head */}
-      <mesh castShadow position={[0, 2.0, 0]}>
-        <boxGeometry args={[0.6, 0.6, 0.6]} />
-        <meshStandardMaterial color={color} />
+      <mesh castShadow receiveShadow position={[0.18, 0.38, 0]}>
+        <boxGeometry args={[0.22, 0.75, 0.22]} />
+        <meshStandardMaterial color={outfit.legs} roughness={0.9} />
+      </mesh>
+
+      {/* ── Torso ── */}
+      <mesh castShadow receiveShadow position={[0, 1.05, 0]}>
+        <boxGeometry args={[0.72, 0.72, 0.38]} />
+        <meshStandardMaterial color={outfit.body} roughness={0.85} />
+      </mesh>
+
+      {/* ── Arms ── */}
+      <mesh castShadow position={[-0.48, 0.98, 0]}>
+        <boxGeometry args={[0.22, 0.6, 0.22]} />
+        <meshStandardMaterial color={outfit.body} roughness={0.85} />
+      </mesh>
+      <mesh castShadow position={[0.48, 0.98, 0]}>
+        <boxGeometry args={[0.22, 0.6, 0.22]} />
+        <meshStandardMaterial color={outfit.body} roughness={0.85} />
+      </mesh>
+
+      {/* ── Neck ── */}
+      <mesh castShadow position={[0, 1.54, 0]}>
+        <boxGeometry args={[0.2, 0.18, 0.2]} />
+        <meshStandardMaterial color="#c8855a" roughness={0.8} />
+      </mesh>
+
+      {/* ── Head (skin) ── */}
+      <mesh castShadow position={[0, 1.88, 0]}>
+        <boxGeometry args={[0.52, 0.52, 0.52]} />
+        <meshStandardMaterial color="#c8855a" roughness={0.75} />
+      </mesh>
+
+      {/* ── Hair ── */}
+      <mesh position={[0, 2.16, 0]}>
+        <boxGeometry args={[0.54, 0.14, 0.54]} />
+        <meshStandardMaterial color={outfit.hair} roughness={0.9} />
+      </mesh>
+
+      {/* ── Eyes (dark spots on front face, z-offset slightly) ── */}
+      <mesh position={[-0.13, 1.9, -0.27]}>
+        <boxGeometry args={[0.1, 0.08, 0.02]} />
+        <meshStandardMaterial color="#111111" />
+      </mesh>
+      <mesh position={[0.13, 1.9, -0.27]}>
+        <boxGeometry args={[0.1, 0.08, 0.02]} />
+        <meshStandardMaterial color="#111111" />
       </mesh>
     </group>
   );

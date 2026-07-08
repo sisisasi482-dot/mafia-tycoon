@@ -1,2 +1,4 @@
 - [Vehicle system design](vehicle-system.md) — camera handoff, forward-vector convention, atomic enter/exit pattern.
 - [Zustand selector rules](zustand-selectors.md) — object-creating selectors cause infinite render loops; always use primitives or getState().
+- [Player rotation convention](player-rotation-convention.md) — use atan2(-dir.x, -dir.z) not atan2(dir.x, dir.z); wrong sign flips camera to face.
+- [NPC ref pattern (R3F / Babel)](npc-ref-pattern.md) — JSX cast in ref attr breaks Babel; use onRef callback prop; always write transforms even in wait branch.
