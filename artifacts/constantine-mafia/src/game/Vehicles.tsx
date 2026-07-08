@@ -38,12 +38,12 @@ function SingleVehicle({
   const interactLatch  = useRef(false);
   const syncTimer      = useRef(0);
 
-  // Reactive slice for JSX (proximity prompt)
-  const { playerPosition, inVehicle, equippedVehicleId } = useGameStore((s) => ({
-    playerPosition:    s.playerPosition,
-    inVehicle:         s.inVehicle,
-    equippedVehicleId: s.equippedVehicleId,
-  }));
+  // Primitive selectors — Object.is works correctly on numbers/booleans/strings
+  // (avoids the infinite-loop caused by returning a new {} on every call)
+  const px              = useGameStore((s) => s.playerPosition[0]);
+  const pz              = useGameStore((s) => s.playerPosition[2]);
+  const inVehicle       = useGameStore((s) => s.inVehicle);
+  const equippedVehicleId = useGameStore((s) => s.equippedVehicleId);
 
   // Place vehicle at spawn
   useEffect(() => {
@@ -163,10 +163,10 @@ function SingleVehicle({
     }
   });
 
-  /* ── Proximity label ── */
+  /* ── Proximity label (uses primitive px/pz selectors — no object creation) ── */
   const vx = groupRef.current?.position.x ?? def.position[0];
   const vz = groupRef.current?.position.z ?? def.position[2];
-  const d2 = (vx - playerPosition[0]) ** 2 + (vz - playerPosition[2]) ** 2;
+  const d2 = (vx - px) ** 2 + (vz - pz) ** 2;
   const showEnter = d2 < 30 && !inVehicle;
   const showExit  = inVehicle && equippedVehicleId === def.id;
 

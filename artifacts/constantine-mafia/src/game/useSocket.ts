@@ -12,12 +12,14 @@ export type OnlinePlayer = {
 };
 
 export function useSocket() {
-  const store = useGameStore();
+  // Specific selectors only — avoids re-subscribing on every store change
+  const screen   = useGameStore((s) => s.screen);
+  const username = useGameStore((s) => s.username);
   const socketRef = useRef<Socket | null>(null);
   const [onlinePlayers, setOnlinePlayers] = useState<Record<string, OnlinePlayer>>({});
 
   useEffect(() => {
-    if (store.screen !== 'playing' || !store.username) return;
+    if (screen !== 'playing' || !username) return;
 
     const socket = io(window.location.origin, {
       path: '/api/socket.io',
@@ -26,10 +28,11 @@ export function useSocket() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      const s = useGameStore.getState();
       socket.emit('player:join', {
-        playerId: store.playerId ?? `guest_${socket.id}`,
-        username: store.username,
-        district: store.district,
+        playerId: s.playerId ?? `guest_${socket.id}`,
+        username:  s.username,
+        district:  s.district,
       });
     });
 
@@ -69,7 +72,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [store.screen, store.username]);
+  }, [screen, username]);
 
   const emitMovement = (x: number, z: number, district: string) => {
     socketRef.current?.emit('player:move', { x, z, district });

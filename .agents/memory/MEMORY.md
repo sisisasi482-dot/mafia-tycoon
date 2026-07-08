@@ -1,1 +1,2 @@
 - [Vehicle system design](vehicle-system.md) — camera handoff, forward-vector convention, atomic enter/exit pattern.
+- [Zustand selector rules](zustand-selectors.md) — object-creating selectors cause infinite render loops; always use primitives or getState().

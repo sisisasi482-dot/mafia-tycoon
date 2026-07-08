@@ -16,7 +16,12 @@ export function GameEngine() {
   const targetRef       = useRef<THREE.Group>(null);
   // Camera anchor for the active vehicle — written to every frame by Vehicles.tsx
   const vehicleRef      = useRef<THREE.Group>(null);
-  const { inVehicle, screen, togglePause, cameraMode } = useGameStore();
+
+  // Use specific selectors — prevents re-rendering on every single store change
+  const inVehicle   = useGameStore((s) => s.inVehicle);
+  const screen      = useGameStore((s) => s.screen);
+  const cameraMode  = useGameStore((s) => s.cameraMode);
+  const togglePause = useGameStore((s) => s.togglePause);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
