@@ -29,7 +29,7 @@ export function City() {
         w: 14 + rng() * 8, h, d: 14 + rng() * 8,
         color: ['#3a3a4a', '#2e2e3e', '#404050', '#35354a'][Math.floor(rng() * 4)],
         emissive: '#ffb347',
-        emissiveIntensity: lit ? 0.25 + rng() * 0.2 : 0,
+        emissiveIntensity: lit ? 0.04 + rng() * 0.03 : 0,
       });
     }
 
@@ -44,7 +44,7 @@ export function City() {
         w: 7 + rng() * 7, h, d: 7 + rng() * 7,
         color: ['#c4a44f', '#b8973d', '#d4b460', '#a89040'][Math.floor(rng() * 4)],
         emissive: '#ffe070',
-        emissiveIntensity: lit ? 0.3 + rng() * 0.25 : 0,
+        emissiveIntensity: lit ? 0.05 + rng() * 0.03 : 0,
       });
     }
 
@@ -60,7 +60,7 @@ export function City() {
         w: 4 + rng() * 6, h, d: 4 + rng() * 6,
         color: ['#8b7355', '#7a6345', '#9e8465', '#6b5535'][Math.floor(rng() * 4)],
         emissive: '#ff8c42',
-        emissiveIntensity: lit ? 0.2 + rng() * 0.15 : 0,
+        emissiveIntensity: lit ? 0.03 + rng() * 0.02 : 0,
       });
     }
 
@@ -77,7 +77,7 @@ export function City() {
         d: isFactory ? 15 + rng() * 10 : 8 + rng() * 8,
         color: ['#4a4040', '#383232', '#524848', '#403a3a'][Math.floor(rng() * 4)],
         emissive: '#ff4400',
-        emissiveIntensity: rng() > 0.6 ? 0.15 : 0,
+        emissiveIntensity: rng() > 0.6 ? 0.03 : 0,
       });
     }
 

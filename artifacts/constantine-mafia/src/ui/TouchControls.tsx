@@ -146,11 +146,8 @@ export function TouchControls() {
     };
   }, [store.inVehicle, store.vehicleSteeringMode]);
 
-  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  if (!isTouch && !store.showTouchControls) return null;
-  if (store.screen !== 'playing' || store.isPaused) return null;
-
   // Joystick movement handler (walking / driving with joystick)
+  // Must be defined before any early return to satisfy Rules of Hooks
   const handleJoystick = useCallback((dx: number, dz: number) => {
     const DEAD = 0.25;
     // Forward/back
@@ -171,6 +168,10 @@ export function TouchControls() {
     else if (a > DEAD) { press('KeyD'); heldKeys.current.add('KeyD'); release('KeyA'); heldKeys.current.delete('KeyA'); }
     else { release('KeyA'); release('KeyD'); heldKeys.current.delete('KeyA'); heldKeys.current.delete('KeyD'); }
   }, []);
+
+  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (!isTouch && !store.showTouchControls) return null;
+  if (store.screen !== 'playing' || store.isPaused) return null;
 
   // ── Vehicle HUD ─────────────────────────────────────────────────────────
   if (store.inVehicle) {
