@@ -1,0 +1,1 @@
+- [Vehicle system design](vehicle-system.md) — camera handoff, forward-vector convention, atomic enter/exit pattern.

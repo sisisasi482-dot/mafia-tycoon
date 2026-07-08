@@ -5,58 +5,69 @@ import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 
 export const ControlsMap = [
-  { name: 'forward', keys: ['ArrowUp', 'KeyW'] },
-  { name: 'back', keys: ['ArrowDown', 'KeyS'] },
-  { name: 'left', keys: ['ArrowLeft', 'KeyA'] },
-  { name: 'right', keys: ['ArrowRight', 'KeyD'] },
-  { name: 'jump', keys: ['Space'] },
-  { name: 'sprint', keys: ['ShiftLeft'] },
+  { name: 'forward',  keys: ['ArrowUp',    'KeyW'] },
+  { name: 'back',     keys: ['ArrowDown',  'KeyS'] },
+  { name: 'left',     keys: ['ArrowLeft',  'KeyA'] },
+  { name: 'right',    keys: ['ArrowRight', 'KeyD'] },
+  { name: 'jump',     keys: ['Space'] },
+  { name: 'sprint',   keys: ['ShiftLeft'] },
   { name: 'interact', keys: ['KeyE'] },
-  { name: 'attack', keys: ['KeyF'] },
-  { name: 'map', keys: ['KeyM'] },
-  { name: 'escape', keys: ['Escape'] },
+  { name: 'attack',   keys: ['KeyF'] },
+  { name: 'map',      keys: ['KeyM'] },
+  { name: 'escape',   keys: ['Escape'] },
 ];
 
-export const Player = forwardRef<THREE.Group, {}>((props, ref) => {
+export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   const innerRef = useRef<THREE.Group>(null);
-  const [subscribeKeys, getKeys] = useKeyboardControls();
-  const { playerPosition, setPlayerPosition, inVehicle, careerPath } = useGameStore();
+  const [, getKeys] = useKeyboardControls();
+  const { playerPosition, playerRotationY, setPlayerPosition, inVehicle, careerPath, cameraMode } = useGameStore();
 
-  const velocity = useRef(new THREE.Vector3());
+  const velocity  = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
+  const syncTimer = useRef(0);
+  const prevInVehicle = useRef(inVehicle);
 
-  // Assign ref
+  // Assign forwarded ref
   useEffect(() => {
     if (typeof ref === 'function') ref(innerRef.current);
     else if (ref) (ref as React.MutableRefObject<THREE.Group | null>).current = innerRef.current;
   }, [ref]);
 
+  // Spawn position
   useEffect(() => {
-    if (innerRef.current) {
-      innerRef.current.position.set(...playerPosition);
-    }
+    innerRef.current?.position.set(...playerPosition);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useFrame((state, delta) => {
+  // Snap position when exiting a vehicle
+  useEffect(() => {
+    if (prevInVehicle.current && !inVehicle && innerRef.current) {
+      innerRef.current.position.set(...playerPosition);
+      innerRef.current.rotation.y = playerRotationY;
+      velocity.current.set(0, 0, 0);
+    }
+    prevInVehicle.current = inVehicle;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inVehicle]);
+
+  useFrame((_, delta) => {
     if (!innerRef.current || inVehicle || useGameStore.getState().isPaused) return;
 
-    const keys = getKeys();
+    const keys  = getKeys();
     const speed = keys.sprint ? 16 : 8;
-    
+
     direction.current.set(0, 0, 0);
-
     if (keys.forward) direction.current.z -= 1;
-    if (keys.back) direction.current.z += 1;
-    if (keys.left) direction.current.x -= 1;
-    if (keys.right) direction.current.x += 1;
-
+    if (keys.back)    direction.current.z += 1;
+    if (keys.left)    direction.current.x -= 1;
+    if (keys.right)   direction.current.x += 1;
     direction.current.normalize();
 
     if (direction.current.lengthSq() > 0) {
       const targetAngle = Math.atan2(direction.current.x, direction.current.z);
       let diff = targetAngle - innerRef.current.rotation.y;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff > Math.PI)  diff -= Math.PI * 2;
       innerRef.current.rotation.y += diff * 10 * delta;
     }
 
@@ -64,7 +75,7 @@ export const Player = forwardRef<THREE.Group, {}>((props, ref) => {
     velocity.current.z = THREE.MathUtils.lerp(velocity.current.z, direction.current.z * speed, 10 * delta);
 
     if (innerRef.current.position.y > 1) {
-      velocity.current.y -= 30 * delta; // Gravity
+      velocity.current.y -= 30 * delta;
     } else {
       velocity.current.y = 0;
       innerRef.current.position.y = 1;
@@ -72,36 +83,45 @@ export const Player = forwardRef<THREE.Group, {}>((props, ref) => {
     }
 
     innerRef.current.position.addScaledVector(velocity.current, delta);
-    
-    // Bounds check
-    if (innerRef.current.position.x < -300) innerRef.current.position.x = -300;
-    if (innerRef.current.position.x > 250) innerRef.current.position.x = 250;
-    if (innerRef.current.position.z < -150) innerRef.current.position.z = -150;
-    if (innerRef.current.position.z > 250) innerRef.current.position.z = 250;
 
-    // Sync state
-    if (state.clock.elapsedTime % 0.1 < delta) {
-      setPlayerPosition([innerRef.current.position.x, innerRef.current.position.y, innerRef.current.position.z]);
+    // World bounds
+    innerRef.current.position.x = THREE.MathUtils.clamp(innerRef.current.position.x, -300, 250);
+    innerRef.current.position.z = THREE.MathUtils.clamp(innerRef.current.position.z, -150, 250);
+
+    // Sync position + rotationY to store (throttled to ~10 Hz)
+    syncTimer.current += delta;
+    if (syncTimer.current > 0.1) {
+      syncTimer.current = 0;
+      setPlayerPosition(
+        [innerRef.current.position.x, innerRef.current.position.y, innerRef.current.position.z],
+        innerRef.current.rotation.y,
+      );
     }
   });
 
-  const getPlayerColor = () => {
-    switch(careerPath) {
-      case 'street_thug': return '#888888';
-      case 'gangster': return '#444444';
-      case 'crime_boss': return '#222222';
-      case 'business_tycoon': return '#1a1a3a';
-      default: return '#888888';
-    }
-  };
+  const color = {
+    street_thug:    '#888888',
+    gangster:       '#444444',
+    crime_boss:     '#222222',
+    business_tycoon:'#1a1a3a',
+  }[careerPath] ?? '#888888';
 
-  if (inVehicle) return null;
+  // In FPV: don't render the body mesh (camera is inside it)
+  if (inVehicle || cameraMode === 'first') {
+    return <group ref={innerRef} />;
+  }
 
   return (
     <group ref={innerRef}>
+      {/* Body */}
       <mesh castShadow receiveShadow position={[0, 0.9, 0]}>
         <boxGeometry args={[0.8, 1.8, 0.8]} />
-        <meshStandardMaterial color={getPlayerColor()} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Head */}
+      <mesh castShadow position={[0, 2.0, 0]}>
+        <boxGeometry args={[0.6, 0.6, 0.6]} />
+        <meshStandardMaterial color={color} />
       </mesh>
     </group>
   );
