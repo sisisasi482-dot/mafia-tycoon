@@ -26,9 +26,20 @@ const LEGS_COLORS  = ['#1a1a2e', '#2e1a1a', '#1a2e1a', '#2e2a1a', '#1a1a1a'];
 
 type NpcType = 'citizen' | 'police' | 'gang';
 
+/** Seven visually distinct pedestrian character templates. */
+type ModelType =
+  | 'male_casual'    // t-shirt + jeans
+  | 'female_casual'  // top + trousers, ponytail
+  | 'male_business'  // dark suit + tie
+  | 'female_hijab'   // headscarf + modest dress
+  | 'male_worker'    // overalls + hard hat
+  | 'female_dress'   // long dress silhouette
+  | 'male_sporty';   // tracksuit + stripe
+
 interface NpcDef {
   id:        number;
   type:      NpcType;
+  modelType: ModelType;
   spawnX:    number;
   spawnZ:    number;
   radius:    number;
@@ -79,10 +90,20 @@ const SPAWNS: Array<{ x: number; z: number; r: number; type?: NpcType }> = [
 
 // ─── Build NPC defs from spawn list ──────────────────────────────────────────
 
+const CITIZEN_MODELS: ModelType[] = [
+  'male_casual', 'female_casual', 'male_business',
+  'female_hijab', 'male_worker', 'female_dress', 'male_sporty',
+];
+
 function buildDefs(): NpcDef[] {
   const rng = seededRng(99);
   return SPAWNS.map((sp, i) => {
     const type = sp.type ?? 'citizen';
+
+    // Derive model from index — no extra rng() calls so colours stay identical
+    const modelType: ModelType = type === 'citizen'
+      ? CITIZEN_MODELS[i % CITIZEN_MODELS.length]
+      : 'male_casual';
 
     let bodyColor: string;
     let legsColor: string;
@@ -101,6 +122,7 @@ function buildDefs(): NpcDef[] {
     return {
       id:        i,
       type,
+      modelType,
       spawnX:    sp.x,
       spawnZ:    sp.z,
       radius:    sp.r,
@@ -143,64 +165,185 @@ interface NpcMeshProps {
 function NpcMesh({ def, onRef }: NpcMeshProps) {
   const isPolice = def.type === 'police';
   const isGang   = def.type === 'gang';
+  const model    = def.modelType;
+
+  const isFemale = model === 'female_casual' || model === 'female_hijab' || model === 'female_dress';
+  const torsoW   = isFemale ? 0.58 : 0.65;
+  const armX     = torsoW / 2 + 0.12;
 
   return (
     <group ref={onRef} scale={[def.scale, def.scale, def.scale]}>
-      {/* Legs */}
-      <mesh castShadow receiveShadow position={[-0.15, 0.38, 0]}>
-        <boxGeometry args={[0.2, 0.72, 0.2]} />
-        <meshStandardMaterial color={def.legsColor} roughness={0.9} />
-      </mesh>
-      <mesh castShadow receiveShadow position={[0.15, 0.38, 0]}>
-        <boxGeometry args={[0.2, 0.72, 0.2]} />
-        <meshStandardMaterial color={def.legsColor} roughness={0.9} />
-      </mesh>
 
-      {/* Torso */}
+      {/* ── Lower body ──────────────────────────────────────────────────── */}
+      {model === 'female_dress' ? (
+        // Single-piece long dress
+        <mesh castShadow receiveShadow position={[0, 0.40, 0]}>
+          <boxGeometry args={[0.62, 0.80, 0.30]} />
+          <meshStandardMaterial color={def.legsColor} roughness={0.9} />
+        </mesh>
+      ) : (model === 'female_casual' || model === 'female_hijab') ? (
+        // Wide trouser / skirt shape
+        <mesh castShadow receiveShadow position={[0, 0.38, 0]}>
+          <boxGeometry args={[0.56, 0.72, 0.26]} />
+          <meshStandardMaterial color={def.legsColor} roughness={0.9} />
+        </mesh>
+      ) : (
+        // Standard two-leg
+        <>
+          <mesh castShadow receiveShadow position={[-0.15, 0.38, 0]}>
+            <boxGeometry args={[0.2, 0.72, 0.2]} />
+            <meshStandardMaterial color={def.legsColor} roughness={0.9} />
+          </mesh>
+          <mesh castShadow receiveShadow position={[0.15, 0.38, 0]}>
+            <boxGeometry args={[0.2, 0.72, 0.2]} />
+            <meshStandardMaterial color={def.legsColor} roughness={0.9} />
+          </mesh>
+        </>
+      )}
+
+      {/* ── Torso ───────────────────────────────────────────────────────── */}
       <mesh castShadow receiveShadow position={[0, 1.0, 0]}>
-        <boxGeometry args={[0.65, 0.68, 0.35]} />
+        <boxGeometry args={[torsoW, 0.68, 0.35]} />
         <meshStandardMaterial color={def.bodyColor} roughness={0.85} />
       </mesh>
 
-      {/* Arms */}
-      <mesh castShadow position={[-0.44, 0.95, 0]}>
+      {/* Sporty side stripe */}
+      {model === 'male_sporty' && (
+        <mesh position={[torsoW / 2 - 0.05, 1.0, 0]}>
+          <boxGeometry args={[0.06, 0.70, 0.36]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.8} />
+        </mesh>
+      )}
+
+      {/* Business tie */}
+      {model === 'male_business' && (
+        <mesh position={[0, 0.92, -0.175]}>
+          <boxGeometry args={[0.09, 0.46, 0.015]} />
+          <meshStandardMaterial color="#880000" roughness={0.8} />
+        </mesh>
+      )}
+
+      {/* Worker bib front */}
+      {model === 'male_worker' && (
+        <mesh position={[0, 1.12, -0.175]}>
+          <boxGeometry args={[0.38, 0.34, 0.015]} />
+          <meshStandardMaterial color="#1a1a6a" roughness={0.85} />
+        </mesh>
+      )}
+
+      {/* Police belt + badge + epaulettes */}
+      {isPolice && (
+        <>
+          {/* Belt */}
+          <mesh position={[0, 0.72, 0]}>
+            <boxGeometry args={[torsoW + 0.04, 0.10, 0.36]} />
+            <meshStandardMaterial color="#0a0a22" roughness={0.7} />
+          </mesh>
+          {/* Belt buckle */}
+          <mesh position={[0, 0.72, -0.175]}>
+            <boxGeometry args={[0.12, 0.08, 0.02]} />
+            <meshStandardMaterial color="#aaaaaa" roughness={0.3} metalness={0.5} />
+          </mesh>
+          {/* Badge */}
+          <mesh position={[-0.14, 1.10, -0.175]}>
+            <boxGeometry args={[0.12, 0.10, 0.02]} />
+            <meshStandardMaterial color="#ffd700" roughness={0.3} metalness={0.5} />
+          </mesh>
+          {/* Shoulder epaulettes */}
+          <mesh position={[-armX, 1.14, 0]}>
+            <boxGeometry args={[0.22, 0.08, 0.22]} />
+            <meshStandardMaterial color="#e8e8ff" roughness={0.7} />
+          </mesh>
+          <mesh position={[armX, 1.14, 0]}>
+            <boxGeometry args={[0.22, 0.08, 0.22]} />
+            <meshStandardMaterial color="#e8e8ff" roughness={0.7} />
+          </mesh>
+        </>
+      )}
+
+      {/* ── Arms ────────────────────────────────────────────────────────── */}
+      <mesh castShadow position={[-armX, 0.95, 0]}>
         <boxGeometry args={[0.2, 0.55, 0.2]} />
         <meshStandardMaterial color={def.bodyColor} roughness={0.85} />
       </mesh>
-      <mesh castShadow position={[0.44, 0.95, 0]}>
+      <mesh castShadow position={[armX, 0.95, 0]}>
         <boxGeometry args={[0.2, 0.55, 0.2]} />
         <meshStandardMaterial color={def.bodyColor} roughness={0.85} />
       </mesh>
 
-      {/* Head */}
+      {/* ── Head ────────────────────────────────────────────────────────── */}
       <mesh castShadow position={[0, 1.82, 0]}>
         <boxGeometry args={[0.48, 0.48, 0.48]} />
         <meshStandardMaterial color={def.skinColor} roughness={0.75} />
       </mesh>
 
-      {/* Hair */}
-      {!isPolice && (
-        <mesh position={[0, 2.08, 0]}>
-          <boxGeometry args={[0.5, 0.12, 0.5]} />
+      {/* ── Head coverings ──────────────────────────────────────────────── */}
+
+      {/* Standard hair — all models except hijab, worker, and police */}
+      {!isPolice && model !== 'female_hijab' && model !== 'male_worker' && (
+        <mesh position={[0, 2.09, 0]}>
+          <boxGeometry args={[0.50, 0.13, 0.50]} />
           <meshStandardMaterial color={def.hairColor} roughness={0.9} />
         </mesh>
       )}
 
-      {/* Police cap */}
+      {/* Ponytail for female_casual and female_dress */}
+      {(model === 'female_casual' || model === 'female_dress') && (
+        <mesh position={[0, 2.02, 0.24]}>
+          <boxGeometry args={[0.16, 0.28, 0.14]} />
+          <meshStandardMaterial color={def.hairColor} roughness={0.9} />
+        </mesh>
+      )}
+
+      {/* Hijab — cap + drape */}
+      {model === 'female_hijab' && (
+        <>
+          <mesh position={[0, 2.11, 0]}>
+            <boxGeometry args={[0.54, 0.16, 0.54]} />
+            <meshStandardMaterial color={def.bodyColor} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, 1.89, 0.06]}>
+            <boxGeometry args={[0.56, 0.30, 0.52]} />
+            <meshStandardMaterial color={def.bodyColor} roughness={0.85} />
+          </mesh>
+        </>
+      )}
+
+      {/* Hard hat (worker) */}
+      {model === 'male_worker' && (
+        <>
+          <mesh castShadow position={[0, 2.13, 0]}>
+            <boxGeometry args={[0.60, 0.18, 0.60]} />
+            <meshStandardMaterial color="#ffcc00" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 2.03, 0]}>
+            <boxGeometry args={[0.70, 0.05, 0.70]} />
+            <meshStandardMaterial color="#ffcc00" roughness={0.7} />
+          </mesh>
+        </>
+      )}
+
+      {/* Police cap + gold band */}
       {isPolice && (
         <>
           <mesh castShadow position={[0, 2.12, 0]}>
             <boxGeometry args={[0.52, 0.18, 0.52]} />
             <meshStandardMaterial color="#0a1a5a" roughness={0.7} />
           </mesh>
-          <mesh position={[0, 2.04, -0.3]}>
+          {/* Cap brim */}
+          <mesh position={[0, 2.04, -0.30]}>
             <boxGeometry args={[0.52, 0.06, 0.14]} />
             <meshStandardMaterial color="#0a1a5a" roughness={0.7} />
+          </mesh>
+          {/* Gold band */}
+          <mesh position={[0, 2.04, 0]}>
+            <boxGeometry args={[0.54, 0.06, 0.54]} />
+            <meshStandardMaterial color="#ffd700" roughness={0.5} />
           </mesh>
         </>
       )}
 
-      {/* Gang bandana (red cloth around neck/lower face) */}
+      {/* Gang bandana */}
       {isGang && (
         <mesh position={[0, 1.63, 0]}>
           <boxGeometry args={[0.5, 0.22, 0.36]} />
@@ -314,6 +457,95 @@ export function NPCs() {
           onRef={(el) => { groupRefs.current[i] = el; }}
         />
       ))}
+    </>
+  );
+}
+
+// ─── Child NPCs (playing in the park) ────────────────────────────────────────
+
+const PARK_CX = 50;
+const PARK_CZ = 150;
+
+const CHILD_PLACEMENTS = [
+  { x: -8, z: -4, color: '#e8532a', hair: '#111111' },
+  { x:  5, z: -7, color: '#2a7acc', hair: '#2c1a0e' },
+  { x:  9, z:  5, color: '#e84a8a', hair: '#3d2b1f' },
+  { x: -6, z:  8, color: '#44aa44', hair: '#0a0a0a' },
+  { x:  2, z: -2, color: '#cc8822', hair: '#111111' },
+  { x: -3, z:  6, color: '#aa33cc', hair: '#1a0a00' },
+  { x:  7, z:  3, color: '#33aacc', hair: '#2c1a0e' },
+  { x: -9, z: -1, color: '#cc3333', hair: '#0a0a0a' },
+];
+
+const CHILD_SKINS = [
+  '#d4956a', '#c8855a', '#a0623a', '#e0aa80',
+  '#d4956a', '#c8855a', '#a0623a', '#e0aa80',
+];
+
+export function ChildNPCs() {
+  const screen   = useGameStore((s) => s.screen);
+  const isPaused = useGameStore((s) => s.isPaused);
+  const refs     = useRef<(THREE.Group | null)[]>(CHILD_PLACEMENTS.map(() => null));
+
+  useFrame(({ clock }) => {
+    if (screen !== 'playing' || isPaused) return;
+    const t = clock.getElapsedTime();
+    refs.current.forEach((g, i) => {
+      if (!g) return;
+      g.position.y = 0.58 + Math.abs(Math.sin(t * 2.6 + i * 0.9)) * 0.22;
+      g.rotation.y = t * 0.6 * (i % 2 === 0 ? 1 : -1) + i * 0.8;
+    });
+  });
+
+  if (screen !== 'playing') return null;
+
+  return (
+    <>
+      {CHILD_PLACEMENTS.map((cp, i) => {
+        const skin = CHILD_SKINS[i];
+        return (
+          <group
+            key={`child-${i}`}
+            ref={(el) => { refs.current[i] = el; }}
+            position={[PARK_CX + cp.x, 0.58, PARK_CZ + cp.z]}
+            scale={[0.58, 0.58, 0.58]}
+          >
+            {/* Legs */}
+            <mesh position={[-0.12, 0.30, 0]}>
+              <boxGeometry args={[0.17, 0.58, 0.17]} />
+              <meshStandardMaterial color="#1a1a4a" roughness={0.9} />
+            </mesh>
+            <mesh position={[0.12, 0.30, 0]}>
+              <boxGeometry args={[0.17, 0.58, 0.17]} />
+              <meshStandardMaterial color="#1a1a4a" roughness={0.9} />
+            </mesh>
+            {/* Torso */}
+            <mesh position={[0, 0.88, 0]}>
+              <boxGeometry args={[0.56, 0.58, 0.30]} />
+              <meshStandardMaterial color={cp.color} roughness={0.85} />
+            </mesh>
+            {/* Arms */}
+            <mesh position={[-0.39, 0.86, 0]}>
+              <boxGeometry args={[0.17, 0.46, 0.17]} />
+              <meshStandardMaterial color={cp.color} roughness={0.85} />
+            </mesh>
+            <mesh position={[0.39, 0.86, 0]}>
+              <boxGeometry args={[0.17, 0.46, 0.17]} />
+              <meshStandardMaterial color={cp.color} roughness={0.85} />
+            </mesh>
+            {/* Head */}
+            <mesh position={[0, 1.58, 0]}>
+              <boxGeometry args={[0.42, 0.42, 0.42]} />
+              <meshStandardMaterial color={skin} roughness={0.75} />
+            </mesh>
+            {/* Hair */}
+            <mesh position={[0, 1.82, 0]}>
+              <boxGeometry args={[0.44, 0.12, 0.44]} />
+              <meshStandardMaterial color={cp.hair} roughness={0.9} />
+            </mesh>
+          </group>
+        );
+      })}
     </>
   );
 }

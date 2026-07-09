@@ -34,6 +34,35 @@ export interface BuildingAABB {
   hw: number; hd: number;   // half-extents
 }
 
+// ─── Road + park exclusion zones ─────────────────────────────────────────────
+// Uses full building AABB so buildings whose *edges* cross a protected zone are
+// also removed, not only buildings whose centres fall inside it.
+
+function isExcluded(cx: number, cz: number, hw: number, hd: number): boolean {
+  const l = cx - hw, r = cx + hw;
+  const n = cz - hd, f = cz + hd;
+
+  /** AABB overlap test: does [l,r]×[n,f] intersect [xl,xr]×[zl,zf]? */
+  function hit(xl: number, xr: number, zl: number, zf: number) {
+    return l < xr && r > xl && n < zf && f > zl;
+  }
+
+  // Road corridors (road half-width + 8-unit sidewalk buffer on each side)
+  if (hit(-1200,  1200,  -28,   28)) return true; // E-W highway
+  if (hit(  -28,    28, -600,  600)) return true; // N-S main
+  if (hit(   72,   128, -220,  220)) return true; // secondary N-S
+  if (hit( -228,  -172, -230,  230)) return true; // Ali Mendjeli N-S
+  if (hit( -328,  -272,  -10,  490)) return true; // airport access
+  if (hit( -488,  -432, -220,  220)) return true; // far-west N-S
+  if (hit( -530,   130,   60,  100)) return true; // E-W cross north
+  if (hit( -530,   130, -100,  -60)) return true; // E-W cross south
+
+  // Park zone — 2-unit safety margin inside boundary
+  if (hit(22, 78, 127, 173)) return true;
+
+  return false;
+}
+
 // ─── Generation ──────────────────────────────────────────────────────────────
 
 function generate(): BuildingData[] {
@@ -124,11 +153,10 @@ function generate(): BuildingData[] {
 
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
-/** Full building list — used by City.tsx (render) and MiniMap.tsx (2D footprints) */
-export const BUILDINGS: BuildingData[] = generate();
+/** Full building list — road-overlap and park entries removed. */
+export const BUILDINGS: BuildingData[] = generate().filter((b) => !isExcluded(b.x, b.z, b.w / 2, b.d / 2));
 
-/** Flat AABB list for per-frame collision in Player.tsx.
- *  Each entry is derived from BUILDINGS, so indices correspond. */
+/** Flat AABB list derived from the filtered BUILDINGS array. */
 export const BUILDING_AABBS: BuildingAABB[] = BUILDINGS.map((b) => ({
   cx: b.x, cz: b.z, hw: b.w / 2, hd: b.d / 2,
 }));

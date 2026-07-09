@@ -356,6 +356,255 @@ export function City() {
         );
       })}
 
+      {/* ── Road markings — E-W highway dashed centre line ───────────── */}
+      {Array.from({ length: 50 }, (_, i) => (
+        <mesh key={`cl-ew-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[-604 + i * 21, 0.026, 0]}>
+          <planeGeometry args={[9, 0.28]} />
+          <meshBasicMaterial color="#eecc00" />
+        </mesh>
+      ))}
+      {/* E-W highway solid white edge lines */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-60, 0.026, 17.6]}>
+        <planeGeometry args={[1100, 0.28]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-60, 0.026, -17.6]}>
+        <planeGeometry args={[1100, 0.28]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* N-S main road dashed centre line */}
+      {Array.from({ length: 38 }, (_, i) => (
+        <mesh key={`cl-ns-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.026, -300 + i * 22]}>
+          <planeGeometry args={[0.28, 9]} />
+          <meshBasicMaterial color="#eecc00" />
+        </mesh>
+      ))}
+
+      {/* ── Speed bumps (minor roads only) ───────────────────────────── */}
+      {/* Ali Mendjeli N-S road */}
+      {([-55, 55] as number[]).map((z, i) => (
+        <mesh key={`sb-am-${i}`} castShadow position={[-200, 0.14, z]}>
+          <boxGeometry args={[40, 0.28, 1.8]} />
+          <meshStandardMaterial color="#f0cc10" roughness={0.75} />
+        </mesh>
+      ))}
+      {/* Secondary N-S road */}
+      {([-42, 48] as number[]).map((z, i) => (
+        <mesh key={`sb-sec-${i}`} castShadow position={[100, 0.14, z]}>
+          <boxGeometry args={[40, 0.28, 1.8]} />
+          <meshStandardMaterial color="#f0cc10" roughness={0.75} />
+        </mesh>
+      ))}
+
+      {/* ── Traffic signs ────────────────────────────────────────────── */}
+      {/* STOP signs at road intersections */}
+      {([
+        { x: -22, z: -30 }, { x:  22, z:  30 },
+        { x: 122, z: -30 }, { x: -222, z: 30 },
+      ] as { x: number; z: number }[]).map(({ x, z }, i) => (
+        <group key={`stop-${i}`} position={[x, 0, z]}>
+          {/* Post */}
+          <mesh castShadow position={[0, 2.0, 0]}>
+            <cylinderGeometry args={[0.07, 0.07, 4.0, 6]} />
+            <meshStandardMaterial color="#888888" roughness={0.8} />
+          </mesh>
+          {/* Sign face — red octagon (approximated as rotated box) */}
+          <mesh castShadow position={[0, 4.25, 0]} rotation={[0, Math.PI / 8, 0]}>
+            <boxGeometry args={[0.76, 0.76, 0.08]} />
+            <meshStandardMaterial color="#cc1111" roughness={0.7} />
+          </mesh>
+          {/* White border ring */}
+          <mesh position={[0, 4.25, 0.04]} rotation={[0, Math.PI / 8, 0]}>
+            <boxGeometry args={[0.82, 0.82, 0.02]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.55} />
+          </mesh>
+        </group>
+      ))}
+      {/* Speed-limit signs */}
+      {([
+        { x: -44, z: 27 }, { x: 44, z: -27 }, { x: 126, z: 28 },
+      ] as { x: number; z: number }[]).map(({ x, z }, i) => (
+        <group key={`spd-${i}`} position={[x, 0, z]}>
+          <mesh castShadow position={[0, 1.8, 0]}>
+            <cylinderGeometry args={[0.07, 0.07, 3.6, 6]} />
+            <meshStandardMaterial color="#888888" roughness={0.8} />
+          </mesh>
+          {/* White panel */}
+          <mesh castShadow position={[0, 3.75, 0]}>
+            <boxGeometry args={[0.70, 0.90, 0.08]} />
+            <meshStandardMaterial color="#f0f0f0" roughness={0.7} />
+          </mesh>
+          {/* Red outer ring */}
+          <mesh position={[0, 3.75, 0.045]}>
+            <boxGeometry args={[0.74, 0.94, 0.02]} />
+            <meshBasicMaterial color="#cc1111" transparent opacity={0.65} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* ── Park (Centre-Ville north, between N-S roads) ──────────────── */}
+      {/* Grass surface */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[50, 0.04, 150]}>
+        <planeGeometry args={[56, 46]} />
+        <meshStandardMaterial color="#2d5a1b" roughness={0.92} />
+      </mesh>
+      {/* E-W gravel path */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[50, 0.05, 150]}>
+        <planeGeometry args={[56, 3.5]} />
+        <meshStandardMaterial color="#5a5550" roughness={0.96} />
+      </mesh>
+      {/* N-S gravel path */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[50, 0.05, 150]}>
+        <planeGeometry args={[3.5, 46]} />
+        <meshStandardMaterial color="#5a5550" roughness={0.96} />
+      </mesh>
+
+      {/* Fountain basin */}
+      <mesh castShadow receiveShadow position={[50, 0.9, 150]}>
+        <cylinderGeometry args={[3.2, 3.6, 1.8, 16]} />
+        <meshStandardMaterial color="#8a8a8a" roughness={0.7} />
+      </mesh>
+      {/* Fountain inner water */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[50, 1.82, 150]}>
+        <circleGeometry args={[2.8, 16]} />
+        <meshStandardMaterial color="#2288cc" transparent opacity={0.75} roughness={0.1} />
+      </mesh>
+      {/* Fountain spout column */}
+      <mesh castShadow position={[50, 2.2, 150]}>
+        <cylinderGeometry args={[0.22, 0.22, 2.4, 8]} />
+        <meshStandardMaterial color="#aaaaaa" roughness={0.6} />
+      </mesh>
+      {/* Water sphere top */}
+      <mesh position={[50, 3.5, 150]}>
+        <sphereGeometry args={[0.55, 10, 10]} />
+        <meshStandardMaterial color="#55aadd" transparent opacity={0.78} roughness={0.1} />
+      </mesh>
+      <pointLight position={[50, 2.5, 150]} color="#88ddff" intensity={14} distance={20} decay={2} />
+
+      {/* Trees */}
+      {([
+        [33, 134], [67, 134], [33, 166], [67, 166],
+        [33, 150], [67, 150], [50, 134], [50, 166],
+      ] as [number, number][]).map(([tx, tz], i) => (
+        <group key={`ptree-${i}`} position={[tx, 0, tz]}>
+          <mesh castShadow position={[0, 2.0, 0]}>
+            <cylinderGeometry args={[0.28, 0.36, 4.0, 7]} />
+            <meshStandardMaterial color="#5a3a1a" roughness={0.95} />
+          </mesh>
+          <mesh castShadow position={[0, 5.2, 0]}>
+            <boxGeometry args={[3.6, 3.6, 3.6]} />
+            <meshStandardMaterial color="#1e5e10" roughness={0.9} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Benches (4, around the fountain) */}
+      {([
+        [42, 150, 0], [58, 150, 0], [50, 143, Math.PI / 2], [50, 157, Math.PI / 2],
+      ] as [number, number, number][]).map(([bx, bz, brot], i) => (
+        <group key={`bench-${i}`} position={[bx, 0, bz]} rotation={[0, brot, 0]}>
+          <mesh castShadow receiveShadow position={[0, 0.72, 0]}>
+            <boxGeometry args={[2.6, 0.14, 0.56]} />
+            <meshStandardMaterial color="#7a5030" roughness={0.9} />
+          </mesh>
+          <mesh castShadow position={[0, 1.10, 0.22]}>
+            <boxGeometry args={[2.6, 0.54, 0.10]} />
+            <meshStandardMaterial color="#7a5030" roughness={0.9} />
+          </mesh>
+          <mesh position={[-1.0, 0.36, 0]}>
+            <boxGeometry args={[0.10, 0.72, 0.52]} />
+            <meshStandardMaterial color="#333333" roughness={0.8} />
+          </mesh>
+          <mesh position={[1.0, 0.36, 0]}>
+            <boxGeometry args={[0.10, 0.72, 0.52]} />
+            <meshStandardMaterial color="#333333" roughness={0.8} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Swing set */}
+      <group position={[36, 0, 140]}>
+        <mesh castShadow position={[-3.0, 2.5, 0]}>
+          <boxGeometry args={[0.20, 5.0, 0.20]} />
+          <meshStandardMaterial color="#cc8822" roughness={0.7} />
+        </mesh>
+        <mesh castShadow position={[3.0, 2.5, 0]}>
+          <boxGeometry args={[0.20, 5.0, 0.20]} />
+          <meshStandardMaterial color="#cc8822" roughness={0.7} />
+        </mesh>
+        <mesh castShadow position={[0, 5.05, 0]}>
+          <boxGeometry args={[6.2, 0.20, 0.20]} />
+          <meshStandardMaterial color="#cc8822" roughness={0.7} />
+        </mesh>
+        {/* Swing 1 — chains + seat */}
+        <mesh position={[-1.5, 2.7, 0]}>
+          <boxGeometry args={[0.06, 4.6, 0.06]} />
+          <meshStandardMaterial color="#555555" roughness={0.9} />
+        </mesh>
+        <mesh castShadow position={[-1.5, 0.48, 0]}>
+          <boxGeometry args={[0.90, 0.12, 0.44]} />
+          <meshStandardMaterial color="#222222" roughness={0.8} />
+        </mesh>
+        {/* Swing 2 */}
+        <mesh position={[1.5, 2.7, 0]}>
+          <boxGeometry args={[0.06, 4.6, 0.06]} />
+          <meshStandardMaterial color="#555555" roughness={0.9} />
+        </mesh>
+        <mesh castShadow position={[1.5, 0.48, 0]}>
+          <boxGeometry args={[0.90, 0.12, 0.44]} />
+          <meshStandardMaterial color="#222222" roughness={0.8} />
+        </mesh>
+      </group>
+
+      {/* Slide */}
+      <group position={[64, 0, 140]}>
+        {/* Platform top */}
+        <mesh castShadow receiveShadow position={[0, 3.05, -1.0]}>
+          <boxGeometry args={[2.2, 0.18, 2.2]} />
+          <meshStandardMaterial color="#cc3322" roughness={0.7} />
+        </mesh>
+        {/* Support legs */}
+        <mesh castShadow position={[-0.85, 1.52, -1.0]}>
+          <boxGeometry args={[0.16, 3.04, 0.16]} />
+          <meshStandardMaterial color="#cc3322" roughness={0.7} />
+        </mesh>
+        <mesh castShadow position={[0.85, 1.52, -1.0]}>
+          <boxGeometry args={[0.16, 3.04, 0.16]} />
+          <meshStandardMaterial color="#cc3322" roughness={0.7} />
+        </mesh>
+        {/* Slide ramp */}
+        <mesh castShadow position={[0, 1.55, 1.2]} rotation={[-0.52, 0, 0]}>
+          <boxGeometry args={[1.80, 0.12, 4.4]} />
+          <meshStandardMaterial color="#3388dd" roughness={0.35} />
+        </mesh>
+        {/* Steps */}
+        {([0, 1, 2] as number[]).map((s) => (
+          <mesh key={`step-${s}`} castShadow receiveShadow position={[0, 0.5 + s * 0.85, -2.6 + s * 0.55]}>
+            <boxGeometry args={[1.8, 0.16, 0.52]} />
+            <meshStandardMaterial color="#888888" roughness={0.8} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Park lamp posts (4) */}
+      {([
+        [35, 135], [65, 135], [35, 165], [65, 165],
+      ] as [number, number][]).map(([lx, lz], i) => (
+        <group key={`plamp-${i}`} position={[lx, 0, lz]}>
+          <mesh castShadow position={[0, 3.0, 0]}>
+            <cylinderGeometry args={[0.10, 0.10, 6.0, 6]} />
+            <meshStandardMaterial color="#2a2a2a" />
+          </mesh>
+          <mesh position={[0, 6.2, 0]}>
+            <sphereGeometry args={[0.35, 8, 8]} />
+            <meshBasicMaterial color="#ffe880" />
+          </mesh>
+          {/* Local position — group already places this at [lx, 0, lz] */}
+          <pointLight position={[0, 5.8, 0]} color="#ffe880" intensity={8} distance={22} decay={2} />
+        </group>
+      ))}
+
       {/* ── District boundary markers ─────────────────────────────────── */}
       {[
         { x: -250, z: 0,   color: '#ff8c00' },
