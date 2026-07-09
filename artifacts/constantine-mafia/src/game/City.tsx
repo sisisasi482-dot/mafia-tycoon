@@ -10,6 +10,9 @@ import * as THREE from 'three';
 import { BUILDINGS } from './buildings';
 import { DOOR_TRIGGERS } from './interiors';
 import { generateBuildingTextures, disposeBuildingTextures } from './buildingTextures';
+import { QUALITY_PRESETS } from './constants';
+import { useBucketedPlayerPos } from './useNearby';
+import { useGameStore } from './useGameStore';
 
 // ─── Procedural road texture ──────────────────────────────────────────────────
 
@@ -138,6 +141,12 @@ export function City() {
   const texPool = useMemo(() => generateBuildingTextures(), []);
   useEffect(() => () => disposeBuildingTextures(texPool), [texPool]);
 
+  const graphicsQuality = useGameStore((s) => s.graphicsQuality);
+  const preset = QUALITY_PRESETS[graphicsQuality];
+  // Bucketed to a 60-unit grid so this only triggers a re-render when the
+  // player actually moves far enough to matter, not on every position sync.
+  const [px, pz] = useBucketedPlayerPos(60);
+
   // Pre-create one texture per road/sidewalk segment (with per-segment repeat baked in).
   // Doing this in useMemo avoids allocating new THREE.Texture objects on every render.
   const roadTextures = useMemo(() =>
@@ -177,20 +186,53 @@ export function City() {
   );
   useEffect(() => () => signTextures.forEach((t) => t.dispose()), [signTextures]);
 
-  const streetLights = useMemo(() => {
+  // Full candidate list of street-light positions.
+  // Spacing widened from every 40 units to every 100 — visually still reads
+  // as "lit street" but drops the candidate pool from ~82 to ~28 before any
+  // distance culling even runs. This alone matters because every one of
+  // these was previously an always-on real-time point light, and real-time
+  // lights are one of the most expensive things a WebGL scene can render:
+  // each one adds a lighting term evaluated per-fragment for every lit
+  // object in the scene, all the time, everywhere on the map.
+  const allStreetLights = useMemo(() => {
     const lights: { x: number; z: number }[] = [];
     // Along main E-W highway
-    for (let x = -580; x < 440; x += 40) {
+    for (let x = -580; x < 440; x += 100) {
       lights.push({ x, z: -26 });
       lights.push({ x, z:  26 });
     }
     // Along main N-S road
-    for (let z = -160; z < 420; z += 40) {
+    for (let z = -160; z < 420; z += 100) {
       lights.push({ x: -26, z });
       lights.push({ x:  26, z });
     }
     return lights;
   }, []);
+
+  // ── Distance-based culling ──────────────────────────────────────────────
+  // Buildings and street lights well outside the current quality preset's
+  // radius simply aren't rendered as meshes/lights at all — not "hidden",
+  // just never created. This is the "render distance" the pause menu
+  // already implies, wired up for real. Also hard-caps the light count so
+  // a wide-open area (e.g. two intersections close together) can't stack
+  // past what the preset allows.
+  const visibleBuildings = useMemo(() => {
+    if (preset.buildingCullRadius >= 900) return BUILDINGS; // High: render everything
+    const r2 = preset.buildingCullRadius * preset.buildingCullRadius;
+    return BUILDINGS.filter((b) => {
+      const dx = b.x - px, dz = b.z - pz;
+      return dx * dx + dz * dz < r2;
+    });
+  }, [px, pz, preset.buildingCullRadius]);
+
+  const visibleStreetLights = useMemo(() => {
+    const r2 = preset.lightCullRadius * preset.lightCullRadius;
+    const nearby = allStreetLights.filter((l) => {
+      const dx = l.x - px, dz = l.z - pz;
+      return dx * dx + dz * dz < r2;
+    });
+    return nearby.slice(0, preset.maxDynamicLights);
+  }, [px, pz, preset.lightCullRadius, preset.maxDynamicLights, allStreetLights]);
 
   return (
     <group>
@@ -283,11 +325,19 @@ export function City() {
         </mesh>
       ))}
 
-      {/* ── Buildings ────────────────────────────────────────────────── */}
-      {BUILDINGS.map((b, i) => {
+      {/* ── Buildings ─────────────────────────────────────────────────
+          Distance-culled by graphicsQuality (see visibleBuildings above).
+          castShadow only enabled on High — shadow-casting hundreds of
+          boxes every frame was a major cost on Low/Medium. */}
+      {visibleBuildings.map((b, i) => {
         const tex = b.texKey ? texPool[b.texKey]?.[b.texIdx] : undefined;
         return (
-          <mesh key={`b-${i}`} castShadow receiveShadow position={[b.x, b.h / 2, b.z]}>
+          <mesh
+            key={`b-${i}`}
+            castShadow={preset.buildingShadows}
+            receiveShadow
+            position={[b.x, b.h / 2, b.z]}
+          >
             <boxGeometry args={[b.w, b.h, b.d]} />
             <meshStandardMaterial
               map={tex ?? null}
@@ -619,8 +669,13 @@ export function City() {
         </mesh>
       ))}
 
-      {/* ── Street lights ────────────────────────────────────────────── */}
-      {streetLights.map((sl, i) => (
+      {/* ── Street lights ─────────────────────────────────────────────
+          Distance + count culled by graphicsQuality (visibleStreetLights).
+          Previously ~82 real-time point lights existed simultaneously,
+          all the time, everywhere on the map — one of the most expensive
+          things a WebGL scene can have. Now only the handful near the
+          player (per the quality preset) actually exist as lights. */}
+      {visibleStreetLights.map((sl, i) => (
         <group key={`sl-${i}`} position={[sl.x, 0, sl.z]}>
           <mesh castShadow position={[0, 3.5, 0]}>
             <cylinderGeometry args={[0.15, 0.15, 7, 6]} />

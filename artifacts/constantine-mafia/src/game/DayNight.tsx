@@ -1,7 +1,8 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
+import { QUALITY_PRESETS } from './constants';
 
 /** One full day–night cycle in real seconds (8 minutes) */
 const CYCLE_DURATION = 480;
@@ -26,6 +27,27 @@ export function DayNight() {
   const ambColor = useMemo(() => new THREE.Color(), []);
 
   const { scene } = useThree();
+
+  const graphicsQuality = useGameStore((s) => s.graphicsQuality);
+  const shadowsEnabled  = useGameStore((s) => s.shadowsEnabled);
+  const preset = QUALITY_PRESETS[graphicsQuality];
+
+  // Shadow map resolution now actually follows the graphics quality setting
+  // (previously hard-coded to 1024 regardless of Low/Medium/High).
+  useEffect(() => {
+    const light = dirRef.current;
+    if (!light) return;
+    light.castShadow = shadowsEnabled;
+    const size = preset.shadowMapSize;
+    if (light.shadow.mapSize.width !== size) {
+      light.shadow.mapSize.set(size, size);
+      // Existing shadow map render target must be disposed so it gets
+      // recreated at the new resolution.
+      light.shadow.map?.dispose();
+      light.shadow.map = null as unknown as THREE.WebGLRenderTarget;
+      light.shadow.needsUpdate = true;
+    }
+  }, [preset.shadowMapSize, shadowsEnabled]);
 
   useFrame((state, delta) => {
     tRef.current = (tRef.current + delta / CYCLE_DURATION) % 1;
@@ -89,11 +111,11 @@ export function DayNight() {
       <ambientLight ref={ambRef}    color="#b0c0e0" intensity={0.65} />
       <directionalLight
         ref={dirRef}
-        castShadow
+        castShadow={shadowsEnabled}
         position={[50, 100, 50]}
         intensity={1.3}
         color="#d0e0ff"
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
         shadow-camera-left={-300}
         shadow-camera-right={300}
         shadow-camera-top={300}
