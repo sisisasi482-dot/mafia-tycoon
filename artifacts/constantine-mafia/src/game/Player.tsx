@@ -272,9 +272,10 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
       }
 
       if (!nearDoor) {
+        let minNpcDist = Infinity;
         for (const npc of NPC_TALKERS) {
           const d = Math.hypot(pos.x - npc.worldX, pos.z - npc.worldZ);
-          if (d < npc.radius) { nearNpc = npc; break; }
+          if (d < npc.radius && d < minNpcDist) { nearNpc = npc; minNpcDist = d; }
         }
       }
 
@@ -305,7 +306,18 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
           }
         }
       } else if (nearNpc) {
-        if (nearNpc.options && nearNpc.options.length > 0) {
+        if ((nearNpc as any).shopType) {
+          // Shop NPC — open the Shop panel at the relevant tab
+          if (!showingDialogue.current) pushHint(`[E] Shop · ${nearNpc.label}`);
+          if (justPressed) {
+            useGameStore.getState().setPlayerState({
+              isPaused:    true,
+              activePanel: 'shop',
+              shopNpcTab:  (nearNpc as any).shopType,
+            });
+            pushHint(null);
+          }
+        } else if (nearNpc.options && nearNpc.options.length > 0) {
           // Multi-option dialogue — open DialogueUI overlay
           if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
           if (justPressed && !showingDialogue.current) {

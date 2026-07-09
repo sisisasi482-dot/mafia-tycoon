@@ -64,6 +64,8 @@ export type GameState = {
   activePanel: 'none' | 'settings' | 'map' | 'missions' | 'shop' | 'leaderboard';
   interactionHint:    string | null;
   hudEditMode:        boolean;
+  /** Tab the shop should pre-select when opened via a shop NPC. */
+  shopNpcTab:         'consumables' | 'ammo' | null;
 
   // Settings
   language:           'en' | 'ar' | 'fr';
@@ -88,6 +90,21 @@ export type GameState = {
 
   // Screen
   screen: 'main_menu' | 'character_creation' | 'playing' | 'game_over';
+
+  // Garage vehicle storage
+  garageStoredVehicles: Record<string, string[]>;
+
+  // ── Inventory / ammo / redeem ──────────────────────────────────────────────
+  /** consumable id → quantity owned */
+  inventory:          Record<string, number>;
+  /** ammo type → total reserve rounds */
+  ammoReserves:       Record<string, number>;
+  /** weaponId → rounds currently in magazine */
+  weaponMags:         Record<string, number>;
+  /** codes already redeemed (one-time use) */
+  redeemedCodes:      string[];
+  /** timestamp (ms) when cigarette dizziness ends; 0 = not dizzy */
+  dizzyUntil:         number;
 
   // Actions
   setPlayerState:     (state: Partial<GameState>) => void;
@@ -116,9 +133,25 @@ export type GameState = {
   sleep:              (hours?: number) => void;
 
   // Garage vehicle storage
-  garageStoredVehicles: Record<string, string[]>;
   storeVehicleInGarage:    (garageId: string, vehicleId: string) => void;
   retrieveVehicleFromGarage: (garageId: string, vehicleId: string) => void;
+
+  // ── Inventory / ammo / redeem actions ─────────────────────────────────────
+  addInventoryItem:   (id: string, qty?: number) => void;
+  useConsumable:      (id: string) => void;
+  dropConsumable:     (id: string) => void;
+  /** Buy an ammo pack. Returns false if insufficient funds. */
+  buyAmmo:            (weaponId: string, price: number, packSize: number, ammoType: string) => boolean;
+  /** Fire one round from a weapon magazine. Returns true if fired, false if mag empty. */
+  fireWeapon:         (weaponId: string, magSize: number) => boolean;
+  /** Reload weapon from ammo reserves. */
+  reloadWeapon:       (weaponId: string, magSize: number, ammoType: string) => void;
+  /** Drop (remove) a weapon from inventory. */
+  dropWeapon:         (weaponId: string) => void;
+  /** Attempt to redeem a code. Returns result object. */
+  redeemCode:         (code: string) => { ok: boolean; amount: number; msg: string };
+  /** Atomically deduct money and add one consumable to inventory. Returns false if insufficient funds. */
+  buyConsumable:      (id: string, price: number) => boolean;
 };
 
 const initialState: Omit<GameState,
@@ -129,6 +162,8 @@ const initialState: Omit<GameState,
   | 'togglePropertyLock' | 'markVehicleStolen' | 'triggerCrime' | 'decayWanted'
   | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'
   | 'storeVehicleInGarage' | 'retrieveVehicleFromGarage'
+  | 'addInventoryItem' | 'useConsumable'  | 'dropConsumable' | 'buyAmmo'
+  | 'fireWeapon'     | 'reloadWeapon'    | 'dropWeapon'     | 'redeemCode' | 'buyConsumable'
 > = {
   playerId:            null,
   username:            '',
@@ -177,6 +212,7 @@ const initialState: Omit<GameState,
   activePanel:         'none',
   interactionHint:     null,
   hudEditMode:         false,
+  shopNpcTab:          null,
 
   language:            'en',
   masterVolume:        100,
@@ -198,10 +234,16 @@ const initialState: Omit<GameState,
 
   garageStoredVehicles: {},
 
+  inventory:           {},
+  ammoReserves:        {},
+  weaponMags:          {},
+  redeemedCodes:       [],
+  dizzyUntil:          0,
+
   screen:              'main_menu',
 };
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>((set, get) => ({
   ...initialState,
 
   setPlayerState:  (state) => set((prev) => ({ ...prev, ...state })),
@@ -241,6 +283,7 @@ export const useGameStore = create<GameState>((set) => ({
     isPaused:  !s.isPaused,
     activePanel: s.isPaused ? 'none' : 'settings',
     hudEditMode: false,
+    shopNpcTab: null,
   })),
   setActivePanel:     (activePanel)     => set({ activePanel }),
   setInteractionHint: (interactionHint) => set({ interactionHint }),
@@ -289,7 +332,6 @@ export const useGameStore = create<GameState>((set) => ({
     if (current.includes(vehicleId)) return {};
     return {
       garageStoredVehicles: { ...s.garageStoredVehicles, [garageId]: [...current, vehicleId] },
-      // De-equip the vehicle since it's now parked
       equippedVehicleId: s.equippedVehicleId === vehicleId ? null : s.equippedVehicleId,
     };
   }),
@@ -304,6 +346,100 @@ export const useGameStore = create<GameState>((set) => ({
       equippedVehicleId: vehicleId,
     };
   }),
+
+  // ── Inventory ────────────────────────────────────────────────────────────────
+
+  addInventoryItem: (id, qty = 1) => set((s) => ({
+    inventory: { ...s.inventory, [id]: (s.inventory[id] ?? 0) + qty },
+  })),
+
+  useConsumable: (id) => set((s) => {
+    const qty = s.inventory[id] ?? 0;
+    if (qty <= 0) return {};
+    const inv = { ...s.inventory, [id]: qty - 1 };
+    if (id === 'food')       return { inventory: inv, health: Math.min(100, s.health + 30) };
+    if (id === 'stimulants') return { inventory: inv, health: Math.min(100, s.health + 20) };
+    if (id === 'cigarettes') return { inventory: inv, dizzyUntil: Date.now() + 10_000 };
+    return { inventory: inv };
+  }),
+
+  dropConsumable: (id) => set((s) => {
+    const qty = s.inventory[id] ?? 0;
+    if (qty <= 0) return {};
+    return { inventory: { ...s.inventory, [id]: qty - 1 } };
+  }),
+
+  // ── Ammo ─────────────────────────────────────────────────────────────────────
+
+  buyAmmo: (weaponId, price, packSize, ammoType) => {
+    const s = get();
+    if (s.money < price) return false;
+    set((st) => ({
+      money:        st.money - price,
+      ammoReserves: { ...st.ammoReserves, [ammoType]: (st.ammoReserves[ammoType] ?? 0) + packSize },
+    }));
+    return true;
+  },
+
+  fireWeapon: (weaponId, magSize) => {
+    const s   = get();
+    const mag = s.weaponMags[weaponId] ?? magSize;
+    if (mag <= 0) return false;
+    set((st) => ({
+      weaponMags: {
+        ...st.weaponMags,
+        [weaponId]: Math.max(0, (st.weaponMags[weaponId] ?? magSize) - 1),
+      },
+    }));
+    return true;
+  },
+
+  reloadWeapon: (weaponId, magSize, ammoType) => set((s) => {
+    const currentMag = s.weaponMags[weaponId] ?? magSize;
+    const reserve    = s.ammoReserves[ammoType] ?? 0;
+    const needed     = magSize - currentMag;
+    const loaded     = Math.min(needed, reserve);
+    if (loaded <= 0) return {};
+    return {
+      weaponMags:   { ...s.weaponMags,   [weaponId]: currentMag + loaded },
+      ammoReserves: { ...s.ammoReserves, [ammoType]: reserve - loaded },
+    };
+  }),
+
+  dropWeapon: (weaponId) => set((s) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [weaponId]: _dropped, ...restMags } = s.weaponMags;
+    return {
+      ownedAssetIds:    s.ownedAssetIds.filter((id) => id !== weaponId),
+      equippedWeaponId: s.equippedWeaponId === weaponId ? null : s.equippedWeaponId,
+      weaponMags:       restMags,
+    };
+  }),
+
+  buyConsumable: (id, price) => {
+    const s = get();
+    if (s.money < price) return false;
+    set((st) => ({
+      money:     st.money - price,
+      inventory: { ...st.inventory, [id]: (st.inventory[id] ?? 0) + 1 },
+    }));
+    return true;
+  },
+
+  // ── Redeem codes ─────────────────────────────────────────────────────────────
+
+  redeemCode: (code) => {
+    const VALID = ['1000k', '200k', '30000k', '600000k', '67k'];
+    const s = get();
+    if (!VALID.includes(code.trim())) return { ok: false, amount: 0, msg: 'Invalid code.' };
+    if (s.redeemedCodes.includes(code.trim())) return { ok: false, amount: 0, msg: 'Already redeemed.' };
+    const amount = Math.floor(1_000 + Math.random() * 199_000);
+    set((st) => ({
+      redeemedCodes: [...st.redeemedCodes, code.trim()],
+      money:         st.money + amount,
+    }));
+    return { ok: true, amount, msg: `+${amount.toLocaleString()} DA credited!` };
+  },
 
   resetGame: () => set(initialState),
 }));

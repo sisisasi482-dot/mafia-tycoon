@@ -254,6 +254,63 @@ function GeneralSettings() {
           ✏ Edit HUD Layout
         </button>
       </div>
+
+      <RedeemCodePanel />
+    </div>
+  );
+}
+
+// ─── Redeem Code Panel ────────────────────────────────────────────────────────
+
+function RedeemCodePanel() {
+  const store = useGameStore();
+  const [code,    setCode]    = useState('');
+  const [result,  setResult]  = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleRedeem = () => {
+    if (!code.trim()) return;
+    const res = store.redeemCode(code.trim());
+    setResult({ ok: res.ok, msg: res.msg });
+    if (res.ok) setCode('');
+    setTimeout(() => setResult(null), 4000);
+  };
+
+  return (
+    <div className="border-t border-white/8 pt-4 space-y-3">
+      <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">🎁 Redeem Code</h4>
+      <p className="text-[11px] text-gray-600 italic">
+        Enter a promo code to claim a random cash reward (once per code).
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleRedeem()}
+          placeholder="Enter code…"
+          className="flex-1 bg-white/5 border border-white/15 rounded-lg px-3 py-2
+                     text-white text-sm placeholder-gray-600 outline-none
+                     focus:border-primary/60 transition-colors"
+        />
+        <button
+          onClick={handleRedeem}
+          disabled={!code.trim()}
+          className="px-4 py-2 rounded-lg bg-primary text-black font-black text-xs
+                     uppercase tracking-widest hover:bg-primary/90
+                     disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        >
+          Redeem
+        </button>
+      </div>
+      {result && (
+        <div className={`text-xs font-bold px-3 py-2 rounded-lg border ${
+          result.ok
+            ? 'border-green-500/40 bg-green-900/20 text-green-400'
+            : 'border-red-700/40 bg-red-900/20 text-red-400'
+        }`}>
+          {result.ok ? '✓ ' : '✗ '}{result.msg}
+        </div>
+      )}
     </div>
   );
 }

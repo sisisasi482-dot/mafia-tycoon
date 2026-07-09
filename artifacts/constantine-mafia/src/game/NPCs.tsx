@@ -10,6 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
+import { NPC_TALKERS } from './interiors';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -311,6 +312,84 @@ export function NPCs() {
           key={def.id}
           def={def}
           onRef={(el) => { groupRefs.current[i] = el; }}
+        />
+      ))}
+    </>
+  );
+}
+
+// ─── Shopkeeper NPCs ──────────────────────────────────────────────────────────
+// Stationary workers rendered at every NPC_TALKER that has a shopType.
+
+function ShopkeeperMesh({ x, z, isArms }: { x: number; z: number; isArms: boolean }) {
+  // apron colour distinguishes food shops vs arms dealers
+  const apronColor = isArms ? '#2a2a5a' : '#ffffff';
+  const bodyColor  = isArms ? '#1a1a1a' : '#2a2a2a';
+  return (
+    <group position={[x, 1, z]}>
+      {/* Legs */}
+      <mesh position={[-0.15, -0.62, 0]}>
+        <boxGeometry args={[0.2, 0.72, 0.2]} />
+        <meshStandardMaterial color="#1a1a2e" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.15, -0.62, 0]}>
+        <boxGeometry args={[0.2, 0.72, 0.2]} />
+        <meshStandardMaterial color="#1a1a2e" roughness={0.9} />
+      </mesh>
+      {/* Torso */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[0.65, 0.68, 0.35]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.85} />
+      </mesh>
+      {/* Apron */}
+      <mesh position={[0, -0.1, -0.18]}>
+        <boxGeometry args={[0.55, 0.6, 0.02]} />
+        <meshStandardMaterial color={apronColor} roughness={0.9} />
+      </mesh>
+      {/* Arms */}
+      <mesh position={[-0.44, -0.05, 0]}>
+        <boxGeometry args={[0.2, 0.55, 0.2]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.85} />
+      </mesh>
+      <mesh position={[0.44, -0.05, 0]}>
+        <boxGeometry args={[0.2, 0.55, 0.2]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.85} />
+      </mesh>
+      {/* Head */}
+      <mesh position={[0, 0.82, 0]}>
+        <boxGeometry args={[0.48, 0.48, 0.48]} />
+        <meshStandardMaterial color="#c8855a" roughness={0.75} />
+      </mesh>
+      {/* Hair */}
+      <mesh position={[0, 1.08, 0]}>
+        <boxGeometry args={[0.5, 0.12, 0.5]} />
+        <meshStandardMaterial color="#111111" roughness={0.9} />
+      </mesh>
+      {/* Cap brim for arms dealers */}
+      {isArms && (
+        <mesh position={[0, 1.1, -0.3]}>
+          <boxGeometry args={[0.52, 0.06, 0.18]} />
+          <meshStandardMaterial color="#0a0a2a" roughness={0.8} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+/** Renders stationary shopkeeper figures at all shop NPC talker positions. */
+export function ShopkeeperNPCs() {
+  const screen = useGameStore((s) => s.screen);
+  if (screen !== 'playing') return null;
+
+  const shopNpcs = NPC_TALKERS.filter((n) => n.shopType);
+  return (
+    <>
+      {shopNpcs.map((npc) => (
+        <ShopkeeperMesh
+          key={npc.id}
+          x={npc.worldX}
+          z={npc.worldZ}
+          isArms={npc.shopType === 'ammo'}
         />
       ))}
     </>

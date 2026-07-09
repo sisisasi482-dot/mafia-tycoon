@@ -6,7 +6,7 @@ import { Player, ControlsMap } from './Player';
 import { City } from './City';
 import { Camera } from './Camera';
 import { Vehicles } from './Vehicles';
-import { NPCs } from './NPCs';
+import { NPCs, ShopkeeperNPCs } from './NPCs';
 import { DayNight } from './DayNight';
 import { InteriorRoom } from './InteriorRoom';
 import { Traffic } from './Traffic';
@@ -131,6 +131,7 @@ export function GameEngine() {
           {!indoors && <City />}
           {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
           {!indoors && <NPCs />}
+          {!indoors && <ShopkeeperNPCs />}
           {!indoors && <Traffic />}
           {!indoors && <Police />}
           {!indoors && <Houses />}

@@ -4,6 +4,7 @@ import { t } from '../game/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MiniMap } from './MiniMap';
 import { useHudLayout, useDraggable, DEFAULT_HUD_LAYOUT } from '../game/useHudLayout';
+import { WEAPON_AMMO, WEAPON_ICONS, WEAPON_NAMES } from '../game/items';
 
 // ── Draggable wrapper ──────────────────────────────────────────────────────────
 
@@ -261,6 +262,64 @@ export function HUD() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Ammo widget (bottom-right, shows mag + reserve for equipped weapon) ── */}
+      {(() => {
+        const wid = store.equippedWeaponId;
+        if (!wid || store.inVehicle) return null;
+        const cfg    = WEAPON_AMMO[wid];
+        const icon   = WEAPON_ICONS[wid] ?? '🔪';
+        const name   = WEAPON_NAMES[wid] ?? wid;
+        if (!cfg) {
+          // Melee weapon — show icon only
+          return (
+            <DraggableElement id="ammo" editMode={editMode} layout={layout} updateElement={updateElement} label="Ammo">
+              <div className="bg-black/80 backdrop-blur-md text-white px-3 py-2 rounded-lg border border-white/10 shadow-lg flex items-center gap-2">
+                <span className="text-lg">{icon}</span>
+                <span className="text-xs font-bold text-gray-300 uppercase tracking-wide">{name}</span>
+                <span className="text-[10px] text-gray-500">∞</span>
+              </div>
+            </DraggableElement>
+          );
+        }
+        const mag     = store.weaponMags[wid] ?? cfg.magSize;
+        const reserve = store.ammoReserves[cfg.ammoType] ?? 0;
+        const isEmpty = mag === 0;
+        return (
+          <DraggableElement id="ammo" editMode={editMode} layout={layout} updateElement={updateElement} label="Ammo">
+            <div className="bg-black/80 backdrop-blur-md text-white px-3 py-2 rounded-lg border border-white/10 shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{icon}</span>
+                <div>
+                  <div className="flex items-baseline gap-1.5 font-mono">
+                    <span className={`font-black text-lg leading-none ${isEmpty ? 'text-red-400' : 'text-white'}`}>{mag}</span>
+                    <span className="text-gray-600 text-xs">/ {cfg.magSize}</span>
+                    <span className="text-gray-500 text-[10px] ml-1">·</span>
+                    <span className="text-gray-400 text-xs">{reserve}</span>
+                  </div>
+                  {isEmpty && (
+                    <div className="text-[9px] text-red-400 font-bold uppercase tracking-widest leading-none mt-0.5">
+                      Need Ammo
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DraggableElement>
+        );
+      })()}
+
+      {/* ── Dizziness overlay ── */}
+      {store.dizzyUntil > Date.now() && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%)',
+            animation: 'pulse 1s ease-in-out infinite',
+            filter: 'blur(1px)',
+          }}
+        />
+      )}
 
       {/* ── Pause button (top-right, always touch-accessible) ── */}
       <div className="absolute top-4 right-4" style={{ pointerEvents: 'all' }}>

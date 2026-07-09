@@ -17,6 +17,7 @@ export const DEFAULT_HUD_LAYOUT: HudLayoutMap = {
   health:   { x: 12,  y: 700, opacity: 1, width: 200, height: 44  },
   minimap:  { x: 260, y: 100, opacity: 1, width: 120, height: 120 },
   hints:    { x: 120, y: 740, opacity: 1, width: 160, height: 40  },
+  ammo:     { x: 220, y: 700, opacity: 1, width: 160, height: 48  },
 };
 
 const LS_KEY = 'constantine-hud-layout';

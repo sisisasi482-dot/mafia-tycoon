@@ -65,6 +65,8 @@ export interface NpcTalker {
   radius:   number;
   dialogue: string;
   options?: DialogueOption[];
+  /** When set, pressing E opens the ShopPanel at this tab instead of dialogue. */
+  shopType?: 'consumables' | 'ammo';
 }
 
 // ─── Interior layouts (placed at x ≥ 700 to stay clear of the city) ──────────
@@ -364,6 +366,34 @@ export const DOOR_TRIGGERS: DoorTrigger[] = [
 // ─── Stationary NPC talkers with multi-option dialogue ────────────────────────
 
 export const NPC_TALKERS: NpcTalker[] = [
+  // ─── Shop worker NPCs ──────────────────────────────────────────────────────
+  {
+    id: 'shop_corner',   label: 'Shop Worker',      worldX: -232, worldZ:   6, radius: 4.5,
+    dialogue: '"Fresh food and supplies — best prices in the area!"',
+    shopType: 'consumables',
+  },
+  {
+    id: 'shop_restaurant', label: 'Restaurant Owner', worldX:  40, worldZ: -12, radius: 4.5,
+    dialogue: '"Welcome — take a seat, we have the best food in Constantine!"',
+    shopType: 'consumables',
+  },
+  {
+    id: 'shop_ali',      label: 'Street Vendor',    worldX: -196, worldZ: -26, radius: 4.5,
+    dialogue: '"Food, smokes, whatever you need — come on!"',
+    shopType: 'consumables',
+  },
+  {
+    id: 'shop_medina',   label: 'Arms Dealer',       worldX:  268, worldZ: -26, radius: 4.5,
+    dialogue: '"Ammunition and firepower — I have everything you need."',
+    shopType: 'ammo',
+  },
+  {
+    id: 'shop_warehouse', label: 'Black Market Dealer', worldX: -518, worldZ: 52, radius: 5,
+    dialogue: '"Need firepower? You\'ve come to the right place. Cops don\'t come here."',
+    shopType: 'ammo',
+  },
+
+  // ─── Story / info NPCs ──────────────────────────────────────────────────────
   {
     id: 'npc_dealer', label: 'Street Dealer', worldX: -256, worldZ: 24, radius: 4,
     dialogue: '"You lookin\' for somethin\'?"',
