@@ -68,6 +68,11 @@ Players join an open 3D city, choose a character, and roam freely — on foot or
 
 _Populate as you build — explicit user instructions worth remembering across sessions._
 
+## Setup status
+
+- Dependencies installed via `pnpm install`, DB schema pushed via `pnpm --filter @workspace/db run push`, and all three workflows (client, API server, mockup sandbox) are running.
+- `DATABASE_URL` is provided automatically by Replit's built-in PostgreSQL; `SESSION_SECRET` is set.
+
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
