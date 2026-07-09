@@ -358,9 +358,14 @@ function NpcMesh({ def, onRef }: NpcMeshProps) {
 
 const NPC_RADIUS = 0.45; // approx half-body width for building collision
 
+const NPC_DENSITY_FACTOR: Record<string, number> = { low: 0.33, medium: 0.66, high: 1.0 };
+
 export function NPCs() {
-  const isPaused = useGameStore((s) => s.isPaused);
-  const screen   = useGameStore((s) => s.screen);
+  const isPaused   = useGameStore((s) => s.isPaused);
+  const screen     = useGameStore((s) => s.screen);
+  const npcDensity = useGameStore((s) => s.npcDensity);
+
+  const activeCount = Math.max(1, Math.ceil(NPC_DEFS.length * (NPC_DENSITY_FACTOR[npcDensity] ?? 0.66)));
 
   const groupRefs = useRef<(THREE.Group | null)[]>(NPC_DEFS.map(() => null));
   const npcState  = useRef<NpcState[]>(makeInitialState());
@@ -369,7 +374,7 @@ export function NPCs() {
   useFrame((_, delta) => {
     if (screen !== 'playing' || isPaused) return;
 
-    NPC_DEFS.forEach((def, i) => {
+    NPC_DEFS.slice(0, activeCount).forEach((def, i) => {
       const group = groupRefs.current[i];
       const s     = npcState.current[i];
       const rng   = rngs[i];
@@ -450,7 +455,7 @@ export function NPCs() {
 
   return (
     <>
-      {NPC_DEFS.map((def, i) => (
+      {NPC_DEFS.slice(0, activeCount).map((def, i) => (
         <NpcMesh
           key={def.id}
           def={def}

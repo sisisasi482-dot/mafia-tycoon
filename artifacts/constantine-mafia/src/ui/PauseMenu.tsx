@@ -317,26 +317,63 @@ function RedeemCodePanel() {
 
 // ─── Performance Panel ────────────────────────────────────────────────────────
 
+function Toggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-all ${
+        active
+          ? 'bg-primary/15 border-primary/60 text-primary'
+          : 'bg-white/3 border-white/10 text-gray-500 hover:border-white/30 hover:text-white'
+      }`}
+    >
+      <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-all ${
+        active ? 'bg-primary border-primary' : 'border-gray-600'
+      }`} />
+      {children}
+    </button>
+  );
+}
+
 function PerformancePanel() {
-  const store  = useGameStore();
+  const store = useGameStore();
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-500 text-sm">
-        Capping the frame rate reduces GPU load and improves stability on lower-end devices.
-      </p>
+
+      <OptionRow label="Shadows">
+        <Toggle active={store.shadowsEnabled}  onClick={() => store.setPlayerState({ shadowsEnabled: true  })}>On</Toggle>
+        <Toggle active={!store.shadowsEnabled} onClick={() => store.setPlayerState({ shadowsEnabled: false })}>Off</Toggle>
+      </OptionRow>
+
+      <OptionRow label="Post-Processing">
+        <Toggle active={store.postProcessing}  onClick={() => store.setPlayerState({ postProcessing: true  })}>On</Toggle>
+        <Toggle active={!store.postProcessing} onClick={() => store.setPlayerState({ postProcessing: false })}>Off</Toggle>
+      </OptionRow>
+
+      <OptionRow label="NPC Density">
+        <Opt active={store.npcDensity === 'low'}    onClick={() => store.setPlayerState({ npcDensity: 'low'    })}>Low</Opt>
+        <Opt active={store.npcDensity === 'medium'} onClick={() => store.setPlayerState({ npcDensity: 'medium' })}>Medium</Opt>
+        <Opt active={store.npcDensity === 'high'}   onClick={() => store.setPlayerState({ npcDensity: 'high'   })}>High</Opt>
+      </OptionRow>
+
+      <OptionRow label="Texture Quality">
+        <Opt active={store.textureQuality === 'low'}    onClick={() => store.setPlayerState({ textureQuality: 'low'    })}>Low</Opt>
+        <Opt active={store.textureQuality === 'medium'} onClick={() => store.setPlayerState({ textureQuality: 'medium' })}>Medium</Opt>
+        <Opt active={store.textureQuality === 'high'}   onClick={() => store.setPlayerState({ textureQuality: 'high'   })}>High</Opt>
+      </OptionRow>
 
       <OptionRow label="FPS Cap">
-        <Opt active={store.fpsCap === 0}  onClick={() => store.setPlayerState({ fpsCap: 0 })}>Unlimited</Opt>
+        <Opt active={store.fpsCap === 0}  onClick={() => store.setPlayerState({ fpsCap: 0  })}>Unlimited</Opt>
         <Opt active={store.fpsCap === 60} onClick={() => store.setPlayerState({ fpsCap: 60 })}>60 FPS</Opt>
         <Opt active={store.fpsCap === 30} onClick={() => store.setPlayerState({ fpsCap: 30 })}>30 FPS</Opt>
       </OptionRow>
 
-      <div className="rounded-lg bg-white/5 border border-white/8 p-4 text-xs text-gray-500 space-y-1">
-        <p className="font-bold text-gray-400 uppercase tracking-wide">💡 Tip</p>
-        <p>Use <span className="text-white font-semibold">60 FPS</span> for smooth gameplay on mid-range hardware.</p>
-        <p>Use <span className="text-white font-semibold">30 FPS</span> to reduce heat on laptops or weak GPUs.</p>
-        <p>Use <span className="text-white font-semibold">Unlimited</span> on high-end displays (120 Hz+).</p>
+      <div className="rounded-lg bg-white/5 border border-white/8 p-4 text-xs text-gray-500 space-y-1.5">
+        <p className="font-bold text-gray-400 uppercase tracking-wide">💡 Performance Tips</p>
+        <p>Turn off <span className="text-white font-semibold">Shadows</span> for the biggest GPU boost on low-end devices.</p>
+        <p>Set <span className="text-white font-semibold">NPC Density</span> to Low to reduce CPU load in crowded areas.</p>
+        <p>Set <span className="text-white font-semibold">FPS Cap</span> to 30 to reduce heat on laptops.</p>
       </div>
     </div>
   );

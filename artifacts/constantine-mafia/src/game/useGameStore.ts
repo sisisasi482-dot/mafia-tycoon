@@ -77,6 +77,12 @@ export type GameState = {
   showTouchControls:  boolean;
   fpsCap:             FpsCap;
 
+  // Performance settings
+  shadowsEnabled:     boolean;
+  postProcessing:     boolean;
+  npcDensity:         'low' | 'medium' | 'high';
+  textureQuality:     'low' | 'medium' | 'high';
+
   // Crime & Police
   lockedPropertyIds:  string[];
   stolenVehicleIds:   string[];
@@ -222,6 +228,11 @@ const initialState: Omit<GameState,
   graphicsQuality:     'medium',
   showTouchControls:   false,
   fpsCap:              0,
+
+  shadowsEnabled:      true,
+  postProcessing:      true,
+  npcDensity:          'medium',
+  textureQuality:      'medium',
 
   lockedPropertyIds:   [],
   stolenVehicleIds:    [],

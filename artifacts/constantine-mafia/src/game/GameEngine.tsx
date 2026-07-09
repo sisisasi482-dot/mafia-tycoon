@@ -24,6 +24,34 @@ import { TvOverlay } from '../ui/TvOverlay';
 import { WardrobeOverlay } from '../ui/WardrobeOverlay';
 
 /**
+ * Sets renderer pixel ratio based on post-processing flag.
+ * ON  → device pixel ratio (full resolution + AA-quality output)
+ * OFF → pixel ratio 1 (lower resolution = faster GPU fill)
+ */
+function PostProcessingController({ enabled }: { enabled: boolean }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    gl.setPixelRatio(enabled ? Math.min(window.devicePixelRatio, 2) : 1);
+  }, [enabled, gl]);
+  return null;
+}
+
+/**
+ * Sets texture anisotropy default so newly created textures respect quality.
+ * LOW → aniso 1, MEDIUM → aniso 4, HIGH → max supported by GPU.
+ */
+function TextureQualityController({ quality }: { quality: 'low' | 'medium' | 'high' }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    const max = gl.capabilities.getMaxAnisotropy();
+    THREE.Texture.DEFAULT_ANISOTROPY =
+      quality === 'high'   ? max :
+      quality === 'medium' ? Math.min(4, max) : 1;
+  }, [quality, gl]);
+  return null;
+}
+
+/**
  * FPS cap controller.
  * Uses frameloop="demand" on the Canvas + calls invalidate() at the target rate.
  * When fpsCap === 0 (unlimited), drives a RAF loop for max frame rate.
@@ -75,12 +103,15 @@ export function GameEngine() {
   const targetRef  = useRef<THREE.Group>(null);
   const vehicleRef = useRef<THREE.Group>(null);
 
-  const inVehicle   = useGameStore((s) => s.inVehicle);
-  const indoors     = useGameStore((s) => s.indoors);
-  const screen      = useGameStore((s) => s.screen);
-  const cameraMode  = useGameStore((s) => s.cameraMode);
-  const togglePause = useGameStore((s) => s.togglePause);
-  const fpsCap      = useGameStore((s) => s.fpsCap);
+  const inVehicle      = useGameStore((s) => s.inVehicle);
+  const indoors        = useGameStore((s) => s.indoors);
+  const screen         = useGameStore((s) => s.screen);
+  const cameraMode     = useGameStore((s) => s.cameraMode);
+  const togglePause    = useGameStore((s) => s.togglePause);
+  const fpsCap         = useGameStore((s) => s.fpsCap);
+  const shadowsEnabled = useGameStore((s) => s.shadowsEnabled);
+  const postProcessing = useGameStore((s) => s.postProcessing);
+  const textureQuality = useGameStore((s) => s.textureQuality);
 
   useAudioContextResume();
 
@@ -103,12 +134,12 @@ export function GameEngine() {
           at the selected frame rate cap (or unlimited via RAF).
         */}
         <Canvas
-          shadows
+          shadows={shadowsEnabled}
           frameloop="demand"
           camera={{ position: [0, 10, 10], fov: cameraMode === 'first' ? 80 : 60 }}
           gl={{ antialias: false }}
           onCreated={({ gl }) => {
-            gl.shadowMap.type = THREE.PCFSoftShadowMap;
+            if (shadowsEnabled) gl.shadowMap.type = THREE.PCFSoftShadowMap;
           }}
         >
           {/* Base background & fog — DayNight overwrites these every frame */}
@@ -118,8 +149,10 @@ export function GameEngine() {
 
           <Stars radius={200} depth={60} count={3000} factor={4} saturation={0} fade speed={1} />
 
-          {/* FPS cap controller — drives the render loop */}
+          {/* Performance controllers */}
           <FpsCapController fpsCap={fpsCap} />
+          <PostProcessingController enabled={postProcessing} />
+          <TextureQualityController quality={textureQuality} />
 
           {/* Dynamic day/night lighting */}
           <DayNight />

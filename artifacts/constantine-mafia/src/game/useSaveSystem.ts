@@ -14,6 +14,8 @@ const PERSIST_KEYS = [
   'redeemedCodes',
   // Garage — stored vehicle lists must persist across reloads
   'garageStoredVehicles',
+  // Performance settings
+  'shadowsEnabled', 'postProcessing', 'npcDensity', 'textureQuality',
 ] as const;
 
 export function useSaveSystem() {
