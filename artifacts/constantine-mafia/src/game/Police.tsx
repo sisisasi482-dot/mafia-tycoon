@@ -54,47 +54,61 @@ function FlashingLight({ position }: { position: [number, number, number] }) {
 
 // ─── Single checkpoint barrier + trigger ──────────────────────────────────────
 
+/**
+ * Barrier arm pivot is at the left post (x = -bw/2).
+ * angle = 0         → arm is horizontal (road blocked / closed)
+ * angle = Math.PI/2 → arm is vertical   (road open / raised)
+ */
 function CheckpointZone({ cp }: { cp: Checkpoint }) {
-  const wasInside = useRef(false);
+  const wasInside   = useRef(false);
+  const armRef      = useRef<THREE.Group>(null);
+  // Start raised (open)
+  const barrierAngle = useRef(Math.PI / 2);
+  // true while player is inside with contraband — arm stays closed
+  const blocked     = useRef(false);
 
-  useFrame(() => {
+  const bw = 10; // barrier arm width
+
+  useFrame((_, delta) => {
     const state = useGameStore.getState();
     if (state.screen !== 'playing' || state.isPaused || state.indoors) return;
 
     const [px, , pz] = state.playerPosition;
     const inside = Math.hypot(px - cp.worldX, pz - cp.worldZ) < cp.radius;
 
+    // ── Trigger on enter ────────────────────────────────────────────────────
     if (inside && !wasInside.current) {
       if (playerHasContraband()) {
+        blocked.current = true;
         state.triggerCrime(1);
-        state.setInteractionHint(`🚨 ${cp.label}: Contraband detected!`);
+        state.setInteractionHint(`🚨 ${cp.label}: Contraband detected! Pull over!`);
       } else {
-        state.setInteractionHint(`✅ ${cp.label}: All clear`);
+        blocked.current = false;
+        state.setInteractionHint(`✅ ${cp.label}: All clear — proceed`);
       }
       setTimeout(() => {
         const curr = useGameStore.getState().interactionHint ?? '';
         if (curr.includes(cp.label)) useGameStore.getState().setInteractionHint(null);
-      }, 2800);
+      }, 3000);
     }
-    wasInside.current = inside;
-  });
 
-  const bw = 10; // barrier arm width
+    // Clear blocked flag when player leaves the zone
+    if (!inside && wasInside.current) {
+      blocked.current = false;
+    }
+
+    wasInside.current = inside;
+
+    // ── Animate arm ─────────────────────────────────────────────────────────
+    const targetAngle = blocked.current ? 0 : Math.PI / 2;
+    barrierAngle.current = THREE.MathUtils.lerp(barrierAngle.current, targetAngle, delta * 3.5);
+    if (armRef.current) {
+      armRef.current.rotation.z = barrierAngle.current;
+    }
+  });
 
   return (
     <group position={[cp.worldX, 0, cp.worldZ]} rotation={[0, cp.rotY, 0]}>
-      {/* Barrier arm — alternating red/white bands */}
-      <mesh castShadow position={[0, 1.15, 0]}>
-        <boxGeometry args={[bw, 0.18, 0.18]} />
-        <meshStandardMaterial color="#cc1111" />
-      </mesh>
-      {[-3.5, -1.5, 0.5, 2.5].map((x, i) => (
-        <mesh key={i} castShadow position={[x, 1.15, 0]}>
-          <boxGeometry args={[1.5, 0.19, 0.19]} />
-          <meshStandardMaterial color="#ffffff" />
-        </mesh>
-      ))}
-
       {/* Support posts */}
       {([-bw / 2, bw / 2] as number[]).map((x, i) => (
         <mesh key={i} castShadow position={[x, 0.6, 0]}>
@@ -102,6 +116,33 @@ function CheckpointZone({ cp }: { cp: Checkpoint }) {
           <meshStandardMaterial color="#cccccc" />
         </mesh>
       ))}
+
+      {/* Pivot hinge box on left post */}
+      <mesh position={[-bw / 2, 1.2, 0]}>
+        <boxGeometry args={[0.32, 0.32, 0.32]} />
+        <meshStandardMaterial color="#aaaaaa" metalness={0.5} />
+      </mesh>
+
+      {/* Animated barrier arm — pivots from the left post */}
+      <group ref={armRef} position={[-bw / 2, 1.2, 0]}>
+        {/* Red base arm */}
+        <mesh castShadow position={[bw / 2, 0, 0]}>
+          <boxGeometry args={[bw, 0.18, 0.18]} />
+          <meshStandardMaterial color="#cc1111" />
+        </mesh>
+        {/* White stripe bands */}
+        {[1.5, 3.5, 5.5, 7.5].map((x, i) => (
+          <mesh key={i} castShadow position={[x, 0, 0]}>
+            <boxGeometry args={[1.4, 0.19, 0.19]} />
+            <meshStandardMaterial color="#ffffff" />
+          </mesh>
+        ))}
+        {/* Counterweight block on the short side */}
+        <mesh castShadow position={[-0.6, 0, 0]}>
+          <boxGeometry args={[0.8, 0.35, 0.35]} />
+          <meshStandardMaterial color="#888888" metalness={0.4} />
+        </mesh>
+      </group>
 
       {/* Traffic cones */}
       {[-3.5, -1.5, 1.5, 3.5].map((x, i) => (

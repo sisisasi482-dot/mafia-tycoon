@@ -86,8 +86,11 @@ function SingleVehicle({
           const ry    = groupRef.current.rotation.y;
           const exitX = vp.x + Math.cos(ry) * 3.5;
           const exitZ = vp.z - Math.sin(ry) * 3.5;
+          // Capture last driven vehicle before clearing equippedVehicleId so
+          // garages can offer to park it even after the player dismounts.
           state.setPlayerState({
             inVehicle: false,
+            lastDrivenVehicleId: state.equippedVehicleId,
             equippedVehicleId: null,
             playerPosition: [exitX, 1, exitZ],
             playerRotationY: ry,

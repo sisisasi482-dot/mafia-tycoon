@@ -31,6 +31,8 @@ export type GameState = {
   playerPosition:     [number, number, number];
   playerRotationY:    number;
   inVehicle:          boolean;
+  /** Vehicle that was most recently exited — persists after dismount so garages can park it. */
+  lastDrivenVehicleId: string | null;
 
   // Interior system
   indoors:            boolean;
@@ -112,6 +114,11 @@ export type GameState = {
   setOutfit:          (id: string) => void;
   setDialogueNpc:     (id: string | null) => void;
   sleep:              (hours?: number) => void;
+
+  // Garage vehicle storage
+  garageStoredVehicles: Record<string, string[]>;
+  storeVehicleInGarage:    (garageId: string, vehicleId: string) => void;
+  retrieveVehicleFromGarage: (garageId: string, vehicleId: string) => void;
 };
 
 const initialState: Omit<GameState,
@@ -121,6 +128,7 @@ const initialState: Omit<GameState,
   | 'setDayTime'     | 'enterInterior'    | 'exitInterior'  | 'resetGame'
   | 'togglePropertyLock' | 'markVehicleStolen' | 'triggerCrime' | 'decayWanted'
   | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'
+  | 'storeVehicleInGarage' | 'retrieveVehicleFromGarage'
 > = {
   playerId:            null,
   username:            '',
@@ -144,6 +152,7 @@ const initialState: Omit<GameState,
   playerPosition:      [0, 1, 0],
   playerRotationY:     0,
   inVehicle:           false,
+  lastDrivenVehicleId: null,
 
   indoors:             false,
   interiorId:          null,
@@ -186,6 +195,8 @@ const initialState: Omit<GameState,
   showTv:              false,
   showWardrobe:        false,
   dialogueNpcId:       null,
+
+  garageStoredVehicles: {},
 
   screen:              'main_menu',
 };
@@ -272,6 +283,27 @@ export const useGameStore = create<GameState>((set) => ({
     dayTime: (s.dayTime + hours / 24) % 1,
     health:  100,
   })),
+
+  storeVehicleInGarage: (garageId, vehicleId) => set((s) => {
+    const current = s.garageStoredVehicles[garageId] ?? [];
+    if (current.includes(vehicleId)) return {};
+    return {
+      garageStoredVehicles: { ...s.garageStoredVehicles, [garageId]: [...current, vehicleId] },
+      // De-equip the vehicle since it's now parked
+      equippedVehicleId: s.equippedVehicleId === vehicleId ? null : s.equippedVehicleId,
+    };
+  }),
+
+  retrieveVehicleFromGarage: (garageId, vehicleId) => set((s) => {
+    const current = s.garageStoredVehicles[garageId] ?? [];
+    return {
+      garageStoredVehicles: {
+        ...s.garageStoredVehicles,
+        [garageId]: current.filter((v) => v !== vehicleId),
+      },
+      equippedVehicleId: vehicleId,
+    };
+  }),
 
   resetGame: () => set(initialState),
 }));
