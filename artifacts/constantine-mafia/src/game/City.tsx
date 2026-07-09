@@ -19,21 +19,21 @@ function makeAsphaltTexture(): THREE.CanvasTexture {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  // Dark asphalt base
-  ctx.fillStyle = '#1c1c1c';
+  // Light grey asphalt base
+  ctx.fillStyle = '#9a9a9e';
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grain
+  // Subtle darker grain
   for (let i = 0; i < 1200; i++) {
     const x = Math.random() * W;
     const y = Math.random() * H;
-    const v = 20 + Math.floor(Math.random() * 18);
-    ctx.fillStyle = `rgba(${v},${v},${v},0.45)`;
+    const v = 80 + Math.floor(Math.random() * 40);
+    ctx.fillStyle = `rgba(${v},${v},${v},0.4)`;
     ctx.fillRect(x, y, 1 + Math.random(), 1 + Math.random());
   }
 
-  // Faint horizontal asphalt seam lines
-  ctx.strokeStyle = 'rgba(60,60,60,0.35)';
+  // White lane / seam lines (visible on light grey)
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
   ctx.lineWidth   = 1;
   for (let y = 40; y < H; y += 40) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
@@ -74,6 +74,31 @@ function makeConcreteTexture(): THREE.CanvasTexture {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   return tex;
 }
+
+// ─── Shop sign texture ────────────────────────────────────────────────────────
+
+function makeSignTexture(text: string): THREE.CanvasTexture {
+  const W = 256, H = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#0e0e0e';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffcc33';
+  ctx.font      = 'bold 26px sans-serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, W / 2, H / 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+const SHOP_NAMES = [
+  'SUPÉRETTE', 'PHARMACIE', 'CAFÉ', 'TABAC',
+  'BOULANGERIE', 'ÉPICERIE', 'COIFFEUR', 'BOUTIQUE',
+];
 
 // ─── Road network (2× scale) ──────────────────────────────────────────────────
 //   Major roads are 40 units wide; minor roads 28 units wide.
@@ -134,6 +159,24 @@ export function City() {
   useEffect(() => () => sidewalkTextures.forEach((t) => t.dispose()), [sidewalkTextures]);
 
   // Street lights along main roads
+  // Pick ground-floor buildings in Centre-Ville / Old City to receive shop signage
+  const shopfronts = useMemo(() => {
+    const candidates = BUILDINGS.filter(
+      (b) => (b.district === 'centre_ville' || b.district === 'old_city') && b.h < 14,
+    );
+    const picked: typeof candidates = [];
+    for (let i = 0; i < candidates.length && picked.length < 8; i += 23) {
+      picked.push(candidates[i]);
+    }
+    return picked.map((b, idx) => ({ building: b, name: SHOP_NAMES[idx % SHOP_NAMES.length] }));
+  }, []);
+
+  const signTextures = useMemo(
+    () => shopfronts.map((sf) => makeSignTexture(sf.name)),
+    [shopfronts],
+  );
+  useEffect(() => () => signTextures.forEach((t) => t.dispose()), [signTextures]);
+
   const streetLights = useMemo(() => {
     const lights: { x: number; z: number }[] = [];
     // Along main E-W highway
@@ -280,6 +323,38 @@ export function City() {
           <pointLight color={dt.color} intensity={6} distance={12} decay={2} position={[0, 2.5, 0]} />
         </group>
       ))}
+
+      {/* ── Shop storefronts ─────────────────────────────────────────── */}
+      {shopfronts.map((sf, i) => {
+        const b = sf.building;
+        const signW = Math.min(b.w - 0.5, 5.5);
+        return (
+          <group key={`shop-${i}`} position={[b.x, 0, b.z + b.d / 2 + 0.14]}>
+            {/* Awning */}
+            <mesh castShadow position={[0, 3.4, 0.5]} rotation={[-0.38, 0, 0]}>
+              <boxGeometry args={[signW, 0.1, 1.3]} />
+              <meshStandardMaterial color="#aa2222" roughness={0.7} />
+            </mesh>
+            {/* Storefront glass */}
+            <mesh position={[0, 1.35, 0]}>
+              <boxGeometry args={[signW, 2.3, 0.09]} />
+              <meshStandardMaterial color="#88ccee" transparent opacity={0.32} metalness={0.5} roughness={0.1} />
+            </mesh>
+            {/* Illuminated sign board */}
+            <mesh position={[0, 3.9, 0.38]}>
+              <planeGeometry args={[signW, 0.88]} />
+              <meshStandardMaterial
+                map={signTextures[i]}
+                emissive="#ffcc33"
+                emissiveMap={signTextures[i]}
+                emissiveIntensity={0.55}
+                roughness={0.5}
+              />
+            </mesh>
+            <pointLight position={[0, 3.8, 1.0]} color="#ffcc33" intensity={5} distance={11} decay={2} />
+          </group>
+        );
+      })}
 
       {/* ── District boundary markers ─────────────────────────────────── */}
       {[

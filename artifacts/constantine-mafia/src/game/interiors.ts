@@ -15,6 +15,9 @@ export interface DoorTrigger {
   radius: number;       // interaction distance (units)
   interiorId: string;
   color: string;        // door frame accent colour shown in City.tsx
+  /** If set, door is gated by property ownership / lock state */
+  propertyId?:   string;
+  propertyType?: 'home' | 'garage';
 }
 
 export interface FurniturePiece {
@@ -45,6 +48,15 @@ export interface InteriorLayout {
   exitOffsetZ: number;
 }
 
+export interface DialogueOption {
+  id:           string;
+  label:        string;
+  kind:         'buy' | 'info' | 'conflict';
+  cost?:        number;
+  itemId?:      string;
+  responseText: string;
+}
+
 export interface NpcTalker {
   id:       string;
   label:    string;
@@ -52,9 +64,54 @@ export interface NpcTalker {
   worldZ:   number;
   radius:   number;
   dialogue: string;
+  options?: DialogueOption[];
 }
 
 // ─── Interior layouts (placed at x ≥ 700 to stay clear of the city) ──────────
+
+// ── Helper: open-plan house with 4 zones separated by partition walls ─────────
+function makeHouseFurniture(wallColor: string): FurniturePiece[] {
+  return [
+    // ── Partition walls (decorative — divide 4 zones visually) ──────────────
+    { pos: [0,    1.1, -0.5], size: [0.15, 2.2, 13], color: wallColor },   // center vertical divider
+    { pos: [-4.5, 1.1,  0],   size: [7.5,  2.2, 0.15], color: wallColor }, // horizontal divider left
+    { pos: [ 4.5, 1.1,  0],   size: [7.5,  2.2, 0.15], color: wallColor }, // horizontal divider right
+
+    // ── Living room (rear-left): sofa + TV ──────────────────────────────────
+    { pos: [-5.5, 0.4, -4.5], size: [4, 0.8, 1.4], color: '#5a3a6a' },
+    { pos: [-5.5, 1.3, -6.5], size: [3, 1.8, 0.1], color: '#111111', emissive: '#3399ff', emissiveIntensity: 0.5 },
+    { pos: [-2.2, 0.3, -3.8], size: [1.2, 0.5, 1.2], color: '#4a3020' },
+    { pos: [-6.5, 1.5, -2.5], size: [0.6, 1.5, 0.6], color: '#2a2a2a', emissive: '#ffff99', emissiveIntensity: 0.4 },
+
+    // ── Kitchen (rear-right): counter + stove + fridge ───────────────────────
+    { pos: [5.5, 0.5, -5.8], size: [4.5, 1.0, 1.0], color: '#888888', metalness: 0.4 },
+    { pos: [3.6, 0.55, -5.8], size: [0.9, 1.1, 0.9], color: '#dddddd', metalness: 0.3 },
+    { pos: [6.5, 0.5, -3.6], size: [0.8, 1.0, 0.8], color: '#333333', emissive: '#ff5522', emissiveIntensity: 0.15 },
+    { pos: [3.5, 0.9, -3.2], size: [1.5, 0.08, 1.0], color: '#8b6030' },
+
+    // ── Bedroom (front-left): bed + wardrobe ─────────────────────────────────
+    { pos: [-5.5, 0.35,  4.0], size: [3.2, 0.7, 4.5], color: '#2a2a4a' },
+    { pos: [-5.5, 0.80,  2.0], size: [3.2, 0.3, 0.8], color: '#88aacc' },
+    { pos: [-1.8, 1.2,   5.8], size: [1.5, 2.2, 0.7], color: '#5a4020' },
+    { pos: [-6.5, 0.5,   2.0], size: [0.4, 0.4, 0.4], color: '#aa8844', emissive: '#ffaa44', emissiveIntensity: 0.6 },
+
+    // ── Bathroom (front-right): toilet + sink + shower ───────────────────────
+    { pos: [6.5, 0.25, 3.2], size: [0.6, 0.5, 0.6], color: '#f0f0f0' },
+    { pos: [5.0, 0.50, 2.2], size: [0.6, 0.15, 0.5], color: '#e8e8e8' },
+    { pos: [6.5, 1.1,  5.5], size: [1.4, 2.2, 1.4], color: '#cceeff', roughness: 0.3, metalness: 0.2 },
+  ];
+}
+
+function makeGarageFurniture(): FurniturePiece[] {
+  return [
+    { pos: [-1.5, 0.02, 0],  size: [3.5, 0.05, 5.5], color: '#333333' },  // parking pad
+    { pos: [ 2.8, 0.3,  -1.5], size: [1.4, 0.6, 2.0], color: '#3a2a1a' }, // storage crate
+    { pos: [ 2.8, 0.9,  -1.5], size: [1.4, 0.6, 2.0], color: '#4a3a2a' },
+    { pos: [ 3.2, 0.2,   2.2], size: [1.8, 0.4, 1.0], color: '#2a2a3a' }, // sleeping cot
+    { pos: [ 3.2, 0.5,   2.8], size: [1.8, 0.2, 0.4], color: '#556688' }, // pillow
+    { pos: [-3.5, 1.0,  -3.0], size: [0.1, 2.0, 2.5], color: '#888888', metalness: 0.6 }, // tool rack
+  ];
+}
 
 export const INTERIORS: Record<string, InteriorLayout> = {
 
@@ -66,9 +123,9 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     floorColor: '#c8b89a', wallColor: '#e8e0d0',
     exitOffsetX: 0, exitOffsetZ: 4,
     furniture: [
-      { pos: [0, 0.5, -2.5], size: [6, 1, 1], color: '#8b6914' },                   // counter
-      { pos: [-3.5, 1.2, 0], size: [0.3, 2, 5], color: '#9b7a34' },                 // shelf L
-      { pos: [ 3.5, 1.2, 0], size: [0.3, 2, 5], color: '#9b7a34' },                 // shelf R
+      { pos: [0, 0.5, -2.5], size: [6, 1, 1], color: '#8b6914' },
+      { pos: [-3.5, 1.2, 0], size: [0.3, 2, 5], color: '#9b7a34' },
+      { pos: [ 3.5, 1.2, 0], size: [0.3, 2, 5], color: '#9b7a34' },
       { pos: [-3.2, 0.8, -1.5], size: [0.4, 0.4, 0.4], color: '#cc3333' },
       { pos: [-3.2, 0.8,  0.0], size: [0.4, 0.4, 0.4], color: '#3366cc' },
       { pos: [-3.2, 0.8,  1.5], size: [0.4, 0.4, 0.4], color: '#33aa44' },
@@ -231,6 +288,58 @@ export const INTERIORS: Record<string, InteriorLayout> = {
       { pos: [1, 0.1, 0], size: [2, 0.2, 1.5], color: '#444444', metalness: 0.8 },
     ],
   },
+
+  // ── Purchasable houses (open-plan with 4 zone partitions) ────────────────────
+  house_1: {
+    id: 'house_1', label: 'Old City Villa',
+    centerX: 700, centerZ: 220,
+    roomW: 16, roomH: 3.2, roomD: 14,
+    lightColor: '#fff5e0', lightIntensity: 1.3,
+    floorColor: '#c8b898', wallColor: '#e0d5c0',
+    exitOffsetX: 0, exitOffsetZ: 7,
+    furniture: makeHouseFurniture('#e0d5c0'),
+  },
+
+  house_2: {
+    id: 'house_2', label: 'Riverside House',
+    centerX: 700, centerZ: 260,
+    roomW: 16, roomH: 3.2, roomD: 14,
+    lightColor: '#e8f0ff', lightIntensity: 1.2,
+    floorColor: '#a0b8c8', wallColor: '#d0dce8',
+    exitOffsetX: 0, exitOffsetZ: 7,
+    furniture: makeHouseFurniture('#d0dce8'),
+  },
+
+  house_3: {
+    id: 'house_3', label: 'Hilltop Residence',
+    centerX: 700, centerZ: 300,
+    roomW: 16, roomH: 3.4, roomD: 14,
+    lightColor: '#f0ffe8', lightIntensity: 1.4,
+    floorColor: '#888a7a', wallColor: '#c8ccb8',
+    exitOffsetX: 0, exitOffsetZ: 7,
+    furniture: makeHouseFurniture('#c8ccb8'),
+  },
+
+  // ── Purchasable garages (single room, parking + sleep) ───────────────────────
+  garage_1: {
+    id: 'garage_1', label: 'Suburb Garage',
+    centerX: 700, centerZ: 330,
+    roomW: 9, roomH: 3.0, roomD: 7,
+    lightColor: '#ffcc88', lightIntensity: 0.8,
+    floorColor: '#444444', wallColor: '#6a6a6a',
+    exitOffsetX: 0, exitOffsetZ: 3.5,
+    furniture: makeGarageFurniture(),
+  },
+
+  garage_2: {
+    id: 'garage_2', label: 'Riverside Garage',
+    centerX: 700, centerZ: 350,
+    roomW: 9, roomH: 3.0, roomD: 7,
+    lightColor: '#ffdd99', lightIntensity: 0.8,
+    floorColor: '#3a3a3a', wallColor: '#5a5a5a',
+    exitOffsetX: 0, exitOffsetZ: 3.5,
+    furniture: makeGarageFurniture(),
+  },
 };
 
 // ─── Door triggers in world space (2× scale) ─────────────────────────────────
@@ -243,12 +352,43 @@ export const DOOR_TRIGGERS: DoorTrigger[] = [
   { id: 'dt_restaurant',       label: 'Restaurant',       worldX:   36, worldZ: -16, radius: 3.5, interiorId: 'restaurant',       color: '#cc4411' },
   { id: 'dt_medina_shop',      label: 'Medina Shop',      worldX:  264, worldZ: -30, radius: 3.5, interiorId: 'medina_shop',      color: '#d4a030' },
   { id: 'dt_airport_terminal', label: 'Airport Terminal', worldX: -296, worldZ: 280, radius: 6.0, interiorId: 'airport_terminal', color: '#4169e1' },
+
+  // ── Purchasable homes (suburb zone, south of Old City) ───────────────────────
+  { id: 'dt_house_1',  label: 'Old City Villa',     worldX: 250, worldZ: 150, radius: 4.0, interiorId: 'house_1',  color: '#22cc55', propertyId: 'house_1',  propertyType: 'home'   },
+  { id: 'dt_house_2',  label: 'Riverside House',    worldX: 320, worldZ: 170, radius: 4.0, interiorId: 'house_2',  color: '#22cc55', propertyId: 'house_2',  propertyType: 'home'   },
+  { id: 'dt_house_3',  label: 'Hilltop Residence',  worldX: 400, worldZ: 140, radius: 4.0, interiorId: 'house_3',  color: '#22cc55', propertyId: 'house_3',  propertyType: 'home'   },
+  { id: 'dt_garage_1', label: 'Suburb Garage',      worldX: 280, worldZ: 192, radius: 3.5, interiorId: 'garage_1', color: '#999999', propertyId: 'garage_1', propertyType: 'garage' },
+  { id: 'dt_garage_2', label: 'Riverside Garage',   worldX: 360, worldZ: 192, radius: 3.5, interiorId: 'garage_2', color: '#999999', propertyId: 'garage_2', propertyType: 'garage' },
 ];
 
-// ─── Stationary NPC interaction markers (2× scale) ───────────────────────────
+// ─── Stationary NPC talkers with multi-option dialogue ────────────────────────
 
 export const NPC_TALKERS: NpcTalker[] = [
-  { id: 'npc_dealer',  label: 'Street Dealer', worldX: -256, worldZ:  24, radius: 4, dialogue: '"You lookin\' for somethin\'?"' },
-  { id: 'npc_elder',   label: 'Elder',          worldX:  290, worldZ: -36, radius: 4, dialogue: '"Constantine stood long before any of us."' },
-  { id: 'npc_contact', label: 'Contact',        worldX:   44, worldZ: -10, radius: 4, dialogue: '"Meet me tonight. Usual spot."' },
+  {
+    id: 'npc_dealer', label: 'Street Dealer', worldX: -256, worldZ: 24, radius: 4,
+    dialogue: '"You lookin\' for somethin\'?"',
+    options: [
+      { id: 'buy_pistol', label: 'Buy a Pistol',       kind: 'buy',      cost: 800,  itemId: 'pistol',     responseText: '"Careful with that. Don\'t get caught at a checkpoint."' },
+      { id: 'buy_knife',  label: 'Buy a Knife',        kind: 'buy',      cost: 200,  itemId: 'knife',      responseText: '"Silent and clean. Good choice."' },
+      { id: 'ask_info',   label: 'Ask about the area', kind: 'info',     responseText: '"Cops run checkpoints on the bridge and near Centre-Ville. Avoid stolen rides."' },
+      { id: 'threaten',   label: 'Threaten him',       kind: 'conflict', responseText: '"Whoa, easy! Someone\'s calling the cops on you now!"' },
+    ],
+  },
+  {
+    id: 'npc_elder', label: 'Elder', worldX: 290, worldZ: -36, radius: 4,
+    dialogue: '"Constantine stood long before any of us."',
+    options: [
+      { id: 'ask_history', label: 'Ask about Constantine', kind: 'info', responseText: '"This city has seen empires rise and fall. The bridges connect more than rock — they connect our history."' },
+      { id: 'ask_gossip',  label: 'Ask for local gossip',  kind: 'info', responseText: '"They say a new gang is moving into the old warehouse district. Police are stretched thin near the airport."' },
+    ],
+  },
+  {
+    id: 'npc_contact', label: 'Contact', worldX: 44, worldZ: -10, radius: 4,
+    dialogue: '"Meet me tonight. Usual spot."',
+    options: [
+      { id: 'ask_job',   label: 'Ask about work',       kind: 'info', responseText: '"Check the mission board. There\'s always work for someone like you."' },
+      { id: 'buy_intel', label: 'Buy intel — 300 DA',   kind: 'buy',  cost: 300, itemId: 'intel_note', responseText: '"Police patrols are light near the airport tonight. Watch the checkpoints on the bridge."' },
+      { id: 'conflict',  label: 'Start a fight',        kind: 'conflict', responseText: '"Bad move. Very bad move. You just made enemies."' },
+    ],
+  },
 ];

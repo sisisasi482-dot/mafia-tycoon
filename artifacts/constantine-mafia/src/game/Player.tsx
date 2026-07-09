@@ -56,6 +56,15 @@ const OUTFIT: Record<string, { body: string; legs: string; hair: string }> = {
   business_tycoon:{ body: '#2c2040', legs: '#1a1428', hair: '#050508' },
 };
 
+/* ── Wardrobe overrides (by outfitId) ────────────────────────────────────── */
+const OUTFIT_OVERRIDES: Record<string, { body: string; legs: string; hair: string }> = {
+  formal:    { body: '#1a1a1a', legs: '#0a0a0a', hair: '#111111' },
+  tracksuit: { body: '#1a4a8a', legs: '#0a2a5a', hair: '#111111' },
+  tactical:  { body: '#2a3a2a', legs: '#1a2a1a', hair: '#111111' },
+  djellaba:  { body: '#c8a860', legs: '#1a1a2e', hair: '#111111' },
+  police:    { body: '#1a3aee', legs: '#0a1a5a', hair: '#0a0a0a' },
+};
+
 export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   const innerRef = useRef<THREE.Group>(null);
   const [, getKeys] = useKeyboardControls();
@@ -63,7 +72,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   const {
     playerPosition, playerRotationY,
     setPlayerPosition, inVehicle, careerPath, cameraMode,
-    indoors, interiorId,
+    indoors, interiorId, currentOutfitId,
     enterInterior, exitInterior, setInteractionHint,
   } = useGameStore();
 
@@ -104,6 +113,19 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     }
     prevInVehicle.current = inVehicle;
   }, [inVehicle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Snap position when exiting an interior (e.g. via HomePanel) ───────── */
+  const prevIndoors = useRef(indoors);
+  useEffect(() => {
+    if (prevIndoors.current && !indoors && innerRef.current) {
+      const exitPos = useGameStore.getState().interiorExitPos;
+      innerRef.current.position.set(exitPos[0], exitPos[1], exitPos[2]);
+      velocity.current.set(0, 0, 0);
+      // Auto-clear home overlays so they don't persist outside the interior
+      useGameStore.getState().setPlayerState({ showTv: false, showWardrobe: false });
+    }
+    prevIndoors.current = indoors;
+  }, [indoors]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Helper: update hint only when value changes ───────────────────────── */
   function pushHint(hint: string | null) {
@@ -257,26 +279,51 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
       }
 
       if (nearDoor) {
-        if (!showingDialogue.current) pushHint(`[E] Enter ${nearDoor.label}`);
-        if (justPressed) {
-          const layout = INTERIORS[nearDoor.interiorId];
-          if (layout) {
-            enterInterior(nearDoor.interiorId, [pos.x, pos.y, pos.z]);
-            innerRef.current.position.set(layout.centerX, 1, layout.centerZ);
-            velocity.current.set(0, 0, 0);
-            pushHint(null);
+        const propId  = nearDoor.propertyId;
+        const gs      = useGameStore.getState();
+        const owned   = !propId || gs.ownedAssetIds.includes(propId);
+        const locked  = !!propId && gs.lockedPropertyIds.includes(propId);
+
+        if (propId && !owned) {
+          pushHint(`🔒 ${nearDoor.label} — Buy in Shop`);
+        } else if (propId && locked) {
+          pushHint(`[E] Unlock ${nearDoor.label}`);
+          if (justPressed) {
+            gs.togglePropertyLock(propId);
+            pushHint(`🔓 ${nearDoor.label} unlocked`);
+          }
+        } else {
+          if (!showingDialogue.current) pushHint(`[E] Enter ${nearDoor.label}`);
+          if (justPressed) {
+            const layout = INTERIORS[nearDoor.interiorId];
+            if (layout) {
+              enterInterior(nearDoor.interiorId, [pos.x, pos.y, pos.z]);
+              innerRef.current.position.set(layout.centerX, 1, layout.centerZ);
+              velocity.current.set(0, 0, 0);
+              pushHint(null);
+            }
           }
         }
       } else if (nearNpc) {
-        if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
-        if (justPressed && !showingDialogue.current) {
-          showingDialogue.current = true;
-          pushHint(nearNpc.dialogue);
-          if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
-          npcDialogTimer.current = setTimeout(() => {
-            showingDialogue.current = false;
-            currentHint.current = null;
-          }, 3500);
+        if (nearNpc.options && nearNpc.options.length > 0) {
+          // Multi-option dialogue — open DialogueUI overlay
+          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
+          if (justPressed && !showingDialogue.current) {
+            useGameStore.getState().setDialogueNpc(nearNpc.id);
+            pushHint(null);
+          }
+        } else {
+          // Legacy single-line dialogue
+          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
+          if (justPressed && !showingDialogue.current) {
+            showingDialogue.current = true;
+            pushHint(nearNpc.dialogue);
+            if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
+            npcDialogTimer.current = setTimeout(() => {
+              showingDialogue.current = false;
+              currentHint.current = null;
+            }, 3500);
+          }
         }
       } else {
         if (!showingDialogue.current) pushHint(null);
@@ -295,7 +342,9 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     }
   });
 
-  const outfit = OUTFIT[careerPath] ?? OUTFIT.street_thug;
+  const outfit = (currentOutfitId !== 'default' && OUTFIT_OVERRIDES[currentOutfitId])
+    ? OUTFIT_OVERRIDES[currentOutfitId]
+    : (OUTFIT[careerPath] ?? OUTFIT.street_thug);
 
   if (inVehicle || cameraMode === 'first') {
     return <group ref={innerRef} />;

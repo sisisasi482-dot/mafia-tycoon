@@ -74,6 +74,30 @@ function DraggableElement({ id, editMode, layout, updateElement, children, label
   );
 }
 
+// ── Pursuit banner ────────────────────────────────────────────────────────────
+
+function PursuitBanner({ wantedLevel }: { wantedLevel: number }) {
+  const [visible, setVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    const id = setInterval(() => setVisible((v) => !v), 500);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div
+      className="absolute top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+      style={{ opacity: visible ? 1 : 0.4, transition: 'opacity 0.1s' }}
+    >
+      <div className="bg-red-600/95 backdrop-blur-sm text-white font-black text-xs uppercase tracking-[0.2em] px-5 py-2 rounded-full border border-red-400/50 shadow-[0_0_20px_rgba(220,38,38,0.6)] flex items-center gap-2">
+        <span>🚨</span>
+        <span>POLICE PURSUIT</span>
+        <span>{Array.from({ length: wantedLevel }, () => '★').join('')}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main HUD ──────────────────────────────────────────────────────────────────
 
 export function HUD() {
@@ -193,6 +217,11 @@ export function HUD() {
           >🗺</button>
         )}
       </DraggableElement>
+
+      {/* ── Police pursuit alert ── */}
+      {store.pursuitActive && store.wantedLevel > 0 && (
+        <PursuitBanner wantedLevel={store.wantedLevel} />
+      )}
 
       {/* ── In-vehicle radio toggle ── */}
       {store.inVehicle && (

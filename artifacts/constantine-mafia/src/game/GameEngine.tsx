@@ -10,11 +10,18 @@ import { NPCs } from './NPCs';
 import { DayNight } from './DayNight';
 import { InteriorRoom } from './InteriorRoom';
 import { Traffic } from './Traffic';
+import { Police } from './Police';
+import { Houses } from './Houses';
+import { Environment } from './Environment';
 import { useGameStore, FpsCap } from './useGameStore';
 import { HUD } from '../ui/HUD';
 import { PauseMenu } from '../ui/PauseMenu';
 import { TouchControls } from '../ui/TouchControls';
 import { RadioWidget } from '../ui/RadioWidget';
+import { DialogueUI } from '../ui/DialogueUI';
+import { HomePanel } from '../ui/HomePanel';
+import { TvOverlay } from '../ui/TvOverlay';
+import { WardrobeOverlay } from '../ui/WardrobeOverlay';
 
 /**
  * FPS cap controller.
@@ -125,6 +132,9 @@ export function GameEngine() {
           {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
           {!indoors && <NPCs />}
           {!indoors && <Traffic />}
+          {!indoors && <Police />}
+          {!indoors && <Houses />}
+          {!indoors && <Environment />}
 
           {/* Interior room (when player is inside a building) */}
           {indoors && <InteriorRoom />}
@@ -144,6 +154,10 @@ export function GameEngine() {
       <TouchControls />
       <RadioWidget />
       <PauseMenu />
+      <DialogueUI />
+      <HomePanel />
+      <TvOverlay />
+      <WardrobeOverlay />
     </div>
   );
 }

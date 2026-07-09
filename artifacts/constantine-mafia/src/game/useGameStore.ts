@@ -72,6 +72,18 @@ export type GameState = {
   showTouchControls:  boolean;
   fpsCap:             FpsCap;
 
+  // Crime & Police
+  lockedPropertyIds:  string[];
+  stolenVehicleIds:   string[];
+  pursuitActive:      boolean;
+  lastCrimeTime:      number;
+
+  // Lifestyle (homes)
+  currentOutfitId:    string;
+  showTv:             boolean;
+  showWardrobe:       boolean;
+  dialogueNpcId:      string | null;
+
   // Screen
   screen: 'main_menu' | 'character_creation' | 'playing' | 'game_over';
 
@@ -91,6 +103,15 @@ export type GameState = {
   enterInterior:      (id: string, exitPos: [number, number, number]) => void;
   exitInterior:       () => void;
   resetGame:          () => void;
+
+  // Crime & lifestyle actions
+  togglePropertyLock: (id: string) => void;
+  markVehicleStolen:  (id: string) => void;
+  triggerCrime:       (severity?: number) => void;
+  decayWanted:        () => void;
+  setOutfit:          (id: string) => void;
+  setDialogueNpc:     (id: string | null) => void;
+  sleep:              (hours?: number) => void;
 };
 
 const initialState: Omit<GameState,
@@ -98,6 +119,8 @@ const initialState: Omit<GameState,
   | 'addMoney'       | 'addXp'            | 'setWantedLevel'| 'setScreen'
   | 'togglePause'    | 'setActivePanel'   | 'setInteractionHint'
   | 'setDayTime'     | 'enterInterior'    | 'exitInterior'  | 'resetGame'
+  | 'togglePropertyLock' | 'markVehicleStolen' | 'triggerCrime' | 'decayWanted'
+  | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'
 > = {
   playerId:            null,
   username:            '',
@@ -154,6 +177,16 @@ const initialState: Omit<GameState,
   showTouchControls:   false,
   fpsCap:              0,
 
+  lockedPropertyIds:   [],
+  stolenVehicleIds:    [],
+  pursuitActive:       false,
+  lastCrimeTime:       0,
+
+  currentOutfitId:     'default',
+  showTv:              false,
+  showWardrobe:        false,
+  dialogueNpcId:       null,
+
   screen:              'main_menu',
 };
 
@@ -204,6 +237,41 @@ export const useGameStore = create<GameState>((set) => ({
 
   enterInterior: (id, exitPos) => set({ indoors: true, interiorId: id, interiorExitPos: exitPos }),
   exitInterior:  ()            => set({ indoors: false, interiorId: null }),
+
+  togglePropertyLock: (id) => set((s) => ({
+    lockedPropertyIds: s.lockedPropertyIds.includes(id)
+      ? s.lockedPropertyIds.filter((p) => p !== id)
+      : [...s.lockedPropertyIds, id],
+  })),
+
+  markVehicleStolen: (id) => set((s) =>
+    s.stolenVehicleIds.includes(id) ? {} : { stolenVehicleIds: [...s.stolenVehicleIds, id] },
+  ),
+
+  triggerCrime: (severity = 1) => set((s) => ({
+    wantedLevel:   Math.max(0, Math.min(5, s.wantedLevel + severity)),
+    pursuitActive: true,
+    lastCrimeTime: Date.now(),
+  })),
+
+  /** Called ~once/sec while playing: cools wanted level down after a period with no new crime. */
+  decayWanted: () => set((s) => {
+    if (s.wantedLevel <= 0) return { pursuitActive: false };
+    const idleMs = Date.now() - s.lastCrimeTime;
+    if (idleMs > 12000) {
+      const next = s.wantedLevel - 1;
+      return { wantedLevel: next, lastCrimeTime: Date.now(), pursuitActive: next > 0 };
+    }
+    return {};
+  }),
+
+  setOutfit:      (currentOutfitId) => set({ currentOutfitId }),
+  setDialogueNpc: (dialogueNpcId)   => set({ dialogueNpcId }),
+
+  sleep: (hours = 8) => set((s) => ({
+    dayTime: (s.dayTime + hours / 24) % 1,
+    health:  100,
+  })),
 
   resetGame: () => set(initialState),
 }));

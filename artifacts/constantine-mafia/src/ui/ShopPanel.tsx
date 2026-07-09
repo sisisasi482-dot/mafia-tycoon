@@ -21,10 +21,18 @@ const VEHICLES = [
 ];
 
 const PROPERTIES = [
-  { id: 'garage_am',   name: 'Garage – Ali Mendjeli', nameAr: 'كراج علي منجلي', nameFr: 'Garage Ali Mendjeli', price: 10000, icon: '🏚️', desc: 'Store vehicles safely' },
-  { id: 'safehouse_cv', name: 'Safehouse – Centre-Ville', nameAr: 'ملجأ وسط المدينة', nameFr: 'Planque Centre-Ville', price: 25000, icon: '🏠', desc: 'Respawn point + save' },
-  { id: 'shop_oc',     name: 'Weapon Shop – Old City', nameAr: 'محل أسلحة المدينة القديمة', nameFr: 'Armurerie Vieille Ville', price: 50000, icon: '🏪', desc: 'Passive income' },
-  { id: 'factory_am',  name: 'Factory – Ain M\'lila', nameAr: 'مصنع عين مليلة', nameFr: 'Usine Ain M\'lila', price: 80000, icon: '🏭', desc: 'High income every 5 min' },
+  // ── Abstract investment properties (passive income) ───────────────────────
+  { id: 'garage_am',   name: 'Garage – Ali Mendjeli',         nameAr: 'كراج علي منجلي',                nameFr: 'Garage Ali Mendjeli',       price: 10000, icon: '🏚️', desc: 'Store vehicles safely' },
+  { id: 'safehouse_cv', name: 'Safehouse – Centre-Ville',     nameAr: 'ملجأ وسط المدينة',              nameFr: 'Planque Centre-Ville',       price: 25000, icon: '🏠', desc: 'Respawn point + save' },
+  { id: 'shop_oc',     name: 'Weapon Shop – Old City',        nameAr: 'محل أسلحة المدينة القديمة',     nameFr: 'Armurerie Vieille Ville',    price: 50000, icon: '🏪', desc: 'Passive income' },
+  { id: 'factory_am',  name: 'Factory – Ain M\'lila',         nameAr: 'مصنع عين مليلة',                nameFr: 'Usine Ain M\'lila',          price: 80000, icon: '🏭', desc: 'High income every 5 min' },
+  // ── Standalone physical garages (enter & sleep) ───────────────────────────
+  { id: 'garage_1',    name: 'Garage – Suburb',               nameAr: 'كراج الضاحية',                  nameFr: 'Garage Banlieue',            price:  8000, icon: '🚗', desc: 'Park & sleep — cheaper than a house' },
+  { id: 'garage_2',    name: 'Garage – Riverside',            nameAr: 'كراج ضفة النهر',                nameFr: 'Garage Rive',                price: 12000, icon: '🚗', desc: 'Park & sleep near Old City' },
+  // ── Standalone homes (multi-zone, sleep / TV / eat / wardrobe) ───────────
+  { id: 'house_1',     name: 'House – Old City Villa',        nameAr: 'منزل — فيلا المدينة القديمة',   nameFr: 'Maison – Villa Vieille Ville', price: 45000, icon: '🏡', desc: 'Living room, bedroom, kitchen & bathroom' },
+  { id: 'house_2',     name: 'House – Riverside',             nameAr: 'منزل — ضفة النهر',              nameFr: 'Maison – Rive',              price: 65000, icon: '🏡', desc: 'Spacious home with river views' },
+  { id: 'house_3',     name: 'House – Hilltop Residence',     nameAr: 'منزل — تلة الإقامة',            nameFr: 'Maison – Résidence Colline', price: 90000, icon: '🏡', desc: 'Premium hilltop residence' },
 ];
 
 function getLocalName(item: { name: string; nameAr: string; nameFr: string }, lang: string) {

@@ -68,6 +68,10 @@ function SingleVehicle({
         interactLatch.current = true;
         if (isNear && !state.inVehicle) {
           const ry = groupRef.current.rotation.y;
+          // World spawn vehicles are "stolen" unless already in ownedAssetIds
+          if (!state.ownedAssetIds.includes(def.id)) {
+            state.markVehicleStolen(def.id);
+          }
           state.setPlayerState({
             inVehicle: true,
             equippedVehicleId: def.id,
