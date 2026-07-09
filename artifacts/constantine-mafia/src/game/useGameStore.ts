@@ -1,0 +1,459 @@
+import { create } from 'zustand';
+import { REDEEM_CODES } from './items';
+
+export type CameraMode    = 'third' | 'second' | 'first';
+export type SteeringMode  = 'wheel' | 'arrows' | 'tilt' | 'slider';
+export type PedalMode     = 'buttons' | 'slider';
+export type Transmission  = 'auto' | 'manual';
+export type FpsCap        = 0 | 30 | 60;  // 0 = unlimited
+
+export type GameState = {
+  // Player
+  playerId:           string | null;
+  username:           string;
+  money:              number;
+  health:             number;
+  armor:              number;
+  level:              number;
+  xp:                 number;
+  careerPath: 'street_thug' | 'gangster' | 'crime_boss' | 'business_tycoon';
+  ownedAssetIds:      string[];
+  completedMissionIds:string[];
+  equippedVehicleId:  string | null;
+  equippedWeaponId:   string | null;
+
+  // World
+  district: 'ali_mendjeli' | 'centre_ville' | 'old_city' | 'ain_mlila' | 'airport';
+  wantedLevel:        number;
+  currentMissionId:   string | null;
+  gameMode:           'story' | 'free_world';
+
+  // Physics state (not persisted)
+  playerPosition:     [number, number, number];
+  playerRotationY:    number;
+  inVehicle:          boolean;
+  /** Vehicle that was most recently exited — persists after dismount so garages can park it. */
+  lastDrivenVehicleId: string | null;
+
+  // Interior system
+  indoors:            boolean;
+  interiorId:         string | null;
+  interiorExitPos:    [number, number, number];
+
+  // Time
+  dayTime:            number;   // 0–1
+
+  // Camera
+  cameraMode:         CameraMode;
+
+  // Vehicle controls
+  vehicleSteeringMode:SteeringMode;
+  vehiclePedalMode:   PedalMode;
+  vehicleTransmission:Transmission;
+
+  // Radio
+  radioUrl:           string;
+  radioVolume:        number;
+  showRadio:          boolean;
+
+  // UI state
+  isPaused:           boolean;
+  showMap:            boolean;
+  showShop:           boolean;
+  showMissions:       boolean;
+  showLeaderboard:    boolean;
+  activePanel: 'none' | 'settings' | 'map' | 'missions' | 'shop' | 'leaderboard';
+  interactionHint:    string | null;
+  hudEditMode:        boolean;
+  /** Tab the shop should pre-select when opened via a shop NPC. */
+  shopNpcTab:         'consumables' | 'ammo' | null;
+
+  // Settings
+  language:           'en' | 'ar' | 'fr';
+  masterVolume:       number;
+  musicVolume:        number;
+  sfxVolume:          number;
+  graphicsQuality:    'low' | 'medium' | 'high';
+  showTouchControls:  boolean;
+  fpsCap:             FpsCap;
+
+  // Performance settings
+  shadowsEnabled:     boolean;
+  postProcessing:     boolean;
+  npcDensity:         'low' | 'medium' | 'high';
+  textureQuality:     'low' | 'medium' | 'high';
+
+  // Crime & Police
+  lockedPropertyIds:  string[];
+  stolenVehicleIds:   string[];
+  pursuitActive:      boolean;
+  lastCrimeTime:      number;
+
+  // Lifestyle (homes)
+  currentOutfitId:    string;
+  showTv:             boolean;
+  showWardrobe:       boolean;
+  dialogueNpcId:      string | null;
+
+  // Screen
+  screen: 'main_menu' | 'character_creation' | 'playing' | 'game_over';
+
+  // Garage vehicle storage
+  garageStoredVehicles: Record<string, string[]>;
+
+  // ── Inventory / ammo / redeem ──────────────────────────────────────────────
+  /** consumable id → quantity owned */
+  inventory:          Record<string, number>;
+  /** ammo type → total reserve rounds */
+  ammoReserves:       Record<string, number>;
+  /** weaponId → rounds currently in magazine */
+  weaponMags:         Record<string, number>;
+  /** codes already redeemed (one-time use) */
+  redeemedCodes:      string[];
+  /** timestamp (ms) when cigarette dizziness ends; 0 = not dizzy */
+  dizzyUntil:         number;
+
+  // Actions
+  setPlayerState:     (state: Partial<GameState>) => void;
+  setPlayerPosition:  (pos: [number, number, number], rotY?: number) => void;
+  damagePlayer:       (amount: number) => void;
+  healPlayer:         (amount: number) => void;
+  addMoney:           (amount: number) => void;
+  addXp:              (amount: number) => void;
+  setWantedLevel:     (level: number) => void;
+  setScreen:          (screen: GameState['screen']) => void;
+  togglePause:        () => void;
+  setActivePanel:     (panel: GameState['activePanel']) => void;
+  setInteractionHint: (hint: string | null) => void;
+  setDayTime:         (t: number) => void;
+  enterInterior:      (id: string, exitPos: [number, number, number]) => void;
+  exitInterior:       () => void;
+  resetGame:          () => void;
+
+  // Crime & lifestyle actions
+  togglePropertyLock: (id: string) => void;
+  markVehicleStolen:  (id: string) => void;
+  triggerCrime:       (severity?: number) => void;
+  decayWanted:        () => void;
+  setOutfit:          (id: string) => void;
+  setDialogueNpc:     (id: string | null) => void;
+  sleep:              (hours?: number) => void;
+
+  // Garage vehicle storage
+  storeVehicleInGarage:    (garageId: string, vehicleId: string) => void;
+  retrieveVehicleFromGarage: (garageId: string, vehicleId: string) => void;
+
+  // ── Inventory / ammo / redeem actions ─────────────────────────────────────
+  addInventoryItem:   (id: string, qty?: number) => void;
+  useConsumable:      (id: string) => void;
+  dropConsumable:     (id: string) => void;
+  /** Buy an ammo pack. Returns false if insufficient funds. */
+  buyAmmo:            (weaponId: string, price: number, packSize: number, ammoType: string) => boolean;
+  /** Fire one round from a weapon magazine. Returns true if fired, false if mag empty. */
+  fireWeapon:         (weaponId: string, magSize: number) => boolean;
+  /** Reload weapon from ammo reserves. */
+  reloadWeapon:       (weaponId: string, magSize: number, ammoType: string) => void;
+  /** Drop (remove) a weapon from inventory. */
+  dropWeapon:         (weaponId: string) => void;
+  /** Attempt to redeem a code. Returns result object. */
+  redeemCode:         (code: string) => { ok: boolean; amount: number; msg: string };
+  /** Atomically deduct money and add one consumable to inventory. Returns false if insufficient funds. */
+  buyConsumable:      (id: string, price: number) => boolean;
+};
+
+const initialState: Omit<GameState,
+  | 'setPlayerState' | 'setPlayerPosition' | 'damagePlayer' | 'healPlayer'
+  | 'addMoney'       | 'addXp'            | 'setWantedLevel'| 'setScreen'
+  | 'togglePause'    | 'setActivePanel'   | 'setInteractionHint'
+  | 'setDayTime'     | 'enterInterior'    | 'exitInterior'  | 'resetGame'
+  | 'togglePropertyLock' | 'markVehicleStolen' | 'triggerCrime' | 'decayWanted'
+  | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'
+  | 'storeVehicleInGarage' | 'retrieveVehicleFromGarage'
+  | 'addInventoryItem' | 'useConsumable'  | 'dropConsumable' | 'buyAmmo'
+  | 'fireWeapon'     | 'reloadWeapon'    | 'dropWeapon'     | 'redeemCode' | 'buyConsumable'
+> = {
+  playerId:            null,
+  username:            '',
+  money:               500,
+  health:              100,
+  armor:               0,
+  level:               1,
+  xp:                  0,
+  careerPath:          'street_thug',
+  ownedAssetIds:       [],
+  completedMissionIds: [],
+  equippedVehicleId:   null,
+  equippedWeaponId:    null,
+
+  district:            'ali_mendjeli',
+  wantedLevel:         0,
+  currentMissionId:    null,
+  gameMode:            'free_world',
+
+  // Spawn at central plaza (0, 1, 0) — open area at main road intersection
+  playerPosition:      [0, 1, 0],
+  playerRotationY:     0,
+  inVehicle:           false,
+  lastDrivenVehicleId: null,
+
+  indoors:             false,
+  interiorId:          null,
+  interiorExitPos:     [0, 1, 0],
+
+  dayTime:             0.30,
+
+  cameraMode:          'third',
+  vehicleSteeringMode: 'wheel',
+  vehiclePedalMode:    'buttons',
+  vehicleTransmission: 'auto',
+
+  radioUrl:            '',
+  radioVolume:         80,
+  showRadio:           false,
+
+  isPaused:            false,
+  showMap:             false,
+  showShop:            false,
+  showMissions:        false,
+  showLeaderboard:     false,
+  activePanel:         'none',
+  interactionHint:     null,
+  hudEditMode:         false,
+  shopNpcTab:          null,
+
+  language:            'en',
+  masterVolume:        100,
+  musicVolume:         100,
+  sfxVolume:           100,
+  graphicsQuality:     'medium',
+  showTouchControls:   false,
+  fpsCap:              0,
+
+  shadowsEnabled:      true,
+  postProcessing:      true,
+  npcDensity:          'medium',
+  textureQuality:      'medium',
+
+  lockedPropertyIds:   [],
+  stolenVehicleIds:    [],
+  pursuitActive:       false,
+  lastCrimeTime:       0,
+
+  currentOutfitId:     'default',
+  showTv:              false,
+  showWardrobe:        false,
+  dialogueNpcId:       null,
+
+  garageStoredVehicles: {},
+
+  inventory:           {},
+  ammoReserves:        {},
+  weaponMags:          {},
+  redeemedCodes:       [],
+  dizzyUntil:          0,
+
+  screen:              'main_menu',
+};
+
+export const useGameStore = create<GameState>((set, get) => ({
+  ...initialState,
+
+  setPlayerState:  (state) => set((prev) => ({ ...prev, ...state })),
+
+  setPlayerPosition: (pos, rotY) => set((s) => ({
+    playerPosition:  pos,
+    playerRotationY: rotY !== undefined ? rotY : s.playerRotationY,
+  })),
+
+  damagePlayer: (amount) => set((state) => {
+    let armor  = state.armor;
+    let health = state.health;
+    if (armor > 0) {
+      if (armor >= amount) { armor -= amount; amount = 0; }
+      else                 { amount -= armor; armor = 0; }
+    }
+    health -= amount;
+    if (health <= 0) {
+      return { health: 0, armor: 0, screen: 'game_over', money: Math.max(0, state.money * 0.8) };
+    }
+    return { health, armor };
+  }),
+
+  healPlayer:    (amount) => set((s) => ({ health: Math.min(100, s.health + amount) })),
+  addMoney:      (amount) => set((s) => ({ money:  s.money  + amount })),
+
+  addXp: (amount) => set((s) => {
+    const newXp    = s.xp + amount;
+    const required = Math.floor(100 * Math.pow(s.level, 1.5));
+    if (newXp >= required) return { xp: newXp - required, level: s.level + 1, health: 100 };
+    return { xp: newXp };
+  }),
+
+  setWantedLevel:     (level) => set({ wantedLevel: Math.max(0, Math.min(5, level)) }),
+  setScreen:          (screen) => set({ screen }),
+  togglePause:        () => set((s) => ({
+    isPaused:  !s.isPaused,
+    activePanel: s.isPaused ? 'none' : 'settings',
+    hudEditMode: false,
+    shopNpcTab: null,
+  })),
+  setActivePanel:     (activePanel)     => set({ activePanel }),
+  setInteractionHint: (interactionHint) => set({ interactionHint }),
+  setDayTime:         (dayTime)         => set({ dayTime }),
+
+  enterInterior: (id, exitPos) => set({ indoors: true, interiorId: id, interiorExitPos: exitPos }),
+  exitInterior:  ()            => set({ indoors: false, interiorId: null }),
+
+  togglePropertyLock: (id) => set((s) => ({
+    lockedPropertyIds: s.lockedPropertyIds.includes(id)
+      ? s.lockedPropertyIds.filter((p) => p !== id)
+      : [...s.lockedPropertyIds, id],
+  })),
+
+  markVehicleStolen: (id) => set((s) =>
+    s.stolenVehicleIds.includes(id) ? {} : { stolenVehicleIds: [...s.stolenVehicleIds, id] },
+  ),
+
+  triggerCrime: (severity = 1) => set((s) => ({
+    wantedLevel:   Math.max(0, Math.min(5, s.wantedLevel + severity)),
+    pursuitActive: true,
+    lastCrimeTime: Date.now(),
+  })),
+
+  /** Called ~once/sec while playing: cools wanted level down after a period with no new crime. */
+  decayWanted: () => set((s) => {
+    if (s.wantedLevel <= 0) return { pursuitActive: false };
+    const idleMs = Date.now() - s.lastCrimeTime;
+    if (idleMs > 12000) {
+      const next = s.wantedLevel - 1;
+      return { wantedLevel: next, lastCrimeTime: Date.now(), pursuitActive: next > 0 };
+    }
+    return {};
+  }),
+
+  setOutfit:      (currentOutfitId) => set({ currentOutfitId }),
+  setDialogueNpc: (dialogueNpcId)   => set({ dialogueNpcId }),
+
+  sleep: (hours = 8) => set((s) => ({
+    dayTime: (s.dayTime + hours / 24) % 1,
+    health:  100,
+  })),
+
+  storeVehicleInGarage: (garageId, vehicleId) => set((s) => {
+    const current = s.garageStoredVehicles[garageId] ?? [];
+    if (current.includes(vehicleId)) return {};
+    return {
+      garageStoredVehicles: { ...s.garageStoredVehicles, [garageId]: [...current, vehicleId] },
+      equippedVehicleId: s.equippedVehicleId === vehicleId ? null : s.equippedVehicleId,
+    };
+  }),
+
+  retrieveVehicleFromGarage: (garageId, vehicleId) => set((s) => {
+    const current = s.garageStoredVehicles[garageId] ?? [];
+    return {
+      garageStoredVehicles: {
+        ...s.garageStoredVehicles,
+        [garageId]: current.filter((v) => v !== vehicleId),
+      },
+      equippedVehicleId: vehicleId,
+    };
+  }),
+
+  // ── Inventory ────────────────────────────────────────────────────────────────
+
+  addInventoryItem: (id, qty = 1) => set((s) => ({
+    inventory: { ...s.inventory, [id]: (s.inventory[id] ?? 0) + qty },
+  })),
+
+  useConsumable: (id) => set((s) => {
+    const qty = s.inventory[id] ?? 0;
+    if (qty <= 0) return {};
+    const inv = { ...s.inventory, [id]: qty - 1 };
+    if (id === 'food')       return { inventory: inv, health: Math.min(100, s.health + 30) };
+    if (id === 'stimulants') return { inventory: inv, health: Math.min(100, s.health + 20) };
+    if (id === 'cigarettes') return { inventory: inv, dizzyUntil: Date.now() + 10_000 };
+    return { inventory: inv };
+  }),
+
+  dropConsumable: (id) => set((s) => {
+    const qty = s.inventory[id] ?? 0;
+    if (qty <= 0) return {};
+    return { inventory: { ...s.inventory, [id]: qty - 1 } };
+  }),
+
+  // ── Ammo ─────────────────────────────────────────────────────────────────────
+
+  buyAmmo: (weaponId, price, packSize, ammoType) => {
+    const s = get();
+    if (s.money < price) return false;
+    set((st) => ({
+      money:        st.money - price,
+      ammoReserves: { ...st.ammoReserves, [ammoType]: (st.ammoReserves[ammoType] ?? 0) + packSize },
+    }));
+    return true;
+  },
+
+  fireWeapon: (weaponId, magSize) => {
+    const s   = get();
+    const mag = s.weaponMags[weaponId] ?? magSize;
+    if (mag <= 0) return false;
+    set((st) => ({
+      weaponMags: {
+        ...st.weaponMags,
+        [weaponId]: Math.max(0, (st.weaponMags[weaponId] ?? magSize) - 1),
+      },
+    }));
+    return true;
+  },
+
+  reloadWeapon: (weaponId, magSize, ammoType) => set((s) => {
+    const currentMag = s.weaponMags[weaponId] ?? magSize;
+    const reserve    = s.ammoReserves[ammoType] ?? 0;
+    const needed     = magSize - currentMag;
+    const loaded     = Math.min(needed, reserve);
+    if (loaded <= 0) return {};
+    return {
+      weaponMags:   { ...s.weaponMags,   [weaponId]: currentMag + loaded },
+      ammoReserves: { ...s.ammoReserves, [ammoType]: reserve - loaded },
+    };
+  }),
+
+  dropWeapon: (weaponId) => set((s) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [weaponId]: _dropped, ...restMags } = s.weaponMags;
+    return {
+      ownedAssetIds:    s.ownedAssetIds.filter((id) => id !== weaponId),
+      equippedWeaponId: s.equippedWeaponId === weaponId ? null : s.equippedWeaponId,
+      weaponMags:       restMags,
+    };
+  }),
+
+  buyConsumable: (id, price) => {
+    const s = get();
+    if (s.money < price) return false;
+    set((st) => ({
+      money:     st.money - price,
+      inventory: { ...st.inventory, [id]: (st.inventory[id] ?? 0) + 1 },
+    }));
+    return true;
+  },
+
+  // ── Redeem codes ─────────────────────────────────────────────────────────────
+
+  redeemCode: (code) => {
+    const trimmed = code.trim().toLowerCase();
+    if (!(REDEEM_CODES as readonly string[]).includes(trimmed)) return { ok: false, amount: 0, msg: 'Invalid code.' };
+    const s = get();
+    if (s.redeemedCodes.includes(trimmed)) return { ok: false, amount: 0, msg: 'Already redeemed.' };
+    // Parse amount from code name: e.g. "200k" → 200 × 1000 = 200,000 DA
+    const match = trimmed.match(/^(\d+)k$/i);
+    const amount = match ? parseInt(match[1], 10) * 1_000 : 10_000;
+    set((st) => ({
+      redeemedCodes: [...st.redeemedCodes, trimmed],
+      money:         st.money + amount,
+    }));
+    return { ok: true, amount, msg: `+${amount.toLocaleString()} DA credited!` };
+  },
+
+  resetGame: () => set(initialState),
+}));
