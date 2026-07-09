@@ -6,8 +6,12 @@ const SAVE_KEY = 'constantine_mafia_save';
 // Keys to persist (never persist ephemeral runtime state)
 const PERSIST_KEYS = [
   'playerId', 'username', 'money', 'level', 'xp', 'careerPath',
-  'ownedAssetIds', 'completedMissionIds', 'equippedVehicleId',
+  'ownedAssetIds', 'completedMissionIds', 'equippedVehicleId', 'equippedWeaponId',
   'district', 'language', 'graphicsQuality',
+  // Inventory & ammo — must persist so purchases survive page reload
+  'inventory', 'ammoReserves', 'weaponMags',
+  // Redeem codes — must persist to prevent re-use after reload
+  'redeemedCodes',
 ] as const;
 
 export function useSaveSystem() {

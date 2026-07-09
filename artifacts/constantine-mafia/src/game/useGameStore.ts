@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { REDEEM_CODES } from './items';
 
 export type CameraMode    = 'third' | 'second' | 'first';
 export type SteeringMode  = 'wheel' | 'arrows' | 'tilt' | 'slider';
@@ -429,9 +430,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   // ── Redeem codes ─────────────────────────────────────────────────────────────
 
   redeemCode: (code) => {
-    const VALID = ['1000k', '200k', '30000k', '600000k', '67k'];
     const s = get();
-    if (!VALID.includes(code.trim())) return { ok: false, amount: 0, msg: 'Invalid code.' };
+    if (!(REDEEM_CODES as readonly string[]).includes(code.trim())) return { ok: false, amount: 0, msg: 'Invalid code.' };
     if (s.redeemedCodes.includes(code.trim())) return { ok: false, amount: 0, msg: 'Already redeemed.' };
     const amount = Math.floor(1_000 + Math.random() * 199_000);
     set((st) => ({

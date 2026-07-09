@@ -298,6 +298,13 @@ function InventoryTab() {
 function ConsumablesTab() {
   const store = useGameStore();
   const lang  = store.language;
+  const [flash, setFlash] = useState<Record<string, 'ok' | 'fail'>>({});
+
+  const handleBuy = (id: string, price: number) => {
+    const ok = store.buyConsumable(id, price);
+    setFlash((f) => ({ ...f, [id]: ok ? 'ok' : 'fail' }));
+    setTimeout(() => setFlash((f) => { const n = { ...f }; delete n[id]; return n; }), 900);
+  };
 
   return (
     <div className="space-y-3">
@@ -308,6 +315,7 @@ function ConsumablesTab() {
         const qty      = store.inventory[item.id] ?? 0;
         const canAfford = store.money >= item.price;
         const localName = lang === 'ar' ? item.nameAr : lang === 'fr' ? item.nameFr : item.name;
+        const f = flash[item.id];
 
         return (
           <div key={item.id} className="flex items-center gap-4 p-4 rounded-xl border border-white/8 bg-white/3 hover:border-white/15 transition-all">
@@ -324,11 +332,18 @@ function ConsumablesTab() {
                 {item.price.toLocaleString()} DA
               </span>
               <button
-                onClick={() => store.buyConsumable(item.id, item.price)}
-                disabled={!canAfford}
-                className="text-xs font-bold uppercase px-3 py-1 rounded bg-primary text-black hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                onClick={() => handleBuy(item.id, item.price)}
+                className={`text-xs font-bold uppercase px-3 py-1 rounded transition-all ${
+                  f === 'ok'
+                    ? 'bg-green-500 text-black scale-95'
+                    : f === 'fail'
+                    ? 'bg-red-600/90 text-white'
+                    : canAfford
+                    ? 'bg-primary text-black hover:bg-primary/90'
+                    : 'bg-white/10 text-gray-500 cursor-not-allowed'
+                }`}
               >
-                {t('buy', lang)}
+                {f === 'ok' ? '✓ Bought!' : f === 'fail' ? '✗ No funds' : t('buy', lang)}
               </button>
             </div>
           </div>
