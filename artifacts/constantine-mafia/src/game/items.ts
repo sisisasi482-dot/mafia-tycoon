@@ -75,3 +75,26 @@ export type RedeemCode = typeof REDEEM_CODES[number];
 
 /** IDs that are weapons (used by ShopPanel to filter ownedAssetIds). */
 export const WEAPON_IDS = new Set(['knife', 'pistol', 'shotgun', 'smg', 'rifle']);
+
+// ─── Car keys ─────────────────────────────────────────────────────────────────
+
+/** Inventory item prefix for vehicle keys granted on purchase. */
+export const CAR_KEY_PREFIX = 'car_key_';
+
+/** True if an inventory slot ID is a car key. */
+export function isCarKey(id: string): boolean { return id.startsWith(CAR_KEY_PREFIX); }
+
+/** Extract the vehicle ID encoded in a car key inventory ID. */
+export function vehicleIdFromKey(keyId: string): string {
+  return keyId.slice(CAR_KEY_PREFIX.length);
+}
+
+/** Human-readable name for every purchasable or world vehicle. */
+export const VEHICLE_NAMES_MAP: Record<string, string> = {
+  renault:    'Renault 25',
+  kangoo:     'Kangoo',
+  bmw:        'BMW 5 Series',
+  moto:       'Motorcycle',
+  police_car: 'Police Crown',
+  v1: 'Taxi', v2: 'Police Car', v3: 'Sports Car', v4: 'SUV', v5: 'Truck',
+};
