@@ -5,11 +5,19 @@
  * Roads use procedural canvas-based asphalt textures with lane markings.
  * Sidewalk strips (concrete) run alongside major roads.
  */
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BUILDINGS } from './buildings';
 import { DOOR_TRIGGERS } from './interiors';
 import { generateBuildingTextures, disposeBuildingTextures } from './buildingTextures';
+import { useGameStore } from './useGameStore';
+import {
+  activeMask,
+  updateActiveBuildings,
+  resetActiveBuildings,
+  BUILDING_UPDATE_INTERVAL_FRAMES,
+} from './buildingPool';
 
 // ─── Procedural road texture ──────────────────────────────────────────────────
 
@@ -137,6 +145,37 @@ const SIDEWALKS = [
 export function City() {
   const texPool = useMemo(() => generateBuildingTextures(), []);
   useEffect(() => () => disposeBuildingTextures(texPool), [texPool]);
+
+  /* ── Building object pool ──────────────────────────────────────────────
+   * All BUILDINGS.length meshes are created once below (mounted for the
+   * lifetime of City) with visible=false. A proximity scan running every
+   * BUILDING_UPDATE_INTERVAL_FRAMES frames flips `mesh.visible` in place —
+   * meshes are never added to or removed from the scene after mount, and
+   * the collider mask (`activeMask`, consumed by Player.tsx's AABB check)
+   * is toggled the same way. */
+  const buildingRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const frameCount = useRef(0);
+
+  // Every mount starts with all refs at visible=false. Reset the shared
+  // (module-singleton) mask so a re-entry — e.g. leaving an interior — can't
+  // carry stale "active" bits that never get re-applied to the fresh refs.
+  useEffect(() => {
+    resetActiveBuildings();
+    frameCount.current = 0;
+  }, []);
+
+  useFrame(() => {
+    frameCount.current += 1;
+    if (frameCount.current < BUILDING_UPDATE_INTERVAL_FRAMES) return;
+    frameCount.current = 0;
+
+    const [px, , pz] = useGameStore.getState().playerPosition;
+    const changed = updateActiveBuildings(px, pz);
+    for (const i of changed) {
+      const mesh = buildingRefs.current[i];
+      if (mesh) mesh.visible = activeMask[i] === 1;
+    }
+  });
 
   // Pre-create one texture per road/sidewalk segment (with per-segment repeat baked in).
   // Doing this in useMemo avoids allocating new THREE.Texture objects on every render.
@@ -283,11 +322,18 @@ export function City() {
         </mesh>
       ))}
 
-      {/* ── Buildings ────────────────────────────────────────────────── */}
+      {/* ── Buildings (pooled: all instantiated once, visibility toggled) ── */}
       {BUILDINGS.map((b, i) => {
         const tex = b.texKey ? texPool[b.texKey]?.[b.texIdx] : undefined;
         return (
-          <mesh key={`b-${i}`} castShadow receiveShadow position={[b.x, b.h / 2, b.z]}>
+          <mesh
+            key={`b-${i}`}
+            ref={(el) => { buildingRefs.current[i] = el; }}
+            visible={false}
+            castShadow
+            receiveShadow
+            position={[b.x, b.h / 2, b.z]}
+          >
             <boxGeometry args={[b.w, b.h, b.d]} />
             <meshStandardMaterial
               map={tex ?? null}

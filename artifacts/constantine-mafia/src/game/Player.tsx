@@ -4,6 +4,7 @@ import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
+import { activeMask } from './buildingPool';
 import { DOOR_TRIGGERS, NPC_TALKERS, INTERIORS } from './interiors';
 import { cameraDrag } from './cameraState';
 
@@ -207,7 +208,9 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
 
     /* ── Building AABB collision (outdoors only) ─────────────────────────── */
     if (!indoors) {
-      for (const aabb of BUILDING_AABBS) {
+      for (let i = 0; i < BUILDING_AABBS.length; i++) {
+        if (!activeMask[i]) continue; // pooled collider disabled outside proximity range
+        const aabb = BUILDING_AABBS[i];
         const dx   = pos.x - aabb.cx;
         const dz   = pos.z - aabb.cz;
         const penX = aabb.hw + PLAYER_RADIUS - Math.abs(dx);
