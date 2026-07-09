@@ -8,6 +8,7 @@ import {
   WEAPON_ICONS,
   AMMO_DISPLAY,
   WEAPON_IDS,
+  CAR_KEY_PREFIX,
 } from '../game/items';
 
 // ─── Static catalogs (same as before — unchanged) ─────────────────────────────
@@ -431,11 +432,16 @@ export function ShopPanel() {
   const handleBuy = (id: string, price: number) => {
     if (store.money < price) return;
     if (store.ownedAssetIds.includes(id)) return;
+    const isVehicle = tab === 'vehicles';
+    const carKeyId  = isVehicle ? `${CAR_KEY_PREFIX}${id}` : null;
+    const existing  = new Set(store.ownedAssetIds);
+    const toAdd     = [id, ...(carKeyId ? [carKeyId] : [])].filter((x) => !existing.has(x));
+    const newOwned  = [...store.ownedAssetIds, ...toAdd];
     store.setPlayerState({
-      money:           store.money - price,
-      ownedAssetIds:   [...store.ownedAssetIds, id],
-      equippedWeaponId: tab === 'weapons' ? id : store.equippedWeaponId,
-      equippedVehicleId: tab === 'vehicles' ? id : store.equippedVehicleId,
+      money:             store.money - price,
+      ownedAssetIds:     newOwned,
+      equippedWeaponId:  tab === 'weapons'   ? id : store.equippedWeaponId,
+      equippedVehicleId: isVehicle           ? id : store.equippedVehicleId,
     });
   };
 

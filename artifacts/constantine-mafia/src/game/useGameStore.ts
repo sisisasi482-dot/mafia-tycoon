@@ -430,12 +430,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   // ── Redeem codes ─────────────────────────────────────────────────────────────
 
   redeemCode: (code) => {
+    const trimmed = code.trim().toLowerCase();
+    if (!(REDEEM_CODES as readonly string[]).includes(trimmed)) return { ok: false, amount: 0, msg: 'Invalid code.' };
     const s = get();
-    if (!(REDEEM_CODES as readonly string[]).includes(code.trim())) return { ok: false, amount: 0, msg: 'Invalid code.' };
-    if (s.redeemedCodes.includes(code.trim())) return { ok: false, amount: 0, msg: 'Already redeemed.' };
-    const amount = Math.floor(1_000 + Math.random() * 199_000);
+    if (s.redeemedCodes.includes(trimmed)) return { ok: false, amount: 0, msg: 'Already redeemed.' };
+    // Parse amount from code name: e.g. "200k" → 200 × 1000 = 200,000 DA
+    const match = trimmed.match(/^(\d+)k$/i);
+    const amount = match ? parseInt(match[1], 10) * 1_000 : 10_000;
     set((st) => ({
-      redeemedCodes: [...st.redeemedCodes, code.trim()],
+      redeemedCodes: [...st.redeemedCodes, trimmed],
       money:         st.money + amount,
     }));
     return { ok: true, amount, msg: `+${amount.toLocaleString()} DA credited!` };

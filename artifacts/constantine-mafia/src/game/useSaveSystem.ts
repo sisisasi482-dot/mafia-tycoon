@@ -12,6 +12,8 @@ const PERSIST_KEYS = [
   'inventory', 'ammoReserves', 'weaponMags',
   // Redeem codes — must persist to prevent re-use after reload
   'redeemedCodes',
+  // Garage — stored vehicle lists must persist across reloads
+  'garageStoredVehicles',
 ] as const;
 
 export function useSaveSystem() {
