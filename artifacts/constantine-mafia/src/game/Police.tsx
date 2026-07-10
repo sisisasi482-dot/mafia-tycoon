@@ -9,6 +9,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { CHECKPOINTS, DYNAMIC_CHECKPOINT_ROADS, type Checkpoint, type RoadSegment } from './police';
+import { audioManager } from './audio/AudioManager';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -199,6 +200,11 @@ function PursuitCar({ index, positions }: { index: number; positions: React.RefO
 
     const wanted = state.wantedLevel > 0 && state.pursuitActive;
 
+    // Bank-heist escalation: a heist in progress means every active pursuit
+    // car chases harder — a "high-level" response layered on top of the
+    // normal wanted-level pursuit, without altering the base chase logic.
+    const heistBoost = state.heistActive ? 1.35 : 1;
+
     if (!wanted) {
       if (active.current) {
         groupRef.current.position.y = -50; // hide below ground
@@ -229,7 +235,7 @@ function PursuitCar({ index, positions }: { index: number; positions: React.RefO
     groupRef.current.rotation.y += diff * 2.8 * delta;
 
     // Throttle — reuse module-level vector to avoid GC allocation per frame
-    const chaseSpeed = Math.min(24, dist * 1.6) * delta;
+    const chaseSpeed = Math.min(24 * heistBoost, dist * 1.6 * heistBoost) * delta;
     if (dist > 5) {
       const ry = groupRef.current.rotation.y;
       _pursuitFwd.set(-Math.sin(ry), 0, -Math.cos(ry));
@@ -319,6 +325,14 @@ function ArrestWatcher({ pursuitPositions }: { pursuitPositions: React.RefObject
       return;
     }
 
+    // Gang cover fire: while a recruited follower is suppressing (recent
+    // cover-fire burst), officers are pinned down and can't close in for the
+    // arrest — the hold timer bleeds off instead of accumulating.
+    if (Date.now() < state.gangSuppressionUntil) {
+      proximityTimer.current = Math.max(0, proximityTimer.current - delta * 3);
+      return;
+    }
+
     const [px, , pz] = state.playerPosition;
     const positions = pursuitPositions.current ?? [];
     const anyClose = positions.some((p) => Math.hypot(px - p.x, pz - p.z) < ARREST_RADIUS);
@@ -329,6 +343,7 @@ function ArrestWatcher({ pursuitPositions }: { pursuitPositions: React.RefObject
         proximityTimer.current = 0;
         useGameStore.getState().arrestPlayer();
         useGameStore.getState().setPlayerPosition(POLICE_STATION_RESPAWN, 0);
+        audioManager.playOneShot('siren', 'arrest', POLICE_STATION_RESPAWN);
       }
     } else {
       proximityTimer.current = Math.max(0, proximityTimer.current - delta * 2);
@@ -392,14 +407,25 @@ function DynamicCheckpoint() {
   const currentSeg  = useRef<RoadSegment | null>(null);
   const currentPos  = useRef<[number, number, number]>([0, 0, 0]);
   const currentRotY = useRef(0);
+  const heistSpawned = useRef(false);
 
   useFrame((_, delta) => {
     const state = useGameStore.getState();
     if (state.screen !== 'playing' || state.indoors) return;
 
+    if (!state.heistActive) heistSpawned.current = false;
+    else if (active.current) heistSpawned.current = true; // already responding — heist is satisfied
+
     if (!active.current) {
+      // Bank-heist high-level response: force an immediate roadblock instead
+      // of waiting for the normal idle interval, once per heist. If a
+      // checkpoint is already active when the heist starts, mark the heist
+      // as "satisfied" so we don't force a second one right after it clears.
+      const heistForce = state.heistActive && !heistSpawned.current;
+      if (heistForce) idleTimer.current = 0;
       idleTimer.current -= delta;
       if (idleTimer.current <= 0) {
+        if (state.heistActive) heistSpawned.current = true;
         const seg = DYNAMIC_CHECKPOINT_ROADS[Math.floor(Math.random() * DYNAMIC_CHECKPOINT_ROADS.length)];
         const t = 0.15 + Math.random() * 0.7;
         const x = seg.x0 + (seg.x1 - seg.x0) * t;

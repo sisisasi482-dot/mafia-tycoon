@@ -7,6 +7,8 @@ import { BUILDING_AABBS } from './buildings';
 import { activeMask } from './buildingPool';
 import { DOOR_TRIGGERS, NPC_TALKERS, INTERIORS } from './interiors';
 import { cameraDrag } from './cameraState';
+import { WEAPON_AMMO } from './items';
+import { audioManager } from './audio/AudioManager';
 
 // ─── Default key bindings (loaded from localStorage at module init) ──────────
 
@@ -66,6 +68,26 @@ const OUTFIT_OVERRIDES: Record<string, { body: string; legs: string; hair: strin
   police:    { body: '#1a3aee', legs: '#0a1a5a', hair: '#0a0a0a' },
 };
 
+/** Simple weapon silhouette held in the right hand — switches by equipped id + aim pose. */
+function WeaponModel({ weaponId, aiming }: { weaponId: string; aiming: boolean }) {
+  const DIMS: Record<string, { size: [number, number, number]; color: string }> = {
+    knife:   { size: [0.05, 0.30, 0.05], color: '#d8d8d8' },
+    pistol:  { size: [0.09, 0.16, 0.24], color: '#222222' },
+    shotgun: { size: [0.10, 0.14, 0.78], color: '#3a2a18' },
+    smg:     { size: [0.09, 0.14, 0.50], color: '#1a1a1a' },
+    rifle:   { size: [0.09, 0.14, 0.72], color: '#2a2a18' },
+  };
+  const cfg = DIMS[weaponId] ?? DIMS.pistol;
+  return (
+    <group position={[0, -0.55, aiming ? -0.42 : -0.14]} rotation={[aiming ? -0.18 : 0.2, 0, 0]}>
+      <mesh castShadow>
+        <boxGeometry args={cfg.size} />
+        <meshStandardMaterial color={cfg.color} metalness={0.55} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
 export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   const innerRef = useRef<THREE.Group>(null);
   const [, getKeys] = useKeyboardControls();
@@ -75,6 +97,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     setPlayerPosition, inVehicle, careerPath, cameraMode,
     indoors, interiorId, currentOutfitId,
     enterInterior, exitInterior, setInteractionHint,
+    equippedWeaponId, aimMode,
   } = useGameStore();
 
   const velocity        = useRef(new THREE.Vector3());
@@ -114,6 +137,64 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     }
     prevInVehicle.current = inVehicle;
   }, [inVehicle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Combat controls: Right-click = aim (held), Left-click = fire/attack ── */
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      // Ignore clicks that originate on any DOM overlay (inventory, dialogue,
+      // pause menu, HUD widgets, etc.) — only bare canvas clicks count as
+      // combat input.
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('[data-ui-overlay], button, a, input, textarea, select')) return;
+
+      const gs = useGameStore.getState();
+      if (gs.screen !== 'playing' || gs.isPaused || gs.indoors || gs.inVehicle) return;
+
+      if (e.button === 2) {
+        gs.setPlayerState({ aimMode: true });
+        return;
+      }
+      if (e.button === 0) {
+        const weaponId = gs.equippedWeaponId;
+        if (!weaponId) return;
+        const pos: [number, number, number] = innerRef.current
+          ? [innerRef.current.position.x, innerRef.current.position.y + 1.2, innerRef.current.position.z]
+          : [gs.playerPosition[0], gs.playerPosition[1] + 1.2, gs.playerPosition[2]];
+        const cfg = WEAPON_AMMO[weaponId];
+        if (!cfg) {
+          // Melee (knife) — infinite, no ammo gate.
+          audioManager.playOneShot('combat', 'melee_swing', pos);
+          return;
+        }
+        const fired = gs.fireWeapon(weaponId, cfg.magSize);
+        if (fired) {
+          audioManager.playOneShot('combat', `gunshot_${weaponId}`, pos);
+        } else {
+          gs.setInteractionHint('🔫 Out of ammo — visit a shop to restock');
+          setTimeout(() => {
+            if (useGameStore.getState().interactionHint?.includes('Out of ammo')) {
+              useGameStore.getState().setInteractionHint(null);
+            }
+          }, 1500);
+        }
+      }
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 2) useGameStore.getState().setPlayerState({ aimMode: false });
+    };
+    // Suppress the native context menu while playing so right-click reliably means "aim".
+    const handleContextMenu = (e: MouseEvent) => {
+      if (useGameStore.getState().screen === 'playing') e.preventDefault();
+    };
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
 
   /* ── Snap position when exiting an interior (e.g. via HomePanel) ───────── */
   const prevIndoors = useRef(indoors);
@@ -414,6 +495,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
             <boxGeometry args={[0.22, 0.6, 0.22]} />
             <meshStandardMaterial color={outfit.body} roughness={0.85} />
           </mesh>
+          {equippedWeaponId && <WeaponModel weaponId={equippedWeaponId} aiming={aimMode} />}
         </group>
 
         {/* Neck */}

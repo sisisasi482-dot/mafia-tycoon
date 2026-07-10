@@ -12,6 +12,7 @@ import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
+import { audioManager } from './audio/AudioManager';
 
 // ── Gang spawn positions (mirrors NPCs.tsx SPAWNS indices 18–20) ──────────────
 const GANG_SPAWNS = [
@@ -159,6 +160,13 @@ function Follower({
         fireTimer.current = FIRE_INTERVAL;
         setFlashVis(true);
         flashTimer.current = FLASH_DURATION;
+        if (groupRef.current) {
+          const p = groupRef.current.position;
+          audioManager.playOneShot('combat', 'gunshot_pistol', [p.x, p.y + 1, p.z], 0.7);
+        }
+        // Real combat assistance: cover fire suppresses pursuing police for a
+        // short window, pausing their arrest-hold timer (see Police.tsx).
+        state.setPlayerState({ gangSuppressionUntil: Date.now() + 1400 });
       }
       if (flashTimer.current <= 0 && flashVis) {
         setFlashVis(false);
@@ -206,6 +214,7 @@ function RecruitWatcher() {
           // Dismiss if very close to spawn area
           if (dist < RECRUIT_RADIUS) {
             state.dismissGangMember(sp.id);
+            audioManager.playOneShot('npc', 'dismiss', [sp.x, 1, sp.z]);
             state.setInteractionHint('👋 Gang member dismissed');
             setTimeout(() => {
               if (useGameStore.getState().interactionHint?.includes('dismissed'))
@@ -215,6 +224,7 @@ function RecruitWatcher() {
           }
         } else if (state.gangMemberIds.length < 3 && dist < RECRUIT_RADIUS) {
           state.recruitGangMember(sp.id);
+          audioManager.playOneShot('npc', 'recruit', [sp.x, 1, sp.z]);
           return;
         }
       }

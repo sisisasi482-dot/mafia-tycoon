@@ -28,18 +28,24 @@ export function InventoryPanel() {
   const carKeys   = Object.keys(inventory).filter(isCarKey).filter((k) => (inventory[k] ?? 0) > 0);
   const consumables = CONSUMABLES.filter((c) => (inventory[c.id] ?? 0) > 0);
 
-  // 'K' key — unequip current weapon
+  // 'I' toggles the panel, 'K' unequips (hides) the current weapon.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.code !== 'KeyK') return;
       const s = useGameStore.getState();
-      if (s.screen !== 'playing') return;
-      s.setPlayerState({ equippedWeaponId: null, aimMode: false });
-      s.setInteractionHint('🔫 Weapon holstered');
-      setTimeout(() => {
-        if (useGameStore.getState().interactionHint === '🔫 Weapon holstered')
-          useGameStore.getState().setInteractionHint(null);
-      }, 1500);
+      if (s.screen !== 'playing' || s.isPaused) return;
+
+      if (e.code === 'KeyI') {
+        s.toggleInventory();
+        return;
+      }
+      if (e.code === 'KeyK') {
+        s.setPlayerState({ equippedWeaponId: null, aimMode: false });
+        s.setInteractionHint('🔫 Weapon holstered');
+        setTimeout(() => {
+          if (useGameStore.getState().interactionHint === '🔫 Weapon holstered')
+            useGameStore.getState().setInteractionHint(null);
+        }, 1500);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);

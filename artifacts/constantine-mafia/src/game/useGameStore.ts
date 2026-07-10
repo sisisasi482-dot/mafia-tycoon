@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { REDEEM_CODES } from './items';
+import { audioManager } from './audio/AudioManager';
 
 /**
  * Synchronous mobile detection, evaluated once at module load (before the
@@ -164,6 +165,8 @@ export type GameState = {
   // ── Gang followers ───────────────────────────────────────────────────────
   /** NPC spawn ids of currently-recruited gang followers (max 3). */
   gangMemberIds:      number[];
+  /** Timestamp (ms) until which gang cover-fire is suppressing nearby police (pauses arrest hold). */
+  gangSuppressionUntil: number;
 
   // ── Inventory panel UI ───────────────────────────────────────────────────
   showInventory:      boolean;
@@ -347,6 +350,7 @@ const initialState: Omit<GameState,
   heistCompletedAt:    0,
 
   gangMemberIds:       [],
+  gangSuppressionUntil: 0,
 
   showInventory:       false,
   aimMode:             false,
@@ -613,6 +617,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastCrimeTime:    Date.now(),
       heistCompletedAt: Date.now(),
     }));
+    audioManager.playOneShot('siren', 'alarm', [...get().playerPosition]);
     setTimeout(() => set({ heistActive: false }), 3000);
   },
 

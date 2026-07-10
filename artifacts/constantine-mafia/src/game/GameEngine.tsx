@@ -14,6 +14,9 @@ import { Traffic } from './Traffic';
 import { Police } from './Police';
 import { Houses } from './Houses';
 import { Environment } from './Environment';
+import { Bank } from './Bank';
+import { GangFollowers } from './GangFollowers';
+import { AudioManagerBridge } from './audio/AudioManagerBridge';
 import { useGameStore, FpsCap, IS_MOBILE_DEVICE } from './useGameStore';
 import { HUD } from '../ui/HUD';
 import { PauseMenu } from '../ui/PauseMenu';
@@ -24,6 +27,7 @@ import { HomePanel } from '../ui/HomePanel';
 import { TvOverlay } from '../ui/TvOverlay';
 import { WardrobeOverlay } from '../ui/WardrobeOverlay';
 import { ArrestOverlay } from '../ui/ArrestOverlay';
+import { InventoryPanel } from '../ui/InventoryPanel';
 
 /**
  * Sets renderer pixel ratio based on post-processing flag.
@@ -252,6 +256,11 @@ export function GameEngine() {
           {!indoors && <Police />}
           {!indoors && <Houses />}
           {!indoors && <Environment />}
+          {!indoors && <Bank />}
+          {!indoors && <GangFollowers />}
+
+          {/* Spatial 3D audio — engine/combat/npc/siren, pooled voices */}
+          <AudioManagerBridge />
 
           {/* Interior room (when player is inside a building) */}
           {indoors && <InteriorRoom />}
@@ -279,6 +288,7 @@ export function GameEngine() {
       <TvOverlay />
       <WardrobeOverlay />
       <ArrestOverlay />
+      <InventoryPanel />
     </div>
   );
 }
