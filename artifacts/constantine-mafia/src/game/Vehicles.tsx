@@ -16,13 +16,8 @@ interface VehicleDef {
   type: 'sedan' | 'taxi' | 'police' | 'truck' | 'suv';
 }
 
-const SPAWN_VEHICLES: VehicleDef[] = [
-  { id: 'v1', label: 'Taxi',       position: [-230, 1,  24], rotY:  0.0,  bodyColor: '#e8c830', roofColor: '#111111', type: 'taxi'   },
-  { id: 'v2', label: 'Police Car', position: [  56, 1,  96], rotY:  0.5,  bodyColor: '#1a3aee', roofColor: '#f0f0f0', type: 'police' },
-  { id: 'v3', label: 'Sports Car', position: [-156, 1, -60], rotY: -0.3,  bodyColor: '#cc1111', roofColor: '#880000', type: 'sedan'  },
-  { id: 'v4', label: 'SUV',        position: [ 236, 1, 156], rotY:  1.2,  bodyColor: '#2a4a2a', roofColor: '#1a3018', type: 'suv'    },
-  { id: 'v5', label: 'Truck',      position: [ 336, 1, -156], rotY: -1.0, bodyColor: '#777777', roofColor: '#444444', type: 'truck'  },
-];
+// ── Vehicle spawn data cleared — ready for new map generation ──
+const SPAWN_VEHICLES: VehicleDef[] = [];
 
 /* ─── Single vehicle mesh + logic ─────────────────────────────────────────── */
 function SingleVehicle({
