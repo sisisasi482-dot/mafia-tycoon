@@ -105,6 +105,8 @@ export type GameState = {
   sfxVolume:          number;
   graphicsQuality:    'low' | 'medium' | 'high';
   showTouchControls:  boolean;
+  /** Set once by PlatformManager on startup — informational (HUD/debug), never branched on by gameplay code. */
+  activePlatform:     'android' | 'ios' | 'pc' | null;
   fpsCap:             FpsCap;
 
   // Performance settings
@@ -315,6 +317,7 @@ const initialState: Omit<GameState,
   sfxVolume:           100,
   graphicsQuality:     IS_MOBILE_DEVICE ? 'low' : 'medium',
   showTouchControls:   false,
+  activePlatform:      null,
   fpsCap:              0,
 
   // Mobile-first: force LOW quality defaults on mobile browsers so the game

@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-const rawPort = process.env.PORT;
+const rawPort = process.env.PORT || '3000';
 
 if (!rawPort) {
   throw new Error(
@@ -19,7 +19,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
+const basePath = process.env.BASE_PATH || '/';
 
 if (!basePath) {
   throw new Error(
@@ -56,6 +56,13 @@ export default defineConfig({
         '..',
         'attached_assets',
       ),
+      '@platform-config': path.resolve(
+        import.meta.dirname,
+        '..',
+        '..',
+        'config',
+        'platforms',
+      ),
     },
     dedupe: ['react', 'react-dom'],
   },
@@ -71,6 +78,10 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+      // Needed so the dev server can read the shared /config/platforms/*
+      // files, which live outside this artifact's root by design (they are
+      // shared across all platform targets, not game-specific).
+      allow: [path.resolve(import.meta.dirname), path.resolve(import.meta.dirname, '..', '..', 'config')],
     },
   },
   preview: {

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Constantine Mafia</string>
+    <string name="title_activity_main">Constantine Mafia</string>
+    <string name="package_name">com.constantine.mafia</string>
+    <string name="custom_url_scheme">com.constantine.mafia</string>
+</resources>

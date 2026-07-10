@@ -15,7 +15,7 @@ const PERSIST_KEYS = [
   // Garage — stored vehicle lists must persist across reloads
   'garageStoredVehicles',
   // Performance settings
-  'shadowsEnabled', 'postProcessing', 'npcDensity', 'textureQuality', 'npcCount',
+  'shadowsEnabled', 'postProcessing', 'npcDensity', 'textureQuality', 'npcCount', 'fpsCap',
   // Owned vehicle instances (spawned via car key) + their lock state
   'ownedVehicleInstances', 'lockedVehicleIds',
 ] as const;
@@ -31,6 +31,19 @@ export function saveGameSnapshot(): boolean {
   for (const key of PERSIST_KEYS) saveState[key] = s[key];
   localStorage.setItem(SAVE_KEY, JSON.stringify(saveState));
   return true;
+}
+
+/** Standalone check usable outside React (e.g. PlatformManager) — true once a *valid* save exists. */
+export function hasSaveGameSnapshot(): boolean {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return false;
+  try {
+    JSON.parse(raw);
+    return true;
+  } catch {
+    // Corrupted save data — treat as no save so first-launch platform defaults still apply.
+    return false;
+  }
 }
 
 export function useSaveSystem() {
@@ -70,7 +83,7 @@ export function useSaveSystem() {
     return false;
   };
 
-  const hasSaveGame = () => localStorage.getItem(SAVE_KEY) !== null;
+  const hasSaveGame = hasSaveGameSnapshot;
 
   // Auto-save every 30 seconds while playing
   useEffect(() => {

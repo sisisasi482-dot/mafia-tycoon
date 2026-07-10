@@ -20,10 +20,10 @@ import { SPAWN_XZ } from './worldConstants';
 export const BUILDING_ACTIVATION_RADIUS = 30;
 
 /** Run the proximity scan once every N frames to save CPU. */
-export const BUILDING_UPDATE_INTERVAL_FRAMES = 15;
+export const BUILDING_UPDATE_INTERVAL_FRAMES = 60;
 
 /** Max number of buildings to stream-in or toggle in a single frame. */
-export const BUILDING_TOGGLE_BATCH_SIZE = 5;
+export const BUILDING_TOGGLE_BATCH_SIZE = 2;
 
 /** Memory Safety Monitor thresholds. */
 export const VISIBLE_BUILDING_LIMIT = 70;
@@ -140,7 +140,7 @@ export function checkMemorySafety(
   nowMs: number,
   getConfirmedVisibleCount: () => number,
 ): void {
-  console.log('Current visible buildings:', visibleCount);
+  //console.log('Current visible buildings:', visibleCount);
 
   if (memoryMonitorState.reloaded) return; // reload already in flight
 

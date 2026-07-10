@@ -17,6 +17,7 @@ import { Environment } from './Environment';
 import { Bank } from './Bank';
 import { GangFollowers } from './GangFollowers';
 import { AudioManagerBridge } from './audio/AudioManagerBridge';
+import { getActivePlatformConfig, applyPlatformConfig } from './platform/PlatformManager';
 import { useGameStore, FpsCap, IS_MOBILE_DEVICE } from './useGameStore';
 import { HUD } from '../ui/HUD';
 import { PauseMenu } from '../ui/PauseMenu';
@@ -37,7 +38,8 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 function PixelRatioController({ enabled }: { enabled: boolean }) {
   const { gl } = useThree();
   useEffect(() => {
-    gl.setPixelRatio(enabled ? Math.min(window.devicePixelRatio, 2) : 1);
+    const cap = Math.min(window.devicePixelRatio, 2) * getActivePlatformConfig().quality.resolutionScale;
+    gl.setPixelRatio(enabled ? cap : Math.min(1, cap));
   }, [enabled, gl]);
   return null;
 }
@@ -142,24 +144,36 @@ function FpsCapController({ fpsCap }: { fpsCap: FpsCap }) {
   const { invalidate } = useThree();
 
   useEffect(() => {
+    let raf: number;
+
     if (fpsCap === 0) {
-      // Unlimited: drive via RAF so the renderer keeps up with monitor refresh
-      let raf: number;
-      const loop = () => { invalidate(); raf = requestAnimationFrame(loop); };
+      // "Unlimited": نترك المتصفح يقرر أقصى سرعة ممكنة (غالباً 60 أو 120 حسب شاشة هاتفك)
+      const loop = () => {
+        invalidate();
+        raf = requestAnimationFrame(loop);
+      };
       raf = requestAnimationFrame(loop);
-      return () => cancelAnimationFrame(raf);
     } else {
-      // Capped: fire invalidate on a fixed interval
-      const ms = 1000 / fpsCap;
-      // Kick off the first frame immediately so we don't wait a full interval
-      invalidate();
-      const id = setInterval(invalidate, ms);
-      return () => clearInterval(id);
+      // "Capped": نستخدم طريقة دقيقة لحساب الفريمات بدون استخدام setInterval المزعجة
+      let lastTime = 0;
+      const interval = 1000 / fpsCap;
+
+      const loop = (time: number) => {
+        if (time - lastTime >= interval) {
+          invalidate();
+          lastTime = time;
+        }
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
     }
+
+    return () => cancelAnimationFrame(raf);
   }, [fpsCap, invalidate]);
 
   return null;
 }
+
 
 /**
  * Resume the Three.js shared AudioContext on the first user gesture.
@@ -196,6 +210,14 @@ export function GameEngine() {
   const textureQuality = useGameStore((s) => s.textureQuality);
 
   useAudioContextResume();
+
+  // Platform-agnostic core: the only place gameplay code touches platform
+  // detection. Applies the active platform's input/quality defaults once —
+  // everything else (Player, TouchControls, quality controllers below)
+  // just reads ordinary store state and stays unaware a platform even exists.
+  useEffect(() => {
+    applyPlatformConfig();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

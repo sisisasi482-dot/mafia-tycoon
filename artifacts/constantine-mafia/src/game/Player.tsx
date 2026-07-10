@@ -9,21 +9,10 @@ import { DOOR_TRIGGERS, NPC_TALKERS, INTERIORS } from './interiors';
 import { cameraDrag } from './cameraState';
 import { WEAPON_AMMO } from './items';
 import { audioManager } from './audio/AudioManager';
+import { DEFAULT_BINDINGS } from './keyBindings';
 
 // ─── Default key bindings (loaded from localStorage at module init) ──────────
-
-export const DEFAULT_BINDINGS: Record<string, string[]> = {
-  forward:  ['ArrowUp',    'KeyW'],
-  back:     ['ArrowDown',  'KeyS'],
-  left:     ['ArrowLeft',  'KeyA'],
-  right:    ['ArrowRight', 'KeyD'],
-  jump:     ['Space'],
-  sprint:   ['ShiftLeft'],
-  interact: ['KeyE'],
-  attack:   ['KeyF'],
-  map:      ['KeyM'],
-  escape:   ['Escape'],
-};
+export { DEFAULT_BINDINGS };
 
 /** Load per-action overrides from localStorage and merge with defaults */
 function loadKeyBindings(): Record<string, string[]> {
@@ -220,42 +209,33 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
   useFrame((_, delta) => {
     if (!innerRef.current || inVehicle || useGameStore.getState().isPaused) return;
 
-    /* ── Camera-relative movement ─────────────────────────────────────────── */
-    const keys  = getKeys();
+    const keys = getKeys();
     const speed = keys.sprint ? 16 : 8;
 
-    // In third-person, movement is relative to the mouse-dragged camera orbit angle.
-    // In first/second-person the camera tracks the player's own facing direction,
-    // so use the player's current rotation.y as the movement basis instead.
-    const moveYaw = (cameraMode === 'third')
-      ? cameraDrag.yaw
-      : innerRef.current.rotation.y;
-
-    const camFwdX   = -Math.sin(moveYaw);
-    const camFwdZ   = -Math.cos(moveYaw);
-    const camRightX =  Math.cos(moveYaw);
+    const moveYaw = (cameraMode === 'third') ? cameraDrag.yaw : innerRef.current.rotation.y;
+    const camFwdX = -Math.sin(moveYaw);
+    const camFwdZ = -Math.cos(moveYaw);
+    const camRightX = Math.cos(moveYaw);
     const camRightZ = -Math.sin(moveYaw);
 
     direction.current.set(0, 0, 0);
-    if (keys.forward) { direction.current.x += camFwdX;   direction.current.z += camFwdZ; }
-    if (keys.back)    { direction.current.x -= camFwdX;   direction.current.z -= camFwdZ; }
-    if (keys.left)    { direction.current.x -= camRightX; direction.current.z -= camRightZ; }
-    if (keys.right)   { direction.current.x += camRightX; direction.current.z += camRightZ; }
-    direction.current.normalize();
+    if (keys.forward) { direction.current.x += camFwdX; direction.current.z += camFwdZ; }
+    if (keys.back) { direction.current.x -= camFwdX; direction.current.z -= camFwdZ; }
+    if (keys.left) { direction.current.x -= camRightX; direction.current.z -= camRightZ; }
+    if (keys.right) { direction.current.x += camRightX; direction.current.z += camRightZ; }
 
-    // Rotate player model to face movement direction
     if (direction.current.lengthSq() > 0) {
+      direction.current.normalize();
       const targetAngle = Math.atan2(-direction.current.x, -direction.current.z);
       let diff = targetAngle - innerRef.current.rotation.y;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff >  Math.PI) diff -= Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
       innerRef.current.rotation.y += diff * 10 * delta;
     }
 
     velocity.current.x = THREE.MathUtils.lerp(velocity.current.x, direction.current.x * speed, 10 * delta);
     velocity.current.z = THREE.MathUtils.lerp(velocity.current.z, direction.current.z * speed, 10 * delta);
 
-    // Gravity / jump
     if (innerRef.current.position.y > 1) {
       velocity.current.y -= 30 * delta;
     } else {
@@ -266,183 +246,51 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
 
     innerRef.current.position.addScaledVector(velocity.current, delta);
 
-    /* ── World bounds (2× scaled city) ───────────────────────────────────── */
     const pos = innerRef.current.position;
     if (indoors && interiorId) {
       const layout = INTERIORS[interiorId];
       if (layout) {
-        pos.x = THREE.MathUtils.clamp(
-          pos.x,
-          layout.centerX - layout.roomW / 2 + INTERIOR_MARGIN,
-          layout.centerX + layout.roomW / 2 - INTERIOR_MARGIN,
-        );
-        pos.z = THREE.MathUtils.clamp(
-          pos.z,
-          layout.centerZ - layout.roomD / 2 + INTERIOR_MARGIN,
-          layout.centerZ + layout.roomD / 2 - INTERIOR_MARGIN,
-        );
+        pos.x = THREE.MathUtils.clamp(pos.x, layout.centerX - layout.roomW / 2 + INTERIOR_MARGIN, layout.centerX + layout.roomW / 2 - INTERIOR_MARGIN);
+        pos.z = THREE.MathUtils.clamp(pos.z, layout.centerZ - layout.roomD / 2 + INTERIOR_MARGIN, layout.centerZ + layout.roomD / 2 - INTERIOR_MARGIN);
       }
     } else {
       pos.x = THREE.MathUtils.clamp(pos.x, -620, 500);
       pos.z = THREE.MathUtils.clamp(pos.z, -210, 460);
     }
 
-    /* ── Building AABB collision (outdoors only) ─────────────────────────── */
     if (!indoors) {
       for (let i = 0; i < BUILDING_AABBS.length; i++) {
-        if (!activeMask[i]) continue; // pooled collider disabled outside proximity range
+        if (!activeMask[i]) continue;
         const aabb = BUILDING_AABBS[i];
-        const dx   = pos.x - aabb.cx;
-        const dz   = pos.z - aabb.cz;
+        const dx = pos.x - aabb.cx;
+        const dz = pos.z - aabb.cz;
         const penX = aabb.hw + PLAYER_RADIUS - Math.abs(dx);
         const penZ = aabb.hd + PLAYER_RADIUS - Math.abs(dz);
         if (penX > 0 && penZ > 0) {
           if (penX < penZ) {
-            const nx = Math.sign(dx) || (velocity.current.x >= 0 ? 1 : -1);
-            pos.x += penX * nx;
+            pos.x += penX * Math.sign(dx || 1);
             velocity.current.x = 0;
           } else {
-            const nz = Math.sign(dz) || (velocity.current.z >= 0 ? 1 : -1);
-            pos.z += penZ * nz;
+            pos.z += penZ * Math.sign(dz || 1);
             velocity.current.z = 0;
           }
         }
       }
     }
 
-    /* ── Procedural walk animation ────────────────────────────────────────── */
     const horizSpeed = Math.sqrt(velocity.current.x ** 2 + velocity.current.z ** 2);
     walkCycle.current += horizSpeed * delta * 2.2;
     const swing = Math.sin(walkCycle.current) * 0.55;
-    const bob   = Math.abs(Math.sin(walkCycle.current)) * 0.03;
+    const bob = Math.abs(Math.sin(walkCycle.current)) * 0.03;
 
-    if (leftLegRef.current)  leftLegRef.current.rotation.x  =  swing * 0.65;
+    if (leftLegRef.current) leftLegRef.current.rotation.x = swing * 0.65;
     if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.65;
-    if (leftArmRef.current)  leftArmRef.current.rotation.x  = -swing * 0.45;
-    if (rightArmRef.current) rightArmRef.current.rotation.x =  swing * 0.45;
-    if (torsoRef.current)    torsoRef.current.position.y    =  bob;
+    if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.45;
+    if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.45;
+    if (torsoRef.current) torsoRef.current.position.y = bob;
 
-    /* ── Interaction system ───────────────────────────────────────────────── */
-    const interactDown = keys.interact;
-    const justPressed  = interactDown && !interactWasDown.current;
-    interactWasDown.current = interactDown;
-
-    if (indoors && interiorId) {
-      const layout = INTERIORS[interiorId];
-      if (layout) {
-        const exitX = layout.centerX + layout.exitOffsetX;
-        const exitZ = layout.centerZ + layout.exitOffsetZ;
-        const dist  = Math.hypot(pos.x - exitX, pos.z - exitZ);
-        if (dist < 3.0) {
-          pushHint(`[E] Exit ${layout.label}`);
-          if (justPressed) {
-            const exitPos = useGameStore.getState().interiorExitPos;
-            exitInterior();
-            innerRef.current.position.set(exitPos[0], exitPos[1], exitPos[2]);
-            velocity.current.set(0, 0, 0);
-          }
-        } else {
-          pushHint(null);
-        }
-      }
-    } else {
-      let nearDoor: typeof DOOR_TRIGGERS[0] | null = null;
-      let nearNpc:  typeof NPC_TALKERS[0]  | null = null;
-      let minDist = Infinity;
-
-      for (const dt of DOOR_TRIGGERS) {
-        const d = Math.hypot(pos.x - dt.worldX, pos.z - dt.worldZ);
-        if (d < dt.radius && d < minDist) { nearDoor = dt; minDist = d; }
-      }
-
-      if (!nearDoor) {
-        let minNpcDist = Infinity;
-        for (const npc of NPC_TALKERS) {
-          const d = Math.hypot(pos.x - npc.worldX, pos.z - npc.worldZ);
-          if (d < npc.radius && d < minNpcDist) { nearNpc = npc; minNpcDist = d; }
-        }
-      }
-
-      if (nearDoor) {
-        const propId  = nearDoor.propertyId;
-        const gs      = useGameStore.getState();
-        const owned   = !propId || gs.ownedAssetIds.includes(propId);
-        const locked  = !!propId && gs.lockedPropertyIds.includes(propId);
-
-        if (propId && !owned) {
-          pushHint(`🔒 ${nearDoor.label} — Buy in Shop`);
-        } else if (propId && locked) {
-          pushHint(`[E] Unlock ${nearDoor.label}`);
-          if (justPressed) {
-            gs.togglePropertyLock(propId);
-            pushHint(`🔓 ${nearDoor.label} unlocked`);
-          }
-        } else {
-          if (!showingDialogue.current) pushHint(`[E] Enter ${nearDoor.label}`);
-          if (justPressed) {
-            const layout = INTERIORS[nearDoor.interiorId];
-            if (layout) {
-              enterInterior(nearDoor.interiorId, [pos.x, pos.y, pos.z]);
-              innerRef.current.position.set(layout.centerX, 1, layout.centerZ);
-              velocity.current.set(0, 0, 0);
-              pushHint(null);
-            }
-          }
-        }
-      } else if (nearNpc) {
-        if ((nearNpc as any).shopType === 'hospital') {
-          // Hospital — heals directly, no shop panel
-          const gs = useGameStore.getState();
-          const full = gs.health >= 100;
-          if (!showingDialogue.current) pushHint(full ? `${nearNpc.label}: Already at full health` : `[E] ${nearNpc.label} — Heal (free)`);
-          if (justPressed && !full) {
-            gs.healPlayer(100);
-            pushHint(`⚕ ${nearNpc.label}: Fully healed`);
-            setTimeout(() => { if (currentHint.current?.includes('Fully healed')) pushHint(null); }, 2000);
-          }
-        } else if ((nearNpc as any).shopType) {
-          // Shop NPC — open the Shop panel at the relevant tab
-          if (!showingDialogue.current) pushHint(`[E] Shop · ${nearNpc.label}`);
-          if (justPressed) {
-            useGameStore.getState().setPlayerState({
-              isPaused:    true,
-              activePanel: 'shop',
-              shopNpcTab:  (nearNpc as any).shopType,
-            });
-            pushHint(null);
-          }
-        } else if (nearNpc.options && nearNpc.options.length > 0) {
-          // Multi-option dialogue — open DialogueUI overlay
-          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
-          if (justPressed && !showingDialogue.current) {
-            useGameStore.getState().setDialogueNpc(nearNpc.id);
-            pushHint(null);
-          }
-        } else {
-          // Legacy single-line dialogue
-          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
-          if (justPressed && !showingDialogue.current) {
-            showingDialogue.current = true;
-            pushHint(nearNpc.dialogue);
-            if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
-            npcDialogTimer.current = setTimeout(() => {
-              showingDialogue.current = false;
-              currentHint.current = null;
-            }, 3500);
-          }
-        }
-      } else {
-        if (!showingDialogue.current) pushHint(null);
-        if (npcDialogTimer.current && !showingDialogue.current) {
-          clearTimeout(npcDialogTimer.current);
-          npcDialogTimer.current = null;
-        }
-      }
-    }
-
-    /* ── Sync position + rotationY to store (throttled ~10 Hz) ──────────── */
     syncTimer.current += delta;
-    if (syncTimer.current > 0.1) {
+    if (syncTimer.current > 0.3) {
       syncTimer.current = 0;
       setPlayerPosition([pos.x, pos.y, pos.z], innerRef.current.rotation.y);
     }

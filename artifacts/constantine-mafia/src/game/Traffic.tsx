@@ -93,48 +93,40 @@ function TrafficVehicle({ def }: { def: TrafficVehicleDef }) {
 
   // Place at starting waypoint immediately via a ref init trick
   const initialized = useRef(false);
+  const pos = useRef(new THREE.Vector3());
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
     if (useGameStore.getState().isPaused) return;
 
-    // One-time initialise position to avoid flicker
     if (!initialized.current) {
       initialized.current = true;
-      posRef.current.set(wp0[0], 1, wp0[1]);
-      groupRef.current.position.copy(posRef.current);
+      pos.current.set(wp0[0], 1, wp0[1]);
     }
 
     const waypoints = route.waypoints;
-    const target    = waypoints[wpIdxRef.current % waypoints.length];
-    const tx = target[0];
-    const tz = target[1];
+    const target = waypoints[wpIdxRef.current % waypoints.length];
 
-    const dx = tx - posRef.current.x;
-    const dz = tz - posRef.current.z;
-    const dist = Math.sqrt(dx * dx + dz * dz);
+    const dx = target[0] - pos.current.x;
+    const dz = target[1] - pos.current.z;
 
-    // Advance to next waypoint when close
-    if (dist < 2.5) {
+    // Optimized distance check
+    if (dx * dx + dz * dz < 6.25) {
       wpIdxRef.current = (wpIdxRef.current + 1) % waypoints.length;
       return;
     }
 
-    // Desired heading
     const desiredRot = Math.atan2(-dx, -dz);
-    // Smooth turn
     let diffRot = desiredRot - rotRef.current;
-    while (diffRot < -Math.PI) diffRot += Math.PI * 2;
-    while (diffRot >  Math.PI) diffRot -= Math.PI * 2;
+
+    if (diffRot > Math.PI) diffRot -= Math.PI * 2;
+    else if (diffRot < -Math.PI) diffRot += Math.PI * 2;
     rotRef.current += diffRot * Math.min(1, 4 * delta);
 
-    // Move forward
-    const moveX = -Math.sin(rotRef.current) * def.speed * delta;
-    const moveZ = -Math.cos(rotRef.current) * def.speed * delta;
-    posRef.current.x += moveX;
-    posRef.current.z += moveZ;
+    pos.current.x -= Math.sin(rotRef.current) * def.speed * delta;
+    pos.current.z -= Math.cos(rotRef.current) * def.speed * delta;
 
-    groupRef.current.position.copy(posRef.current);
+    groupRef.current.position.set(pos.current.x, 1, pos.current.z);
     groupRef.current.rotation.y = rotRef.current;
   });
 
