@@ -267,28 +267,31 @@ function playerIsArmed(): boolean {
   return !!s.equippedWeaponId && s.equippedWeaponId !== 'knife';
 }
 
+/**
+ * Weapon aggression watcher.
+ *
+ * Brandishing a firearm or explosive in public immediately draws police
+ * attention — regardless of whether the player is near a fixed checkpoint.
+ * A 6-second cooldown prevents the wanted level from escalating every frame;
+ * once a pursuit is already active we still let it escalate slowly so the
+ * player can't simply hold a gun and stay at wantedLevel 1 indefinitely.
+ */
 function WeaponAggressionWatcher() {
   const cooldown = useRef(0);
   useFrame((_, delta) => {
     cooldown.current -= delta;
     const state = useGameStore.getState();
-    if (state.screen !== 'playing' || state.isPaused || state.indoors) return;
+    if (state.screen !== 'playing' || state.isPaused || state.indoors || state.isArrested) return;
     if (!playerIsArmed() || cooldown.current > 0) return;
 
-    const [px, , pz] = state.playerPosition;
-    const nearCheckpoint = CHECKPOINTS.some(
-      (cp) => Math.hypot(px - cp.worldX, pz - cp.worldZ) < cp.radius + 6,
-    );
-    if (nearCheckpoint) {
-      cooldown.current = 4; // avoid re-triggering every frame
-      state.triggerCrime(2);
-      state.setInteractionHint('🚨 Weapon spotted! Police are moving in!');
-      setTimeout(() => {
-        if (useGameStore.getState().interactionHint?.includes('Weapon spotted')) {
-          useGameStore.getState().setInteractionHint(null);
-        }
-      }, 3000);
-    }
+    cooldown.current = 6; // seconds before the next escalation tick
+    state.triggerCrime(2);
+    state.setInteractionHint('🚨 Weapon spotted! Police are moving in!');
+    setTimeout(() => {
+      if (useGameStore.getState().interactionHint?.includes('Weapon spotted')) {
+        useGameStore.getState().setInteractionHint(null);
+      }
+    }, 3000);
   });
   return null;
 }

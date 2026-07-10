@@ -29,7 +29,9 @@ export function ArrestOverlay() {
           exit={{ opacity: 0 }}
           className="absolute inset-0 bg-black z-[80] flex flex-col items-center justify-center gap-3"
         >
-          <div className="text-red-500 text-3xl font-black uppercase tracking-[0.3em]">Busted</div>
+          <div className="text-red-500 text-4xl font-black uppercase tracking-[0.3em]">
+            You are under arrest
+          </div>
           {phase === 'hold' && (
             <motion.div
               initial={{ opacity: 0 }}
