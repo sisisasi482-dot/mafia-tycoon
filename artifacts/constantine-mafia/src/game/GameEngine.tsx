@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { KeyboardControls, Stars } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { Player, ControlsMap } from './Player';
 import { City } from './City';
@@ -13,7 +14,7 @@ import { Traffic } from './Traffic';
 import { Police } from './Police';
 import { Houses } from './Houses';
 import { Environment } from './Environment';
-import { useGameStore, FpsCap } from './useGameStore';
+import { useGameStore, FpsCap, IS_MOBILE_DEVICE } from './useGameStore';
 import { HUD } from '../ui/HUD';
 import { PauseMenu } from '../ui/PauseMenu';
 import { TouchControls } from '../ui/TouchControls';
@@ -28,11 +29,62 @@ import { WardrobeOverlay } from '../ui/WardrobeOverlay';
  * ON  → device pixel ratio (full resolution + AA-quality output)
  * OFF → pixel ratio 1 (lower resolution = faster GPU fill)
  */
-function PostProcessingController({ enabled }: { enabled: boolean }) {
+function PixelRatioController({ enabled }: { enabled: boolean }) {
   const { gl } = useThree();
   useEffect(() => {
     gl.setPixelRatio(enabled ? Math.min(window.devicePixelRatio, 2) : 1);
   }, [enabled, gl]);
+  return null;
+}
+
+/**
+ * Real EffectComposer pass chain (Bloom + Vignette), gated by the
+ * 'Post-Processing' setting. `EffectComposer`'s own `enabled` prop toggles
+ * the whole pass chain on/off immediately — no remount, no page reload —
+ * so flipping the settings button takes effect the same frame.
+ * Skipped entirely on mobile (see `<Postprocessing>` below) since the extra
+ * render passes are one of the "unnecessary shaders" mobile should avoid.
+ */
+function Postprocessing({ enabled }: { enabled: boolean }) {
+  if (IS_MOBILE_DEVICE) return null;
+  return (
+    <EffectComposer enabled={enabled} multisampling={0}>
+      <Bloom intensity={0.35} luminanceThreshold={0.65} luminanceSmoothing={0.2} mipmapBlur />
+      <Vignette eskil={false} offset={0.25} darkness={0.6} />
+    </EffectComposer>
+  );
+}
+
+/**
+ * 'Shadows' setting binding. Toggling flips the renderer's shadow map AND
+ * walks the whole scene graph (scene.traverse) flipping castShadow /
+ * receiveShadow on every object — applied immediately, in place, with no
+ * page reload. Each mesh's *baseline* shadow-casting intent (whether it
+ * should cast/receive at all when shadows are ON) is read once via a
+ * userData flag stamped by the mesh itself; if a mesh has no explicit
+ * baseline it falls back to its current castShadow/receiveShadow prop.
+ */
+function ShadowsController({ enabled }: { enabled: boolean }) {
+  const { gl, scene } = useThree();
+  useEffect(() => {
+    gl.shadowMap.enabled = enabled;
+    if (enabled) gl.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    scene.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!('castShadow' in mesh)) return;
+      if (mesh.userData.baseCastShadow === undefined) {
+        mesh.userData.baseCastShadow = mesh.castShadow;
+      }
+      if (mesh.userData.baseReceiveShadow === undefined) {
+        mesh.userData.baseReceiveShadow = mesh.receiveShadow;
+      }
+      mesh.castShadow    = enabled && mesh.userData.baseCastShadow;
+      mesh.receiveShadow = enabled && mesh.userData.baseReceiveShadow;
+    });
+
+    gl.shadowMap.needsUpdate = true;
+  }, [enabled, gl, scene]);
   return null;
 }
 
@@ -138,20 +190,21 @@ export function GameEngine() {
           frameloop="demand"
           camera={{ position: [0, 10, 10], fov: cameraMode === 'first' ? 80 : 60 }}
           gl={{ antialias: false }}
-          onCreated={({ gl }) => {
-            if (shadowsEnabled) gl.shadowMap.type = THREE.PCFSoftShadowMap;
-          }}
         >
           {/* Base background & fog — DayNight overwrites these every frame */}
           <color attach="background" args={['#050810']} />
           {/* Fog far distance 2× expanded for the larger map */}
           <fog attach="fog" args={['#080818', 120, 700]} />
 
-          <Stars radius={200} depth={60} count={3000} factor={4} saturation={0} fade speed={1} />
+          {/* Starfield is a pure decorative shader cost — skip on mobile */}
+          {!IS_MOBILE_DEVICE && (
+            <Stars radius={200} depth={60} count={3000} factor={4} saturation={0} fade speed={1} />
+          )}
 
-          {/* Performance controllers */}
+          {/* Performance controllers — settings apply live, no reload */}
           <FpsCapController fpsCap={fpsCap} />
-          <PostProcessingController enabled={postProcessing} />
+          <PixelRatioController enabled={postProcessing} />
+          <ShadowsController enabled={shadowsEnabled} />
           <TextureQualityController quality={textureQuality} />
 
           {/* Dynamic day/night lighting */}
@@ -182,6 +235,9 @@ export function GameEngine() {
             inVehicle={inVehicle}
             cameraMode={cameraMode}
           />
+
+          {/* Post-processing pass chain — enabled prop toggles live, no remount */}
+          <Postprocessing enabled={postProcessing} />
         </Canvas>
       </KeyboardControls>
 

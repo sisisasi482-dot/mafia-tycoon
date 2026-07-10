@@ -335,6 +335,28 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
+function NpcCountSlider() {
+  const npcCount = useGameStore((s) => s.npcCount);
+  const setPlayerState = useGameStore((s) => s.setPlayerState);
+
+  return (
+    <OptionRow label="NPC Count">
+      <div className="flex items-center gap-3 w-full">
+        <input
+          type="range"
+          min={0}
+          max={40}
+          step={1}
+          value={npcCount}
+          onChange={(e) => setPlayerState({ npcCount: Number(e.target.value) })}
+          className="flex-1 accent-primary"
+        />
+        <span className="text-xs font-bold text-primary w-8 text-right tabular-nums">{npcCount}</span>
+      </div>
+    </OptionRow>
+  );
+}
+
 function PerformancePanel() {
   const store = useGameStore();
 
@@ -356,6 +378,8 @@ function PerformancePanel() {
         <Opt active={store.npcDensity === 'medium'} onClick={() => store.setPlayerState({ npcDensity: 'medium' })}>Medium</Opt>
         <Opt active={store.npcDensity === 'high'}   onClick={() => store.setPlayerState({ npcDensity: 'high'   })}>High</Opt>
       </OptionRow>
+
+      <NpcCountSlider />
 
       <OptionRow label="Texture Quality">
         <Opt active={store.textureQuality === 'low'}    onClick={() => store.setPlayerState({ textureQuality: 'low'    })}>Low</Opt>

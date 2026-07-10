@@ -364,8 +364,12 @@ export function NPCs() {
   const isPaused   = useGameStore((s) => s.isPaused);
   const screen     = useGameStore((s) => s.screen);
   const npcDensity = useGameStore((s) => s.npcDensity);
+  const npcCount   = useGameStore((s) => s.npcCount);
 
-  const activeCount = Math.max(1, Math.ceil(NPC_DEFS.length * (NPC_DENSITY_FACTOR[npcDensity] ?? 0.66)));
+  // Density gives a proportional target; the "NPC Count" slider is a hard
+  // cap on top of it, so lowering it always wins (mobile default: 10).
+  const densityTarget = Math.max(1, Math.ceil(NPC_DEFS.length * (NPC_DENSITY_FACTOR[npcDensity] ?? 0.66)));
+  const activeCount   = Math.max(1, Math.min(densityTarget, npcCount, NPC_DEFS.length));
 
   const groupRefs = useRef<(THREE.Group | null)[]>(NPC_DEFS.map(() => null));
   const npcState  = useRef<NpcState[]>(makeInitialState());

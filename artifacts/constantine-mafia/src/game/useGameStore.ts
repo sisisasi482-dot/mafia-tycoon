@@ -1,6 +1,27 @@
 import { create } from 'zustand';
 import { REDEEM_CODES } from './items';
 
+/**
+ * Synchronous mobile detection, evaluated once at module load (before the
+ * first render) so the store's initial performance settings are already
+ * correct for the device — no post-mount flash of desktop-quality settings.
+ * Combines a UA sniff (works even before layout) with a coarse viewport
+ * check as a fallback for UA strings we don't recognize.
+ */
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const uaIsMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i.test(ua);
+  const coarsePointer =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+  const narrowViewport = typeof window !== 'undefined' && window.innerWidth < 768;
+  return uaIsMobile || (coarsePointer && narrowViewport);
+}
+
+export const IS_MOBILE_DEVICE = isMobileDevice();
+
 export type CameraMode    = 'third' | 'second' | 'first';
 export type SteeringMode  = 'wheel' | 'arrows' | 'tilt' | 'slider';
 export type PedalMode     = 'buttons' | 'slider';
@@ -82,6 +103,8 @@ export type GameState = {
   postProcessing:     boolean;
   npcDensity:         'low' | 'medium' | 'high';
   textureQuality:     'low' | 'medium' | 'high';
+  /** Hard cap on simultaneously active NPCs — slider in Settings, defaults to 10 on mobile. */
+  npcCount:           number;
 
   // Crime & Police
   lockedPropertyIds:  string[];
@@ -225,14 +248,17 @@ const initialState: Omit<GameState,
   masterVolume:        100,
   musicVolume:         100,
   sfxVolume:           100,
-  graphicsQuality:     'medium',
+  graphicsQuality:     IS_MOBILE_DEVICE ? 'low' : 'medium',
   showTouchControls:   false,
   fpsCap:              0,
 
-  shadowsEnabled:      true,
-  postProcessing:      true,
-  npcDensity:          'medium',
-  textureQuality:      'medium',
+  // Mobile-first: force LOW quality defaults on mobile browsers so the game
+  // never boots into a heavy configuration that has to be manually downgraded.
+  shadowsEnabled:      !IS_MOBILE_DEVICE,
+  postProcessing:      !IS_MOBILE_DEVICE,
+  npcDensity:          IS_MOBILE_DEVICE ? 'low' : 'medium',
+  textureQuality:      IS_MOBILE_DEVICE ? 'low' : 'medium',
+  npcCount:            IS_MOBILE_DEVICE ? 10 : 25,
 
   lockedPropertyIds:   [],
   stolenVehicleIds:    [],

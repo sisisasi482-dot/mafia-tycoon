@@ -16,7 +16,10 @@ import {
   activeMask,
   updateActiveBuildings,
   resetActiveBuildings,
+  countVisibleBuildingMeshes,
+  checkMemorySafety,
   BUILDING_UPDATE_INTERVAL_FRAMES,
+  BUILDING_TOGGLE_BATCH_SIZE,
 } from './buildingPool';
 
 // ─── Procedural road texture ──────────────────────────────────────────────────
@@ -155,6 +158,10 @@ export function City() {
    * is toggled the same way. */
   const buildingRefs = useRef<(THREE.Mesh | null)[]>([]);
   const frameCount = useRef(0);
+  // Pending visibility toggles, applied in batches of BUILDING_TOGGLE_BATCH_SIZE
+  // per frame so a large proximity swing (e.g. teleport/fast vehicle) never
+  // toggles dozens of meshes in one frame and spikes CPU.
+  const pendingToggles = useRef<number[]>([]);
 
   // Every mount starts with all refs at visible=false. Reset the shared
   // (module-singleton) mask so a re-entry — e.g. leaving an interior — can't
@@ -162,18 +169,39 @@ export function City() {
   useEffect(() => {
     resetActiveBuildings();
     frameCount.current = 0;
+    pendingToggles.current = [];
   }, []);
 
   useFrame(() => {
     frameCount.current += 1;
-    if (frameCount.current < BUILDING_UPDATE_INTERVAL_FRAMES) return;
-    frameCount.current = 0;
+    if (frameCount.current >= BUILDING_UPDATE_INTERVAL_FRAMES) {
+      frameCount.current = 0;
 
-    const [px, , pz] = useGameStore.getState().playerPosition;
-    const changed = updateActiveBuildings(px, pz);
-    for (const i of changed) {
-      const mesh = buildingRefs.current[i];
-      if (mesh) mesh.visible = activeMask[i] === 1;
+      const [px, , pz] = useGameStore.getState().playerPosition;
+      const changed = updateActiveBuildings(px, pz);
+      pendingToggles.current.push(...changed);
+
+      // Memory Safety Monitor — threshold on the count of buildings whose
+      // mesh.visible is *actually* true right now (real on-screen state),
+      // never activeMask intent, since batched toggles can lag the mask by
+      // a few frames.
+      checkMemorySafety(
+        countVisibleBuildingMeshes(buildingRefs.current),
+        Date.now(),
+        () => countVisibleBuildingMeshes(buildingRefs.current),
+      );
+    }
+
+    // Apply at most BUILDING_TOGGLE_BATCH_SIZE mesh.visible mutations per
+    // frame — never scene.add/remove, only property toggles — to keep any
+    // single frame's CPU cost bounded regardless of how many buildings
+    // changed state in the latest proximity scan.
+    if (pendingToggles.current.length > 0) {
+      const batch = pendingToggles.current.splice(0, BUILDING_TOGGLE_BATCH_SIZE);
+      for (const i of batch) {
+        const mesh = buildingRefs.current[i];
+        if (mesh) mesh.visible = activeMask[i] === 1;
+      }
     }
   });
 
