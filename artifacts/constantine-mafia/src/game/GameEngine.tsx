@@ -5,6 +5,11 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { Player, ControlsMap } from './Player';
 import { City } from './City';
+import { Terrain } from './Terrain';
+import { CityA } from './CityA';
+import { CityB } from './CityB';
+import { Highway } from './Highway';
+import { WorldBoundary } from './WorldBoundary';
 import { Camera } from './Camera';
 import { Vehicles } from './Vehicles';
 import { NPCs, ShopkeeperNPCs, ChildNPCs } from './NPCs';
@@ -270,6 +275,11 @@ export function GameEngine() {
 
           {/* World geometry */}
           {!indoors && <City />}
+          {!indoors && <Terrain />}
+          {!indoors && <CityA />}
+          {!indoors && <CityB />}
+          {!indoors && <Highway />}
+          {!indoors && <WorldBoundary />}
           {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
           {!indoors && <NPCs />}
           {!indoors && <ChildNPCs />}

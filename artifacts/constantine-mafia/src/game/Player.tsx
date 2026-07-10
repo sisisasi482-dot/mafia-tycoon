@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
 import { activeMask } from './buildingPool';
+import { GLB_BUILDING_AABBS } from './cityLayout';
 import { DOOR_TRIGGERS, NPC_TALKERS, INTERIORS } from './interiors';
 import { cameraDrag } from './cameraState';
 import { WEAPON_AMMO } from './items';
@@ -255,14 +256,35 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
         pos.z = THREE.MathUtils.clamp(pos.z, layout.centerZ - layout.roomD / 2 + INTERIOR_MARGIN, layout.centerZ + layout.roomD / 2 - INTERIOR_MARGIN);
       }
     } else {
-      pos.x = THREE.MathUtils.clamp(pos.x, -620, 500);
-      pos.z = THREE.MathUtils.clamp(pos.z, -210, 460);
+      // World bounds: covers City A (west) through City B (east)
+      pos.x = THREE.MathUtils.clamp(pos.x, -455, 455);
+      pos.z = THREE.MathUtils.clamp(pos.z, -205, 205);
     }
 
     if (!indoors) {
+      // Procedural building pool (BUILDING_AABBS — empty on new map)
       for (let i = 0; i < BUILDING_AABBS.length; i++) {
         if (!activeMask[i]) continue;
         const aabb = BUILDING_AABBS[i];
+        const dx = pos.x - aabb.cx;
+        const dz = pos.z - aabb.cz;
+        const penX = aabb.hw + PLAYER_RADIUS - Math.abs(dx);
+        const penZ = aabb.hd + PLAYER_RADIUS - Math.abs(dz);
+        if (penX > 0 && penZ > 0) {
+          if (penX < penZ) {
+            const nx = Math.sign(dx) || (velocity.current.x >= 0 ? 1 : -1);
+            pos.x += penX * nx;
+            velocity.current.x = 0;
+          } else {
+            const nz = Math.sign(dz) || (velocity.current.z >= 0 ? 1 : -1);
+            pos.z += penZ * nz;
+            velocity.current.z = 0;
+          }
+        }
+      }
+      // GLB city buildings (City A + City B)
+      for (let i = 0; i < GLB_BUILDING_AABBS.length; i++) {
+        const aabb = GLB_BUILDING_AABBS[i];
         const dx = pos.x - aabb.cx;
         const dz = pos.z - aabb.cz;
         const penX = aabb.hw + PLAYER_RADIUS - Math.abs(dx);
