@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useKeyboardControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
+import { VEHICLE_RENDER_MAP } from './items';
 
 /* ─── Vehicle definitions (spawn positions 2× scaled) ────────────────────── */
 interface VehicleDef {
@@ -27,9 +28,12 @@ const SPAWN_VEHICLES: VehicleDef[] = [
 function SingleVehicle({
   def,
   activeVehicleRef,
+  instanceId,
 }: {
   def: VehicleDef;
   activeVehicleRef: React.RefObject<THREE.Group | null>;
+  /** Set when this is a player-owned spawned instance (car key) rather than a fixed world vehicle. */
+  instanceId?: string;
 }) {
   const groupRef       = useRef<THREE.Group>(null);
   const [, getKeys]    = useKeyboardControls();
@@ -58,23 +62,33 @@ function SingleVehicle({
     const vp = groupRef.current.position;
     const pp = state.playerPosition;
     const dist2 = (vp.x - pp[0]) ** 2 + (vp.z - pp[2]) ** 2;
+    const vehId    = instanceId ?? def.id;
     const isNear   = dist2 < 30;
-    const isActive = state.inVehicle && state.equippedVehicleId === def.id;
+    const isActive = state.inVehicle && state.equippedVehicleId === vehId;
+    const locked   = !!instanceId && state.lockedVehicleIds.includes(instanceId);
     const keys     = getKeys();
 
     /* ── Enter / Exit ── */
     if (keys.interact) {
       if (!interactLatch.current) {
         interactLatch.current = true;
-        if (isNear && !state.inVehicle) {
+        if (isNear && !state.inVehicle && locked) {
+          state.setInteractionHint(`🔒 ${def.label} is locked — use your car key to unlock`);
+          setTimeout(() => {
+            if (useGameStore.getState().interactionHint?.includes('is locked')) {
+              useGameStore.getState().setInteractionHint(null);
+            }
+          }, 2000);
+        } else if (isNear && !state.inVehicle) {
           const ry = groupRef.current.rotation.y;
-          // World spawn vehicles are "stolen" unless already in ownedAssetIds
-          if (!state.ownedAssetIds.includes(def.id)) {
+          // World spawn vehicles are "stolen" unless already in ownedAssetIds.
+          // Owned spawned instances (car key) are never flagged as stolen.
+          if (!instanceId && !state.ownedAssetIds.includes(def.id)) {
             state.markVehicleStolen(def.id);
           }
           state.setPlayerState({
             inVehicle: true,
-            equippedVehicleId: def.id,
+            equippedVehicleId: vehId,
             playerPosition: [vp.x, 1, vp.z],
             playerRotationY: ry,
           });
@@ -161,8 +175,10 @@ function SingleVehicle({
   const vx = groupRef.current?.position.x ?? def.position[0];
   const vz = groupRef.current?.position.z ?? def.position[2];
   const d2 = (vx - px) ** 2 + (vz - pz) ** 2;
+  const vehId2    = instanceId ?? def.id;
   const showEnter = d2 < 30 && !inVehicle;
-  const showExit  = inVehicle && equippedVehicleId === def.id;
+  const showExit  = inVehicle && equippedVehicleId === vehId2;
+  const lockedNow = !!instanceId && useGameStore.getState().lockedVehicleIds.includes(instanceId);
 
   const isTruck = def.type === 'truck';
   const isSUV   = def.type === 'suv';
@@ -235,7 +251,7 @@ function SingleVehicle({
             userSelect: 'none',
             letterSpacing: '0.05em',
           }}>
-            {showEnter ? `[E] Enter ${def.label}` : '[E] Exit Vehicle'}
+            {showEnter ? (lockedNow ? `🔒 ${def.label} — Locked` : `[E] Enter ${def.label}`) : '[E] Exit Vehicle'}
           </div>
         </Html>
       )}
@@ -243,13 +259,85 @@ function SingleVehicle({
   );
 }
 
+/* ─── Owned vehicle instance (spawned via car key) ────────────────────────── */
+function OwnedVehicle({
+  instanceId,
+  vehicleId,
+  position,
+  rotY,
+  activeVehicleRef,
+}: {
+  instanceId: string;
+  vehicleId: string;
+  position: [number, number, number];
+  rotY: number;
+  activeVehicleRef: React.RefObject<THREE.Group | null>;
+}) {
+  const render = VEHICLE_RENDER_MAP[vehicleId] ?? { type: 'sedan' as const, bodyColor: '#aaaaaa', roofColor: '#333333' };
+  const def: VehicleDef = {
+    id: instanceId,
+    label: `Your ${vehicleId}`,
+    position,
+    rotY,
+    bodyColor: render.bodyColor,
+    roofColor: render.roofColor,
+    type: render.type,
+  };
+  return <SingleVehicle def={def} activeVehicleRef={activeVehicleRef} instanceId={instanceId} />;
+}
+
+/**
+ * Watches unlocked, unattended owned vehicle instances and periodically has a
+ * chance for a nearby NPC to steal one — mirroring the request that "unlocked,
+ * unattended cars can be stolen by NPCs". Simplified as a probabilistic
+ * despawn-after-dwell rather than full pathing AI (no dedicated thief mesh),
+ * but the game-state effect (car disappears, player notified) is real.
+ */
+function VehicleTheftWatcher() {
+  const dwell = useRef<Record<string, number>>({});
+  useFrame((_, delta) => {
+    const state = useGameStore.getState();
+    if (state.screen !== 'playing' || state.isPaused || state.indoors) return;
+    const [px, , pz] = state.playerPosition;
+    for (const inst of state.ownedVehicleInstances) {
+      const locked   = state.lockedVehicleIds.includes(inst.id);
+      const attended = state.inVehicle && state.equippedVehicleId === inst.id;
+      const playerNear = Math.hypot(px - inst.position[0], pz - inst.position[2]) < 12;
+      if (locked || attended || playerNear) {
+        dwell.current[inst.id] = 0;
+        continue;
+      }
+      dwell.current[inst.id] = (dwell.current[inst.id] ?? 0) + delta;
+      // After ~20 s unlocked & unattended (and player not standing guard nearby),
+      // there's a chance per second an NPC jacks it.
+      if (dwell.current[inst.id] > 20 && Math.random() < delta * 0.15) {
+        useGameStore.getState().reportVehicleStolen(inst.id);
+        delete dwell.current[inst.id];
+      }
+    }
+  });
+  return null;
+}
+
 /* ─── Public export ───────────────────────────────────────────────────────── */
 export function Vehicles({ activeVehicleRef }: { activeVehicleRef: React.RefObject<THREE.Group | null> }) {
+  const ownedInstances = useGameStore((s) => s.ownedVehicleInstances);
   return (
     <>
       {SPAWN_VEHICLES.map((def) => (
         <SingleVehicle key={def.id} def={def} activeVehicleRef={activeVehicleRef} />
       ))}
+      {ownedInstances.map((inst) => (
+        <OwnedVehicle
+          key={inst.id}
+          instanceId={inst.id}
+          vehicleId={inst.vehicleId}
+          position={inst.position}
+          rotY={inst.rotY}
+          activeVehicleRef={activeVehicleRef}
+        />
+      ))}
+      <VehicleTheftWatcher />
     </>
   );
 }

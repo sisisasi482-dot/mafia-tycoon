@@ -9,6 +9,9 @@ import {
   AMMO_DISPLAY,
   WEAPON_IDS,
   CAR_KEY_PREFIX,
+  isCarKey,
+  vehicleIdFromKey,
+  VEHICLE_NAMES_MAP,
 } from '../game/items';
 
 // ─── Static catalogs (same as before — unchanged) ─────────────────────────────
@@ -161,16 +164,86 @@ function FiringInterface({ weaponId }: { weaponId: string }) {
 
 // ─── Inventory tab ─────────────────────────────────────────────────────────────
 
+/** Car-key entry: Spawn / Despawn / Lock / Unlock actions for an owned vehicle. */
+function CarKeyRow({ keyId }: { keyId: string }) {
+  const store      = useGameStore();
+  const vehicleId  = vehicleIdFromKey(keyId);
+  const vehName    = VEHICLE_NAMES_MAP[vehicleId] ?? vehicleId;
+  const instance   = store.ownedVehicleInstances.find((v) => v.vehicleId === vehicleId);
+  const locked     = instance ? store.lockedVehicleIds.includes(instance.id) : false;
+
+  const handleSpawn = () => {
+    const [px, , pz] = store.playerPosition;
+    const ry = store.playerRotationY;
+    // Place a few units in front of the player
+    const spawnX = px - Math.sin(ry) * 4;
+    const spawnZ = pz - Math.cos(ry) * 4;
+    store.spawnOwnedVehicle(vehicleId, [spawnX, 1, spawnZ], ry);
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-white/8 bg-white/3">
+      <span className="text-2xl">🔑</span>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-white text-sm">{vehName} — Key</div>
+        <div className="text-[10px] text-gray-500">
+          {instance ? (locked ? 'Spawned · Locked' : 'Spawned · Unlocked') : 'Not spawned'}
+        </div>
+      </div>
+      <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+        {!instance ? (
+          <button
+            onClick={handleSpawn}
+            className="px-2 py-1 rounded border border-green-700/40 text-green-400 text-[10px] font-bold uppercase tracking-wide hover:bg-green-900/20 transition-all"
+          >
+            Spawn Car
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => store.toggleVehicleLock(instance.id)}
+              className={`px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wide transition-all ${
+                locked
+                  ? 'border-yellow-500/50 text-yellow-400 hover:bg-yellow-900/20'
+                  : 'border-blue-500/40 text-blue-400 hover:bg-blue-900/20'
+              }`}
+            >
+              {locked ? 'Unlock' : 'Lock'}
+            </button>
+            <button
+              onClick={() => store.despawnOwnedVehicle(instance.id)}
+              className="px-2 py-1 rounded border border-red-800/40 text-red-500 text-[10px] font-bold uppercase tracking-wide hover:bg-red-900/20 transition-all"
+            >
+              Despawn Car
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function InventoryTab() {
   const store = useGameStore();
   const [activeWeapon, setActiveWeapon] = useState<string | null>(null);
 
   const ownedWeapons = store.ownedAssetIds.filter((id) => WEAPON_IDS.has(id));
   const consumableEntries = CONSUMABLES.filter((c) => (store.inventory[c.id] ?? 0) > 0);
-  const hasAnything = ownedWeapons.length > 0 || consumableEntries.length > 0;
+  const carKeys = store.ownedAssetIds.filter((id) => isCarKey(id));
+  const hasAnything = ownedWeapons.length > 0 || consumableEntries.length > 0 || carKeys.length > 0;
 
   return (
     <div className="space-y-4">
+      {/* Vehicle keys */}
+      {carKeys.length > 0 && (
+        <div>
+          <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Vehicle Keys</h4>
+          <div className="space-y-2">
+            {carKeys.map((keyId) => <CarKeyRow key={keyId} keyId={keyId} />)}
+          </div>
+        </div>
+      )}
+
       {/* Weapons */}
       {ownedWeapons.length > 0 && (
         <div>
@@ -419,13 +492,20 @@ export function ShopPanel() {
   const lang      = store.language;
   const shopNpcTab = store.shopNpcTab;
 
-  const [tab, setTab] = useState<ShopCategory>('weapons');
+  const [tab, setTab] = useState<ShopCategory>('inventory');
 
   // When opened via a shop NPC, jump to the relevant tab
   useEffect(() => {
     if (shopNpcTab === 'consumables') setTab('consumables');
-    else if (shopNpcTab === 'ammo')   setTab('ammo');
+    else if (shopNpcTab === 'ammo')      setTab('ammo');
+    else if (shopNpcTab === 'weapons')   setTab('weapons');
+    else if (shopNpcTab === 'vehicles')  setTab('vehicles');
   }, [shopNpcTab]);
+
+  // Weapons and Vehicles are physical-store-only (Weapon Store / Car Dealership) —
+  // they're only visible when the panel was opened by walking up to that NPC.
+  // Opening the panel generically (e.g. the Inventory quick-access button) only
+  // exposes Properties/Supplies/Ammo/Inventory.
 
   const items = tab === 'weapons' ? WEAPONS : tab === 'vehicles' ? VEHICLES : PROPERTIES;
 
@@ -445,7 +525,7 @@ export function ShopPanel() {
     });
   };
 
-  const tabs: { key: ShopCategory; label: string; icon: string }[] = [
+  const allTabs: { key: ShopCategory; label: string; icon: string }[] = [
     { key: 'weapons',     label: t('weapons', lang),    icon: '🔫' },
     { key: 'vehicles',    label: t('vehicles', lang),   icon: '🚗' },
     { key: 'properties',  label: t('properties', lang), icon: '🏠' },
@@ -453,6 +533,14 @@ export function ShopPanel() {
     { key: 'ammo',        label: 'Ammo',                 icon: '🔹' },
     { key: 'inventory',   label: 'Inventory',            icon: '🎒' },
   ];
+
+  // Gate Weapons/Vehicles tabs behind physically visiting the Weapon Store /
+  // Car Dealership NPC — they don't appear when the panel is opened generically.
+  const tabs = allTabs.filter((tb) => {
+    if (tb.key === 'weapons')  return shopNpcTab === 'weapons';
+    if (tb.key === 'vehicles') return shopNpcTab === 'vehicles';
+    return true;
+  });
 
   return (
     <div className="w-full h-full flex flex-col gap-3">

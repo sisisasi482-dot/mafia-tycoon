@@ -16,6 +16,8 @@ const PERSIST_KEYS = [
   'garageStoredVehicles',
   // Performance settings
   'shadowsEnabled', 'postProcessing', 'npcDensity', 'textureQuality', 'npcCount',
+  // Owned vehicle instances (spawned via car key) + their lock state
+  'ownedVehicleInstances', 'lockedVehicleIds',
 ] as const;
 
 /**
@@ -53,6 +55,7 @@ export function useSaveSystem() {
           screen: 'playing',
           health: 100,
           wantedLevel: 0,
+          isArrested: false,
           inVehicle: false,
           equippedVehicleId: null,
           playerPosition: [-125, 1, 0],

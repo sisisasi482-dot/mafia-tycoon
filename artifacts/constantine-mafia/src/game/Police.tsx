@@ -8,7 +8,7 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
-import { CHECKPOINTS, type Checkpoint } from './police';
+import { CHECKPOINTS, DYNAMIC_CHECKPOINT_ROADS, type Checkpoint, type RoadSegment } from './police';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -188,7 +188,7 @@ const PURSUIT_COUNT = 3;
 // Reusable vector — avoids allocating a new THREE.Vector3 inside useFrame each tick
 const _pursuitFwd = new THREE.Vector3();
 
-function PursuitCar({ index }: { index: number }) {
+function PursuitCar({ index, positions }: { index: number; positions: React.RefObject<THREE.Vector3[]> }) {
   const groupRef    = useRef<THREE.Group>(null);
   const active      = useRef(false);
   const spawnAngle  = useRef((index / PURSUIT_COUNT) * Math.PI * 2);
@@ -203,6 +203,7 @@ function PursuitCar({ index }: { index: number }) {
       if (active.current) {
         groupRef.current.position.y = -50; // hide below ground
         active.current = false;
+        positions.current[index]?.set(0, -50, 0);
       }
       return;
     }
@@ -235,6 +236,7 @@ function PursuitCar({ index }: { index: number }) {
       groupRef.current.position.addScaledVector(_pursuitFwd, chaseSpeed);
     }
     groupRef.current.position.y = 0.5;
+    positions.current[index]?.copy(groupRef.current.position);
   });
 
   return (
@@ -254,6 +256,244 @@ function PursuitCar({ index }: { index: number }) {
   );
 }
 
+// ─── Weapon/bomb-proximity aggression ─────────────────────────────────────────
+// If the player brandishes a weapon (or carries an explosive-type item) near a
+// police presence (checkpoint or pursuit car), officers immediately react —
+// raising the wanted level and starting a pursuit, rather than waiting for the
+// player to fire.
+
+function playerIsArmed(): boolean {
+  const s = useGameStore.getState();
+  return !!s.equippedWeaponId && s.equippedWeaponId !== 'knife';
+}
+
+function WeaponAggressionWatcher() {
+  const cooldown = useRef(0);
+  useFrame((_, delta) => {
+    cooldown.current -= delta;
+    const state = useGameStore.getState();
+    if (state.screen !== 'playing' || state.isPaused || state.indoors) return;
+    if (!playerIsArmed() || cooldown.current > 0) return;
+
+    const [px, , pz] = state.playerPosition;
+    const nearCheckpoint = CHECKPOINTS.some(
+      (cp) => Math.hypot(px - cp.worldX, pz - cp.worldZ) < cp.radius + 6,
+    );
+    if (nearCheckpoint) {
+      cooldown.current = 4; // avoid re-triggering every frame
+      state.triggerCrime(2);
+      state.setInteractionHint('🚨 Weapon spotted! Police are moving in!');
+      setTimeout(() => {
+        if (useGameStore.getState().interactionHint?.includes('Weapon spotted')) {
+          useGameStore.getState().setInteractionHint(null);
+        }
+      }, 3000);
+    }
+  });
+  return null;
+}
+
+// ─── 5-second continuous-proximity arrest ─────────────────────────────────────
+// While wanted and a pursuit car stays within arrest range continuously for
+// 5 seconds, the player is arrested: black screen, respawn at the police
+// station, contraband (ammo/mags) cleared, wanted level reset.
+
+const ARREST_RADIUS = 4.5;
+const ARREST_HOLD_SECONDS = 5;
+const POLICE_STATION_RESPAWN: [number, number, number] = [60, 1, 100];
+
+function ArrestWatcher({ pursuitPositions }: { pursuitPositions: React.RefObject<THREE.Vector3[]> }) {
+  const proximityTimer = useRef(0);
+
+  useFrame((_, delta) => {
+    const state = useGameStore.getState();
+    if (state.screen !== 'playing' || state.isPaused || state.indoors || state.isArrested) {
+      proximityTimer.current = 0;
+      return;
+    }
+    if (!(state.wantedLevel > 0 && state.pursuitActive)) {
+      proximityTimer.current = 0;
+      return;
+    }
+
+    const [px, , pz] = state.playerPosition;
+    const positions = pursuitPositions.current ?? [];
+    const anyClose = positions.some((p) => Math.hypot(px - p.x, pz - p.z) < ARREST_RADIUS);
+
+    if (anyClose) {
+      proximityTimer.current += delta;
+      if (proximityTimer.current >= ARREST_HOLD_SECONDS) {
+        proximityTimer.current = 0;
+        useGameStore.getState().arrestPlayer();
+        useGameStore.getState().setPlayerPosition(POLICE_STATION_RESPAWN, 0);
+      }
+    } else {
+      proximityTimer.current = Math.max(0, proximityTimer.current - delta * 2);
+    }
+  });
+
+  return null;
+}
+
+// ─── Dynamic checkpoint (2 cars + 8 officers, full road-width block) ──────────
+// Periodically relocates to a random point along a random road segment,
+// blocking the FULL road width (not just one lane like the fixed barrier
+// checkpoints above). Searches the player on approach; contraband → arrest
+// flow, clean → waved through.
+
+const DYNAMIC_LIFETIME = 50;   // seconds a checkpoint stays up
+const DYNAMIC_INTERVAL = 90;   // seconds between relocations
+const DYNAMIC_SEARCH_RADIUS = 14;
+const OFFICER_COUNT = 8;
+
+function officerOffsets(roadWidth: number): [number, number][] {
+  // 8 officers spread across the full road width in two staggered rows
+  const offs: [number, number][] = [];
+  const step = roadWidth / 5;
+  for (let i = 0; i < 4; i++) {
+    const across = -roadWidth / 2 + step * (i + 1);
+    offs.push([across, -1.6]);
+    offs.push([across, 1.6]);
+  }
+  return offs;
+}
+
+function Officer({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh castShadow position={[0, 0.9, 0]}>
+        <capsuleGeometry args={[0.28, 1.0, 4, 8]} />
+        <meshStandardMaterial color="#16213e" roughness={0.6} />
+      </mesh>
+      <mesh castShadow position={[0, 1.65, 0]}>
+        <sphereGeometry args={[0.22, 10, 10]} />
+        <meshStandardMaterial color="#e0b090" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 1.85, 0]}>
+        <boxGeometry args={[0.42, 0.12, 0.42]} />
+        <meshStandardMaterial color="#0a0a0a" />
+      </mesh>
+    </group>
+  );
+}
+
+function DynamicCheckpoint() {
+  const groupRef  = useRef<THREE.Group>(null);
+  const active    = useRef(false);
+  const lifeTimer = useRef(0);
+  const idleTimer = useRef(DYNAMIC_INTERVAL * 0.4); // first spawn sooner than a full interval
+  const wasSearching = useRef(false);
+  const searchTimer  = useRef(0);
+  const [, force] = React.useReducer((x: number) => x + 1, 0);
+
+  const currentSeg  = useRef<RoadSegment | null>(null);
+  const currentPos  = useRef<[number, number, number]>([0, 0, 0]);
+  const currentRotY = useRef(0);
+
+  useFrame((_, delta) => {
+    const state = useGameStore.getState();
+    if (state.screen !== 'playing' || state.indoors) return;
+
+    if (!active.current) {
+      idleTimer.current -= delta;
+      if (idleTimer.current <= 0) {
+        const seg = DYNAMIC_CHECKPOINT_ROADS[Math.floor(Math.random() * DYNAMIC_CHECKPOINT_ROADS.length)];
+        const t = 0.15 + Math.random() * 0.7;
+        const x = seg.x0 + (seg.x1 - seg.x0) * t;
+        const z = seg.z0 + (seg.z1 - seg.z0) * t;
+        currentSeg.current  = seg;
+        currentPos.current  = [x, 0, z];
+        currentRotY.current = seg.horizontal ? Math.PI / 2 : 0;
+        active.current   = true;
+        lifeTimer.current = DYNAMIC_LIFETIME;
+        wasSearching.current = false;
+        force();
+      }
+      return;
+    }
+
+    lifeTimer.current -= delta;
+    if (lifeTimer.current <= 0) {
+      active.current = false;
+      idleTimer.current = DYNAMIC_INTERVAL;
+      currentSeg.current = null;
+      force();
+      return;
+    }
+
+    if (!isPaused(state) && currentSeg.current) {
+      const [px, , pz] = state.playerPosition;
+      const [cx, , cz] = currentPos.current;
+      const dist = Math.hypot(px - cx, pz - cz);
+      const inside = dist < DYNAMIC_SEARCH_RADIUS;
+
+      if (inside && !wasSearching.current) {
+        wasSearching.current = true;
+        searchTimer.current = 0;
+        state.setInteractionHint('👮 Checkpoint ahead — hold position, searching vehicle...');
+      }
+
+      if (inside && wasSearching.current) {
+        searchTimer.current += delta;
+        if (searchTimer.current > 3) {
+          wasSearching.current = false; // resolve once
+          if (playerHasContraband() || playerIsArmed()) {
+            state.setInteractionHint('🚨 Contraband found! You\'re under arrest!');
+            state.arrestPlayer();
+            state.setPlayerPosition(POLICE_STATION_RESPAWN, 0);
+          } else {
+            state.setInteractionHint('✅ Checkpoint clear — move along');
+            setTimeout(() => {
+              if (useGameStore.getState().interactionHint?.includes('move along')) {
+                useGameStore.getState().setInteractionHint(null);
+              }
+            }, 2500);
+          }
+        }
+      }
+
+      if (!inside) {
+        wasSearching.current = false;
+      }
+    }
+  });
+
+  if (!active.current || !currentSeg.current) return null;
+
+  const seg = currentSeg.current;
+  const offsets = officerOffsets(seg.width);
+
+  return (
+    <group position={currentPos.current} rotation={[0, currentRotY.current, 0]}>
+      {/* Two cruisers blocking the full width, nose-to-nose */}
+      {[-seg.width / 2 + 6, seg.width / 2 - 6].map((x, i) => (
+        <group key={i} position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <mesh castShadow receiveShadow position={[0, 0.42, 0]}>
+            <boxGeometry args={[2, 0.65, 4.5]} />
+            <meshStandardMaterial color="#1a3aee" roughness={0.35} metalness={0.4} />
+          </mesh>
+          <mesh castShadow position={[0, 0.85, 0.3]}>
+            <boxGeometry args={[1.7, 0.5, 2]} />
+            <meshStandardMaterial color="#f0f0f0" roughness={0.5} />
+          </mesh>
+          <FlashingLight position={[0, 1.1, 0.3]} />
+        </group>
+      ))}
+      {/* 8 officers spread across the road */}
+      {offsets.slice(0, OFFICER_COUNT).map(([across, fwd], i) => (
+        <Officer key={i} position={[across, 0, fwd]} />
+      ))}
+      {/* Barrier strip visual across the full width */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[seg.width - 4, 0.15, 0.4]} />
+        <meshStandardMaterial color="#cc1111" />
+      </mesh>
+    </group>
+  );
+}
+
+function isPaused(state: ReturnType<typeof useGameStore.getState>) { return state.isPaused; }
+
 // ─── Wanted-level decay (runs every ~1 s) ─────────────────────────────────────
 
 function WantedDecay() {
@@ -271,11 +511,20 @@ function WantedDecay() {
 // ─── Public export ────────────────────────────────────────────────────────────
 
 export function Police() {
+  const pursuitPositions = useRef<THREE.Vector3[]>(
+    Array.from({ length: PURSUIT_COUNT }, () => new THREE.Vector3(0, -50, 0)),
+  );
+
   return (
     <>
       {CHECKPOINTS.map((cp) => <CheckpointZone key={cp.id} cp={cp} />)}
-      {Array.from({ length: PURSUIT_COUNT }, (_, i) => <PursuitCar key={i} index={i} />)}
+      {Array.from({ length: PURSUIT_COUNT }, (_, i) => (
+        <PursuitCar key={i} index={i} positions={pursuitPositions} />
+      ))}
       <WantedDecay />
+      <WeaponAggressionWatcher />
+      <ArrestWatcher pursuitPositions={pursuitPositions} />
+      <DynamicCheckpoint />
     </>
   );
 }

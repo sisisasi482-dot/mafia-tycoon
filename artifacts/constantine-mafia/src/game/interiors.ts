@@ -65,8 +65,9 @@ export interface NpcTalker {
   radius:   number;
   dialogue: string;
   options?: DialogueOption[];
-  /** When set, pressing E opens the ShopPanel at this tab instead of dialogue. */
-  shopType?: 'consumables' | 'ammo';
+  /** When set, pressing E opens the ShopPanel at this tab instead of dialogue.
+   *  'hospital' heals the player directly instead of opening a panel. */
+  shopType?: 'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'hospital';
 }
 
 // ─── Interior layouts (placed at x ≥ 700 to stay clear of the city) ──────────
@@ -346,14 +347,19 @@ export const INTERIORS: Record<string, InteriorLayout> = {
 
 // ─── Door triggers in world space (2× scale) ─────────────────────────────────
 
+// ── Road-overlap fix ──────────────────────────────────────────────────────────
+// The original door coordinates below placed several doors inside the road
+// corridors defined in buildings.ts (isExcluded), which put them mid-street.
+// These have been nudged onto the sidewalk/grass just outside the corridor,
+// with the matching NPC_TALKERS positions moved to stay next to their door.
 export const DOOR_TRIGGERS: DoorTrigger[] = [
-  { id: 'dt_corner_store',     label: 'Corner Store',     worldX: -236, worldZ:  10, radius: 4.0, interiorId: 'corner_store',     color: '#e8c83a' },
-  { id: 'dt_police_station',   label: 'Police Station',   worldX:   60, worldZ:  84, radius: 4.0, interiorId: 'police_station',   color: '#1a3aee' },
+  { id: 'dt_corner_store',     label: 'Corner Store',     worldX: -236, worldZ:  36, radius: 4.0, interiorId: 'corner_store',     color: '#e8c83a' },
+  { id: 'dt_police_station',   label: 'Police Station',   worldX:   60, worldZ: 108, radius: 4.0, interiorId: 'police_station',   color: '#1a3aee' },
   { id: 'dt_safe_house',       label: 'Safe House',       worldX: -170, worldZ: -50, radius: 3.5, interiorId: 'safe_house',       color: '#444444' },
   { id: 'dt_warehouse',        label: 'Warehouse',        worldX: -524, worldZ:  56, radius: 5.0, interiorId: 'warehouse',        color: '#777777' },
-  { id: 'dt_restaurant',       label: 'Restaurant',       worldX:   36, worldZ: -16, radius: 3.5, interiorId: 'restaurant',       color: '#cc4411' },
-  { id: 'dt_medina_shop',      label: 'Medina Shop',      worldX:  264, worldZ: -30, radius: 3.5, interiorId: 'medina_shop',      color: '#d4a030' },
-  { id: 'dt_airport_terminal', label: 'Airport Terminal', worldX: -296, worldZ: 280, radius: 6.0, interiorId: 'airport_terminal', color: '#4169e1' },
+  { id: 'dt_restaurant',       label: 'Restaurant',       worldX:   36, worldZ: -38, radius: 3.5, interiorId: 'restaurant',       color: '#cc4411' },
+  { id: 'dt_medina_shop',      label: 'Medina Shop',      worldX:  264, worldZ: -40, radius: 3.5, interiorId: 'medina_shop',      color: '#d4a030' },
+  { id: 'dt_airport_terminal', label: 'Airport Terminal', worldX: -350, worldZ: 280, radius: 6.0, interiorId: 'airport_terminal', color: '#4169e1' },
 
   // ── Purchasable homes (suburb zone, south of Old City) ───────────────────────
   { id: 'dt_house_1',  label: 'Old City Villa',     worldX: 250, worldZ: 150, radius: 4.0, interiorId: 'house_1',  color: '#22cc55', propertyId: 'house_1',  propertyType: 'home'   },
@@ -368,22 +374,22 @@ export const DOOR_TRIGGERS: DoorTrigger[] = [
 export const NPC_TALKERS: NpcTalker[] = [
   // ─── Shop worker NPCs ──────────────────────────────────────────────────────
   {
-    id: 'shop_corner',   label: 'Shop Worker',      worldX: -232, worldZ:   6, radius: 4.5,
+    id: 'shop_corner',   label: 'Shop Worker',      worldX: -232, worldZ:  32, radius: 4.5,
     dialogue: '"Fresh food and supplies — best prices in the area!"',
     shopType: 'consumables',
   },
   {
-    id: 'shop_restaurant', label: 'Restaurant Owner', worldX:  40, worldZ: -12, radius: 4.5,
+    id: 'shop_restaurant', label: 'Restaurant Owner', worldX:  40, worldZ: -34, radius: 4.5,
     dialogue: '"Welcome — take a seat, we have the best food in Constantine!"',
     shopType: 'consumables',
   },
   {
-    id: 'shop_ali',      label: 'Street Vendor',    worldX: -196, worldZ: -26, radius: 4.5,
+    id: 'shop_ali',      label: 'Street Vendor',    worldX: -196, worldZ: -44, radius: 4.5,
     dialogue: '"Food, smokes, whatever you need — come on!"',
     shopType: 'consumables',
   },
   {
-    id: 'shop_medina',   label: 'Arms Dealer',       worldX:  268, worldZ: -26, radius: 4.5,
+    id: 'shop_medina',   label: 'Arms Dealer',       worldX:  268, worldZ: -44, radius: 4.5,
     dialogue: '"Ammunition and firepower — I have everything you need."',
     shopType: 'ammo',
   },
@@ -393,9 +399,26 @@ export const NPC_TALKERS: NpcTalker[] = [
     shopType: 'ammo',
   },
 
+  // ─── Physical store buildings (Weapon Store / Car Dealership / Hospital) ──
+  {
+    id: 'shop_weapons',  label: 'Weapon Store',      worldX: -160, worldZ: 40, radius: 5,
+    dialogue: '"Looking to arm up? Come on in."',
+    shopType: 'weapons',
+  },
+  {
+    id: 'shop_vehicles', label: 'Car Dealership',    worldX:  140, worldZ: 40, radius: 5.5,
+    dialogue: '"Best rides in Constantine — take a look."',
+    shopType: 'vehicles',
+  },
+  {
+    id: 'shop_hospital', label: 'Hospital',          worldX:  -90, worldZ: -50, radius: 5,
+    dialogue: '"You look hurt — let us patch you up."',
+    shopType: 'hospital',
+  },
+
   // ─── Story / info NPCs ──────────────────────────────────────────────────────
   {
-    id: 'npc_dealer', label: 'Street Dealer', worldX: -256, worldZ: 24, radius: 4,
+    id: 'npc_dealer', label: 'Street Dealer', worldX: -256, worldZ: 44, radius: 4,
     dialogue: '"You lookin\' for somethin\'?"',
     options: [
       { id: 'buy_pistol', label: 'Buy a Pistol',       kind: 'buy',      cost: 800,  itemId: 'pistol',     responseText: '"Careful with that. Don\'t get caught at a checkpoint."' },
@@ -413,7 +436,7 @@ export const NPC_TALKERS: NpcTalker[] = [
     ],
   },
   {
-    id: 'npc_contact', label: 'Contact', worldX: 44, worldZ: -10, radius: 4,
+    id: 'npc_contact', label: 'Contact', worldX: 44, worldZ: -40, radius: 4,
     dialogue: '"Meet me tonight. Usual spot."',
     options: [
       { id: 'ask_job',   label: 'Ask about work',       kind: 'info', responseText: '"Check the mission board. There\'s always work for someone like you."' },

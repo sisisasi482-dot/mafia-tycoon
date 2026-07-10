@@ -114,6 +114,17 @@ const SHOP_NAMES = [
   'BOULANGERIE', 'ÉPICERIE', 'COIFFEUR', 'BOUTIQUE',
 ];
 
+/** Dedicated physical stores — must line up with the NPC_TALKERS entries of the
+ *  same shopType in interiors.ts (shop_weapons/shop_vehicles/shop_hospital) and
+ *  the police station door trigger, so the visual kiosk sits at the same spot
+ *  the player interacts with. */
+const STORE_MARKERS = [
+  { x: -160, z:  40, name: 'ARMURERIE',  color: '#8b1a1a' },
+  { x:  140, z:  40, name: 'AUTO STORE', color: '#1a3a8b' },
+  { x:  -90, z: -50, name: 'HÔPITAL',    color: '#1a8b4a' },
+  { x:   60, z: 108, name: 'POLICE',     color: '#1a3aee' },
+];
+
 // ─── Road network (2× scale) ──────────────────────────────────────────────────
 //   Major roads are 40 units wide; minor roads 28 units wide.
 
@@ -270,6 +281,12 @@ export function City() {
     [shopfronts],
   );
   useEffect(() => () => signTextures.forEach((t) => t.dispose()), [signTextures]);
+
+  const storeSignTextures = useMemo(
+    () => STORE_MARKERS.map((m) => makeSignTexture(m.name)),
+    [],
+  );
+  useEffect(() => () => storeSignTextures.forEach((t) => t.dispose()), [storeSignTextures]);
 
   const streetLights = useMemo(() => {
     const lights: { x: number; z: number }[] = [];
@@ -458,6 +475,33 @@ export function City() {
           </group>
         );
       })}
+
+      {/* ── Dedicated store kiosks (Weapon Store / Car Dealership / Hospital / Police) ── */}
+      {STORE_MARKERS.map((m, i) => (
+        <group key={`store-${i}`} position={[m.x, 0, m.z]}>
+          {/* Booth */}
+          <mesh castShadow receiveShadow position={[0, 1.6, 0]}>
+            <boxGeometry args={[4.5, 3.2, 4.5]} />
+            <meshStandardMaterial color={m.color} roughness={0.7} />
+          </mesh>
+          {/* Glass front */}
+          <mesh position={[0, 1.3, 2.3]}>
+            <boxGeometry args={[3.4, 2, 0.1]} />
+            <meshStandardMaterial color="#88ccee" transparent opacity={0.35} metalness={0.5} />
+          </mesh>
+          {/* Illuminated sign */}
+          <mesh position={[0, 3.6, 2.3]}>
+            <planeGeometry args={[4, 0.9]} />
+            <meshStandardMaterial
+              map={storeSignTextures[i]}
+              emissive={m.color}
+              emissiveMap={storeSignTextures[i]}
+              emissiveIntensity={0.6}
+            />
+          </mesh>
+          <pointLight position={[0, 3.5, 3]} color={m.color} intensity={6} distance={14} decay={2} />
+        </group>
+      ))}
 
       {/* ── Road markings — E-W highway dashed centre line ───────────── */}
       {Array.from({ length: 50 }, (_, i) => (

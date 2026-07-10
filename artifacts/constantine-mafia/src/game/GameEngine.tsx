@@ -23,6 +23,7 @@ import { DialogueUI } from '../ui/DialogueUI';
 import { HomePanel } from '../ui/HomePanel';
 import { TvOverlay } from '../ui/TvOverlay';
 import { WardrobeOverlay } from '../ui/WardrobeOverlay';
+import { ArrestOverlay } from '../ui/ArrestOverlay';
 
 /**
  * Sets renderer pixel ratio based on post-processing flag.
@@ -277,6 +278,7 @@ export function GameEngine() {
       <HomePanel />
       <TvOverlay />
       <WardrobeOverlay />
+      <ArrestOverlay />
     </div>
   );
 }

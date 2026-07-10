@@ -28,6 +28,14 @@ export type PedalMode     = 'buttons' | 'slider';
 export type Transmission  = 'auto' | 'manual';
 export type FpsCap        = 0 | 30 | 60;  // 0 = unlimited
 
+/** A player-owned vehicle spawned into the world from a car key ("Spawn Car"). */
+export interface OwnedVehicleInstance {
+  id:          string;   // unique instance id
+  vehicleId:   string;   // catalog id (e.g. 'renault', 'bmw') — determines look
+  position:    [number, number, number];
+  rotY:        number;
+}
+
 export type GameState = {
   // Player
   playerId:           string | null;
@@ -87,7 +95,7 @@ export type GameState = {
   interactionHint:    string | null;
   hudEditMode:        boolean;
   /** Tab the shop should pre-select when opened via a shop NPC. */
-  shopNpcTab:         'consumables' | 'ammo' | null;
+  shopNpcTab:         'consumables' | 'ammo' | 'weapons' | 'vehicles' | null;
 
   // Settings
   language:           'en' | 'ar' | 'fr';
@@ -111,6 +119,12 @@ export type GameState = {
   stolenVehicleIds:   string[];
   pursuitActive:      boolean;
   lastCrimeTime:      number;
+  /** True while the player is in the 3-second black-screen arrest sequence. */
+  isArrested:         boolean;
+  /** Player-owned vehicle instances spawned into the world via a car key ("Spawn Car"). */
+  ownedVehicleInstances: OwnedVehicleInstance[];
+  /** Vehicle instance ids currently locked (keyed by instance id). */
+  lockedVehicleIds:   string[];
 
   // Lifestyle (homes)
   currentOutfitId:    string;
@@ -167,6 +181,20 @@ export type GameState = {
   setDialogueNpc:     (id: string | null) => void;
   sleep:              (hours?: number) => void;
 
+  // Vehicle key / theft / arrest actions
+  /** Spawns an owned vehicle near the player. No-op if already spawned. */
+  spawnOwnedVehicle:   (vehicleId: string, position: [number, number, number], rotY: number) => void;
+  /** Removes an owned vehicle instance from the world (does not un-own the key). */
+  despawnOwnedVehicle: (instanceId: string) => void;
+  /** Toggles lock state for a spawned vehicle instance. */
+  toggleVehicleLock:   (instanceId: string) => void;
+  /** Called by NPC theft AI when an unlocked, unattended owned vehicle is stolen. */
+  reportVehicleStolen: (instanceId: string) => void;
+  /** Runs the 5-second-proximity arrest: clears contraband, resets wanted level, flags black-screen. */
+  arrestPlayer:        () => void;
+  /** Clears the black-screen arrest flag once the respawn has been applied. */
+  clearArrest:         () => void;
+
   // Garage vehicle storage
   storeVehicleInGarage:    (garageId: string, vehicleId: string) => void;
   retrieveVehicleFromGarage: (garageId: string, vehicleId: string) => void;
@@ -196,6 +224,8 @@ const initialState: Omit<GameState,
   | 'setDayTime'     | 'enterInterior'    | 'exitInterior'  | 'resetGame'
   | 'togglePropertyLock' | 'markVehicleStolen' | 'triggerCrime' | 'decayWanted'
   | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'
+  | 'spawnOwnedVehicle' | 'despawnOwnedVehicle' | 'toggleVehicleLock'
+  | 'reportVehicleStolen' | 'arrestPlayer' | 'clearArrest'
   | 'storeVehicleInGarage' | 'retrieveVehicleFromGarage'
   | 'addInventoryItem' | 'useConsumable'  | 'dropConsumable' | 'buyAmmo'
   | 'fireWeapon'     | 'reloadWeapon'    | 'dropWeapon'     | 'redeemCode' | 'buyConsumable'
@@ -269,6 +299,9 @@ const initialState: Omit<GameState,
   stolenVehicleIds:    [],
   pursuitActive:       false,
   lastCrimeTime:       0,
+  isArrested:          false,
+  ownedVehicleInstances: [],
+  lockedVehicleIds:    [],
 
   currentOutfitId:     'default',
   showTv:              false,
@@ -371,6 +404,51 @@ export const useGameStore = create<GameState>((set, get) => ({
     dayTime: (s.dayTime + hours / 24) % 1,
     health:  100,
   })),
+
+  // ── Vehicle keys / theft / arrest ──────────────────────────────────────────
+
+  spawnOwnedVehicle: (vehicleId, position, rotY) => set((s) => {
+    if (s.ownedVehicleInstances.some((v) => v.vehicleId === vehicleId)) return {};
+    const instance: OwnedVehicleInstance = { id: `owned_${vehicleId}_${Date.now()}`, vehicleId, position, rotY };
+    return { ownedVehicleInstances: [...s.ownedVehicleInstances, instance] };
+  }),
+
+  despawnOwnedVehicle: (instanceId) => set((s) => ({
+    ownedVehicleInstances: s.ownedVehicleInstances.filter((v) => v.id !== instanceId),
+    lockedVehicleIds:      s.lockedVehicleIds.filter((id) => id !== instanceId),
+    equippedVehicleId: s.equippedVehicleId === instanceId ? null : s.equippedVehicleId,
+    inVehicle: s.equippedVehicleId === instanceId ? false : s.inVehicle,
+  })),
+
+  toggleVehicleLock: (instanceId) => set((s) => ({
+    lockedVehicleIds: s.lockedVehicleIds.includes(instanceId)
+      ? s.lockedVehicleIds.filter((id) => id !== instanceId)
+      : [...s.lockedVehicleIds, instanceId],
+  })),
+
+  reportVehicleStolen: (instanceId) => set((s) => ({
+    ownedVehicleInstances: s.ownedVehicleInstances.filter((v) => v.id !== instanceId),
+    lockedVehicleIds:      s.lockedVehicleIds.filter((id) => id !== instanceId),
+    interactionHint: '🚗 Your car was stolen!',
+  })),
+
+  arrestPlayer: () => set((s) => {
+    // Confiscate contraband: empty every owned weapon's magazine + ammo reserves.
+    const clearedMags: Record<string, number> = {};
+    for (const k of Object.keys(s.weaponMags)) clearedMags[k] = 0;
+    return {
+      isArrested:    true,
+      wantedLevel:   0,
+      pursuitActive: false,
+      lastCrimeTime: Date.now(),
+      weaponMags:    clearedMags,
+      ammoReserves:  {},
+      inVehicle:     false,
+      equippedVehicleId: null,
+    };
+  }),
+
+  clearArrest: () => set({ isArrested: false }),
 
   storeVehicleInGarage: (garageId, vehicleId) => set((s) => {
     const current = s.garageStoredVehicles[garageId] ?? [];

@@ -309,7 +309,17 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
           }
         }
       } else if (nearNpc) {
-        if ((nearNpc as any).shopType) {
+        if ((nearNpc as any).shopType === 'hospital') {
+          // Hospital — heals directly, no shop panel
+          const gs = useGameStore.getState();
+          const full = gs.health >= 100;
+          if (!showingDialogue.current) pushHint(full ? `${nearNpc.label}: Already at full health` : `[E] ${nearNpc.label} — Heal (free)`);
+          if (justPressed && !full) {
+            gs.healPlayer(100);
+            pushHint(`⚕ ${nearNpc.label}: Fully healed`);
+            setTimeout(() => { if (currentHint.current?.includes('Fully healed')) pushHint(null); }, 2000);
+          }
+        } else if ((nearNpc as any).shopType) {
           // Shop NPC — open the Shop panel at the relevant tab
           if (!showingDialogue.current) pushHint(`[E] Shop · ${nearNpc.label}`);
           if (justPressed) {

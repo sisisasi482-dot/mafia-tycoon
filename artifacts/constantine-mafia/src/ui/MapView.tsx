@@ -53,6 +53,14 @@ const MISSION_BLIPS = [
   { wx: 150,  wz: 10,  label: 'M', color: '#ff0' },
 ];
 
+/** Physical store buildings — Weapon Store / Car Dealership / Hospital / Police Station. */
+const STORE_BLIPS = [
+  { wx: -160, wz:  40, icon: '🔫', label: 'Weapon Store'   },
+  { wx:  140, wz:  40, icon: '🚗', label: 'Car Dealership' },
+  { wx:  -90, wz: -50, icon: '⚕',  label: 'Hospital'        },
+  { wx:   60, wz: 108, icon: '👮', label: 'Police Station'  },
+];
+
 export function MapView() {
   const store = useGameStore();
   const lang = store.language;
@@ -157,6 +165,17 @@ export function MapView() {
               );
             })}
 
+            {/* Physical store buildings */}
+            {STORE_BLIPS.map((b, i) => {
+              const { sx, sy } = worldToSvg(b.wx, b.wz);
+              return (
+                <g key={`store-${i}`}>
+                  <circle cx={sx} cy={sy} r={9} fill="#000" fillOpacity={0.4} stroke="#fff" strokeWidth={1} strokeOpacity={0.4} />
+                  <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle" fontSize={10}>{b.icon}</text>
+                </g>
+              );
+            })}
+
             {/* Player marker */}
             <g transform={`translate(${playerX}, ${playerY})`}>
               <circle r={10} fill="#00ff88" fillOpacity={0.25} stroke="#00ff88" strokeWidth={2} />
@@ -182,6 +201,12 @@ export function MapView() {
           <div className="w-3 h-3 rounded-sm bg-yellow-400" />
           <span className="text-xs text-gray-400">Mission</span>
         </div>
+        {STORE_BLIPS.map((b) => (
+          <div key={b.label} className="flex items-center gap-1.5">
+            <span className="text-xs">{b.icon}</span>
+            <span className="text-xs text-gray-400">{b.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

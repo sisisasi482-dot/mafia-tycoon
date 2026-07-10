@@ -27,6 +27,14 @@ const DISTRICTS = [
   { id: 'old_city',     x0:  100, x1:  250, z0:  -50, z1:   50 },
 ];
 
+/** Physical store icons shown on the minimap (mirrors interiors.ts NPC/door positions). */
+const STORE_MARKERS = [
+  { icon: '🔫', x: -160, z:  40 },
+  { icon: '🚗', x:  140, z:  40 },
+  { icon: '⚕', x:  -90, z: -50 },
+  { icon: '👮', x:   60, z: 108 },
+];
+
 export const MiniMap = memo(function MiniMap() {
   const [px, , pz] = useGameStore((s) => s.playerPosition);
   const rotY       = useGameStore((s) => s.playerRotationY);
@@ -88,6 +96,11 @@ export const MiniMap = memo(function MiniMap() {
 
       {/* Main road */}
       <line x1={wx(-290)} y1={wz(0)} x2={wx(240)} y2={wz(0)} stroke="#1a1a2a" strokeWidth={1.5} />
+
+      {/* Store icons */}
+      {STORE_MARKERS.map((m, i) => (
+        <text key={i} x={wx(m.x)} y={wz(m.z) + 1.6} fontSize={5} textAnchor="middle">{m.icon}</text>
+      ))}
 
       {/* Player arrow */}
       <polygon

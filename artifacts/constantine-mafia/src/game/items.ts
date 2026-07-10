@@ -98,3 +98,13 @@ export const VEHICLE_NAMES_MAP: Record<string, string> = {
   police_car: 'Police Crown',
   v1: 'Taxi', v2: 'Police Car', v3: 'Sports Car', v4: 'SUV', v5: 'Truck',
 };
+
+/** Body-render category + colours for every purchasable vehicle catalog id
+ *  (used by Vehicles.tsx to draw spawned owned-vehicle instances). */
+export const VEHICLE_RENDER_MAP: Record<string, { type: 'sedan' | 'taxi' | 'police' | 'truck' | 'suv'; bodyColor: string; roofColor: string }> = {
+  renault:    { type: 'sedan', bodyColor: '#c8c8c8', roofColor: '#888888' },
+  kangoo:     { type: 'suv',   bodyColor: '#3a5aaa', roofColor: '#1a2a5a' },
+  bmw:        { type: 'sedan', bodyColor: '#101820', roofColor: '#050505' },
+  moto:       { type: 'sedan', bodyColor: '#cc2222', roofColor: '#111111' },
+  police_car: { type: 'police', bodyColor: '#1a3aee', roofColor: '#f0f0f0' },
+};
