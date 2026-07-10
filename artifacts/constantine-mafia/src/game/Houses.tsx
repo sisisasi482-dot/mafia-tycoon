@@ -8,6 +8,8 @@
 import React from 'react';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
+import { useProximityStream } from './proximityStream';
+import { SPAWN_XZ } from './worldConstants';
 
 // ─── House definitions ────────────────────────────────────────────────────────
 
@@ -43,11 +45,11 @@ const GARAGES: GarageDef[] = [
 
 // ─── House exterior ───────────────────────────────────────────────────────────
 
-function HouseExterior({ def }: { def: HouseDef }) {
+function HouseExterior({ def, streamRef }: { def: HouseDef; streamRef: (obj: THREE.Object3D | null) => void }) {
   const owned = useGameStore((s) => s.ownedAssetIds.includes(def.id));
 
   return (
-    <group position={[def.x, 0, def.z]} rotation={[0, def.rotY, 0]}>
+    <group ref={streamRef} position={[def.x, 0, def.z]} rotation={[0, def.rotY, 0]}>
       {/* ── Main walls ──────────────────────────────────────────────────── */}
       <mesh castShadow receiveShadow position={[0, def.h / 2, 0]}>
         <boxGeometry args={[def.w, def.h, def.d]} />
@@ -114,11 +116,11 @@ function HouseExterior({ def }: { def: HouseDef }) {
 
 // ─── Garage exterior ──────────────────────────────────────────────────────────
 
-function GarageExterior({ def }: { def: GarageDef }) {
+function GarageExterior({ def, streamRef }: { def: GarageDef; streamRef: (obj: THREE.Object3D | null) => void }) {
   const owned = useGameStore((s) => s.ownedAssetIds.includes(def.id));
 
   return (
-    <group position={[def.x, 0, def.z]} rotation={[0, def.rotY, 0]}>
+    <group ref={streamRef} position={[def.x, 0, def.z]} rotation={[0, def.rotY, 0]}>
       {/* Shell */}
       <mesh castShadow receiveShadow position={[0, 1.6, 0]}>
         <boxGeometry args={[8.5, 3.2, 7]} />
@@ -155,10 +157,36 @@ function GarageExterior({ def }: { def: GarageDef }) {
 // ─── Public export ────────────────────────────────────────────────────────────
 
 export function Houses() {
+  const getPlayerXZ = (): readonly [number, number] => {
+    const [px, , pz] = useGameStore.getState().playerPosition;
+    return [px, pz];
+  };
+
+  const houseStream = useProximityStream(
+    HOUSES.length,
+    (i) => [HOUSES[i].x, HOUSES[i].z] as const,
+    getPlayerXZ,
+    SPAWN_XZ,
+  );
+  const garageStream = useProximityStream(
+    GARAGES.length,
+    (i) => [GARAGES[i].x, GARAGES[i].z] as const,
+    getPlayerXZ,
+    SPAWN_XZ,
+  );
+
   return (
     <>
-      {HOUSES.map((h) => <HouseExterior key={h.id} def={h} />)}
-      {GARAGES.map((g) => <GarageExterior key={g.id} def={g} />)}
+      {HOUSES.map((h, i) => (
+        houseStream.isUnlocked(i)
+          ? <HouseExterior key={h.id} def={h} streamRef={houseStream.refFor(i)} />
+          : null
+      ))}
+      {GARAGES.map((g, i) => (
+        garageStream.isUnlocked(i)
+          ? <GarageExterior key={g.id} def={g} streamRef={garageStream.refFor(i)} />
+          : null
+      ))}
     </>
   );
 }

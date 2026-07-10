@@ -5,3 +5,4 @@
 - [NPC ref pattern (R3F / Babel)](npc-ref-pattern.md) — JSX cast in ref attr breaks Babel; use onRef callback prop; always write transforms even in wait branch.
 - [Camera-relative movement](camera-relative-movement.md) — use cameraDrag.yaw only in third-person; first/second-person must use player rotation.y as movement basis.
 - [R3F texture lifecycle](r3f-texture-lifecycle.md) — never clone textures inside JSX map; pre-create in useMemo with dispose on cleanup.
+- [Staged/proximity loading](staged-loading-streaming.md) — mount-once/toggle-visible streaming pattern; module-singleton pools risk stale renders on remount, gate on an `initialized` flag.

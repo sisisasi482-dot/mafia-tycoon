@@ -5,7 +5,7 @@
  * Roads use procedural canvas-based asphalt textures with lane markings.
  * Sidewalk strips (concrete) run alongside major roads.
  */
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useReducer } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BUILDINGS } from './buildings';
@@ -14,13 +14,16 @@ import { generateBuildingTextures, disposeBuildingTextures } from './buildingTex
 import { useGameStore } from './useGameStore';
 import {
   activeMask,
-  updateActiveBuildings,
+  unlockedMask,
   resetActiveBuildings,
+  seedInitialUnlock,
+  scanBuildingProximity,
   countVisibleBuildingMeshes,
   checkMemorySafety,
   BUILDING_UPDATE_INTERVAL_FRAMES,
   BUILDING_TOGGLE_BATCH_SIZE,
 } from './buildingPool';
+import { SPAWN_XZ } from './worldConstants';
 
 // ─── Procedural road texture ──────────────────────────────────────────────────
 
@@ -149,27 +152,42 @@ export function City() {
   const texPool = useMemo(() => generateBuildingTextures(), []);
   useEffect(() => () => disposeBuildingTextures(texPool), [texPool]);
 
-  /* ── Building object pool ──────────────────────────────────────────────
-   * All BUILDINGS.length meshes are created once below (mounted for the
-   * lifetime of City) with visible=false. A proximity scan running every
-   * BUILDING_UPDATE_INTERVAL_FRAMES frames flips `mesh.visible` in place —
-   * meshes are never added to or removed from the scene after mount, and
-   * the collider mask (`activeMask`, consumed by Player.tsx's AABB check)
-   * is toggled the same way. */
+  /* ── Building staged-loading pool ──────────────────────────────────────
+   * Buildings are NOT all mounted at once. Only buildings within
+   * BUILDING_ACTIVATION_RADIUS (30m) of the spawn point are mounted on
+   * first render (`unlockedVersion` state seeds `unlockedMask`). Everything
+   * else stays un-mounted — zero geometry/material cost — until the player
+   * walks within range, streaming in at BUILDING_TOGGLE_BATCH_SIZE per
+   * frame. Once mounted, a building is NEVER unmounted again — leaving its
+   * radius only flips the existing mesh's `visible` (never scene.add/remove,
+   * never dispose). */
   const buildingRefs = useRef<(THREE.Mesh | null)[]>([]);
   const frameCount = useRef(0);
-  // Pending visibility toggles, applied in batches of BUILDING_TOGGLE_BATCH_SIZE
-  // per frame so a large proximity swing (e.g. teleport/fast vehicle) never
-  // toggles dozens of meshes in one frame and spikes CPU.
+  // Two independent queues so the same per-frame batch cap governs both:
+  // buildings streaming in for the first time (a real mount) and buildings
+  // that are already mounted and just need `visible` flipped.
+  const pendingStreamIn = useRef<number[]>([]);
   const pendingToggles = useRef<number[]>([]);
+  const [, bumpUnlockVersion] = useReducer((x: number) => x + 1, 0);
+  // Gates the building JSX map below: false until the reset+seed effect has
+  // actually run. Without this, a remount (e.g. re-entering the outdoor
+  // scene after an interior) would render one frame off the *stale*
+  // module-singleton unlockedMask left over from the previous mount, before
+  // the effect below gets a chance to reset it — briefly showing whatever
+  // was unlocked last time instead of only what's near the new spawn point.
+  const [initialized, setInitialized] = React.useState(false);
 
-  // Every mount starts with all refs at visible=false. Reset the shared
-  // (module-singleton) mask so a re-entry — e.g. leaving an interior — can't
-  // carry stale "active" bits that never get re-applied to the fresh refs.
+  // Every mount starts fresh. Reset the shared (module-singleton) masks so
+  // a re-entry — e.g. leaving an interior — can't carry stale bits, then
+  // seed Stage 1: whatever is within radius of spawn unlocks synchronously
+  // so the very first render already shows immediate surroundings.
   useEffect(() => {
     resetActiveBuildings();
+    seedInitialUnlock(...SPAWN_XZ);
     frameCount.current = 0;
+    pendingStreamIn.current = [];
     pendingToggles.current = [];
+    setInitialized(true);
   }, []);
 
   useFrame(() => {
@@ -178,8 +196,9 @@ export function City() {
       frameCount.current = 0;
 
       const [px, , pz] = useGameStore.getState().playerPosition;
-      const changed = updateActiveBuildings(px, pz);
-      pendingToggles.current.push(...changed);
+      const { streamIn, toggle } = scanBuildingProximity(px, pz);
+      pendingStreamIn.current.push(...streamIn);
+      pendingToggles.current.push(...toggle);
 
       // Memory Safety Monitor — threshold on the count of buildings whose
       // mesh.visible is *actually* true right now (real on-screen state),
@@ -193,15 +212,23 @@ export function City() {
     }
 
     // Apply at most BUILDING_TOGGLE_BATCH_SIZE mesh.visible mutations per
-    // frame — never scene.add/remove, only property toggles — to keep any
-    // single frame's CPU cost bounded regardless of how many buildings
-    // changed state in the latest proximity scan.
+    // frame on already-mounted buildings — never scene.add/remove, only
+    // property toggles.
     if (pendingToggles.current.length > 0) {
       const batch = pendingToggles.current.splice(0, BUILDING_TOGGLE_BATCH_SIZE);
       for (const i of batch) {
         const mesh = buildingRefs.current[i];
         if (mesh) mesh.visible = activeMask[i] === 1;
       }
+    }
+
+    // Stream in at most BUILDING_TOGGLE_BATCH_SIZE never-before-seen
+    // buildings per frame — this is the actual "5 objects/frame" mount, the
+    // only point where new geometry/material gets created.
+    if (pendingStreamIn.current.length > 0) {
+      const batch = pendingStreamIn.current.splice(0, BUILDING_TOGGLE_BATCH_SIZE);
+      for (const i of batch) unlockedMask[i] = 1;
+      bumpUnlockVersion();
     }
   });
 
@@ -350,14 +377,16 @@ export function City() {
         </mesh>
       ))}
 
-      {/* ── Buildings (pooled: all instantiated once, visibility toggled) ── */}
+      {/* ── Buildings (staged loading: only unlocked buildings are mounted at
+          all; everything else stays un-mounted until streamed in) ── */}
       {BUILDINGS.map((b, i) => {
+        if (!initialized || unlockedMask[i] === 0) return null; // never mounted yet — zero cost
         const tex = b.texKey ? texPool[b.texKey]?.[b.texIdx] : undefined;
         return (
           <mesh
             key={`b-${i}`}
-            ref={(el) => { buildingRefs.current[i] = el; }}
-            visible={false}
+            ref={(el) => { buildingRefs.current[i] = el; if (el) el.visible = activeMask[i] === 1; }}
+            visible={activeMask[i] === 1}
             castShadow
             receiveShadow
             position={[b.x, b.h / 2, b.z]}

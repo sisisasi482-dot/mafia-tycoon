@@ -2,8 +2,11 @@
  * Environment — trees, grass parks, park benches, and billboard advertisements.
  * All textures are canvas-generated and memoised / disposed correctly.
  */
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { useGameStore } from './useGameStore';
+import { useProximityStream } from './proximityStream';
+import { SPAWN_XZ } from './worldConstants';
 
 // ─── Seeded RNG (no Math.random in render paths) ─────────────────────────────
 
@@ -71,15 +74,16 @@ const BILLBOARD_SPOTS: { x: number; z: number; rotY: number }[] = [
 
 // ─── Billboard component ──────────────────────────────────────────────────────
 
-function Billboard({ spot, ad }: {
+function Billboard({ spot, ad, streamRef }: {
   spot: typeof BILLBOARD_SPOTS[number];
   ad:   typeof BILLBOARD_ADS[number];
+  streamRef: (obj: THREE.Object3D | null) => void;
 }) {
   const tex = useMemo(() => makeBillboardTexture(ad.lines, ad.accent), [ad]);
   useEffect(() => () => tex.dispose(), [tex]);
 
   return (
-    <group position={[spot.x, 0, spot.z]} rotation={[0, spot.rotY, 0]}>
+    <group ref={streamRef} position={[spot.x, 0, spot.z]} rotation={[0, spot.rotY, 0]}>
       {/* Support poles */}
       {([-3.5, 3.5] as number[]).map((x, i) => (
         <mesh key={i} castShadow position={[x, 4, 0]}>
@@ -186,9 +190,9 @@ function generateTrees(): TreeSpot[] {
 
 const TREES = generateTrees();
 
-function Tree({ spot }: { spot: TreeSpot }) {
+function Tree({ spot, streamRef }: { spot: TreeSpot; streamRef: (obj: THREE.Object3D | null) => void }) {
   return (
-    <group position={[spot.x, 0, spot.z]} scale={[spot.scale, spot.scale, spot.scale]}>
+    <group ref={streamRef} position={[spot.x, 0, spot.z]} scale={[spot.scale, spot.scale, spot.scale]}>
       {/* Trunk */}
       <mesh castShadow position={[0, 1.25, 0]}>
         <cylinderGeometry args={[0.19, 0.26, 2.5, 6]} />
@@ -213,9 +217,11 @@ function Tree({ spot }: { spot: TreeSpot }) {
 
 // ─── Park bench ───────────────────────────────────────────────────────────────
 
-function Bench({ x, z, rotY }: { x: number; z: number; rotY: number }) {
+interface BenchSpot { x: number; z: number; rotY: number }
+
+function Bench({ x, z, rotY, streamRef }: BenchSpot & { streamRef: (obj: THREE.Object3D | null) => void }) {
   return (
-    <group position={[x, 0, z]} rotation={[0, rotY, 0]}>
+    <group ref={streamRef} position={[x, 0, z]} rotation={[0, rotY, 0]}>
       {/* Seat */}
       <mesh castShadow position={[0, 0.42, 0]}>
         <boxGeometry args={[1.6, 0.08, 0.52]} />
@@ -237,28 +243,73 @@ function Bench({ x, z, rotY }: { x: number; z: number; rotY: number }) {
   );
 }
 
+const BENCH_SPOTS: BenchSpot[] = [
+  { x:  6,    z:  9,    rotY: 0 },
+  { x: -6,    z: -9,    rotY: Math.PI },
+  { x: -198,  z:  100,  rotY: Math.PI / 2 },
+  { x:  152,  z: -143,  rotY: 0 },
+  { x: -62,   z:  145,  rotY: Math.PI / 2 },
+];
+
 // ─── Public export ────────────────────────────────────────────────────────────
+//
+// Trees, billboards ("signs"/"poles"), and benches ("props") all obey the
+// shared 30m Staged Loading radius via useProximityStream: only what's
+// within range of spawn mounts initially, the rest streams in (max 5/frame)
+// as the player approaches, and nothing is ever unmounted again — only
+// `visible` toggles. Park grass stays always-mounted (it's ground terrain;
+// culling it would tear holes in the floor under the player's feet).
 
 export function Environment() {
+  const getPlayerXZ = (): readonly [number, number] => {
+    const [px, , pz] = useGameStore.getState().playerPosition;
+    return [px, pz];
+  };
+
+  const treeStream = useProximityStream(
+    TREES.length,
+    (i) => [TREES[i].x, TREES[i].z] as const,
+    getPlayerXZ,
+    SPAWN_XZ,
+  );
+  const billboardStream = useProximityStream(
+    BILLBOARD_SPOTS.length,
+    (i) => [BILLBOARD_SPOTS[i].x, BILLBOARD_SPOTS[i].z] as const,
+    getPlayerXZ,
+    SPAWN_XZ,
+  );
+  const benchStream = useProximityStream(
+    BENCH_SPOTS.length,
+    (i) => [BENCH_SPOTS[i].x, BENCH_SPOTS[i].z] as const,
+    getPlayerXZ,
+    SPAWN_XZ,
+  );
+
   return (
     <group>
-      {/* Park grass tiles */}
+      {/* Park grass tiles — ground terrain, always mounted */}
       {PARKS.map((p, i) => <ParkGrass key={i} p={p} />)}
 
       {/* Trees */}
-      {TREES.map((s, i) => <Tree key={i} spot={s} />)}
-
-      {/* Billboards */}
-      {BILLBOARD_SPOTS.map((spot, i) => (
-        <Billboard key={i} spot={spot} ad={BILLBOARD_ADS[i % BILLBOARD_ADS.length]} />
+      {TREES.map((s, i) => (
+        treeStream.isUnlocked(i)
+          ? <Tree key={i} spot={s} streamRef={treeStream.refFor(i)} />
+          : null
       ))}
 
-      {/* Park benches */}
-      <Bench x={6}    z={9}    rotY={0} />
-      <Bench x={-6}   z={-9}   rotY={Math.PI} />
-      <Bench x={-198} z={100}  rotY={Math.PI / 2} />
-      <Bench x={152}  z={-143} rotY={0} />
-      <Bench x={-62}  z={145}  rotY={Math.PI / 2} />
+      {/* Billboards / signs */}
+      {BILLBOARD_SPOTS.map((spot, i) => (
+        billboardStream.isUnlocked(i)
+          ? <Billboard key={i} spot={spot} ad={BILLBOARD_ADS[i % BILLBOARD_ADS.length]} streamRef={billboardStream.refFor(i)} />
+          : null
+      ))}
+
+      {/* Park benches / props */}
+      {BENCH_SPOTS.map((spot, i) => (
+        benchStream.isUnlocked(i)
+          ? <Bench key={i} x={spot.x} z={spot.z} rotY={spot.rotY} streamRef={benchStream.refFor(i)} />
+          : null
+      ))}
     </group>
   );
 }

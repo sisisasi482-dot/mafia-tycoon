@@ -1,66 +1,101 @@
 /**
- * Building object pool — shared activation state.
+ * Building object pool + staged loading.
  *
- * All building meshes/colliders are created once at load time (see City.tsx)
- * and never added to or removed from the scene again. Proximity to the
- * player only toggles `mesh.visible` and this collider-enabled mask; the
- * mesh/collider objects themselves are pooled for the lifetime of the game.
+ * Buildings are NOT all mounted at once. On City mount, only buildings
+ * within BUILDING_ACTIVATION_RADIUS of the spawn point are streamed in
+ * (mounted, visible). Every other building stays un-mounted — no geometry,
+ * no material, zero GPU/CPU cost — until the player actually walks within
+ * range, at which point it streams in at a max of BUILDING_TOGGLE_BATCH_SIZE
+ * per frame. Once a building has been mounted, it is NEVER unmounted again;
+ * leaving its radius only flips the existing mesh's `visible` property.
  *
- * `activeMask[i]` corresponds 1:1 with `BUILDINGS[i]` / `BUILDING_AABBS[i]`.
+ * `activeMask[i]` / `unlockedMask[i]` correspond 1:1 with `BUILDINGS[i]` /
+ * `BUILDING_AABBS[i]`.
  */
-import * as THREE from 'three';
 import { BUILDINGS } from './buildings';
 import { saveGameSnapshot } from './useSaveSystem';
+import { SPAWN_XZ } from './worldConstants';
 
-/** Strict proximity trigger: buildings only render/collide within this radius. */
-export const BUILDING_ACTIVATION_RADIUS = 15;
+/** Single shared proximity radius — buildings only render/collide within this. */
+export const BUILDING_ACTIVATION_RADIUS = 30;
 
 /** Run the proximity scan once every N frames to save CPU. */
 export const BUILDING_UPDATE_INTERVAL_FRAMES = 15;
 
-/** Max number of buildings to toggle (visible/collider) in a single frame. */
+/** Max number of buildings to stream-in or toggle in a single frame. */
 export const BUILDING_TOGGLE_BATCH_SIZE = 5;
 
 /** Memory Safety Monitor thresholds. */
 export const VISIBLE_BUILDING_LIMIT = 70;
 export const VISIBLE_BUILDING_SUSTAIN_MS = 5000;
 
-/** 1 = visible/collidable, 0 = pooled (hidden, collider disabled). Starts all-inactive. */
+/** 1 = currently visible/collidable, 0 = out of range (hidden, collider disabled). */
 export const activeMask: Uint8Array = new Uint8Array(BUILDINGS.length);
+/** 1 = has ever been streamed in (mounted at least once) — never reverts to 0. */
+export const unlockedMask: Uint8Array = new Uint8Array(BUILDINGS.length);
 
 /**
- * Reset the shared mask to all-inactive. City calls this on mount (e.g. when
- * re-entering the outdoor scene after an interior) so the module-level
- * singleton can never carry stale "active" bits into a fresh set of mesh
- * refs, which start every mount at visible=false.
+ * Reset both masks to all-inactive/all-locked. City calls this on mount
+ * (e.g. when re-entering the outdoor scene after an interior) so the
+ * module-level singleton can never carry stale bits into a fresh set of
+ * mesh refs.
  */
 export function resetActiveBuildings(): void {
   activeMask.fill(0);
+  unlockedMask.fill(0);
   memoryMonitorState.overLimitSince = null;
 }
 
 /**
- * Recompute which buildings are within range of (px, pz) and update the
- * shared activeMask in place. Returns the list of indices whose active
- * state changed this pass, so callers can cheaply toggle only those meshes.
+ * Stage 1 of staged loading: synchronously unlock+activate whatever is
+ * within radius of the spawn point, so the very first frame already shows
+ * immediate surroundings without ever having mounted the rest of the map.
+ * Call once, right after resetActiveBuildings().
  */
-export function updateActiveBuildings(px: number, pz: number): number[] {
-  const changed: number[] = [];
+export function seedInitialUnlock(px: number = SPAWN_XZ[0], pz: number = SPAWN_XZ[1]): number[] {
+  const seeded: number[] = [];
   const r2 = BUILDING_ACTIVATION_RADIUS * BUILDING_ACTIVATION_RADIUS;
   for (let i = 0; i < BUILDINGS.length; i++) {
     const b = BUILDINGS[i];
-    const dx = b.x - px;
-    const dz = b.z - pz;
-    const inRange = (dx * dx + dz * dz) <= r2 ? 1 : 0;
-    if (activeMask[i] !== inRange) {
-      activeMask[i] = inRange;
-      changed.push(i);
+    const dx = b.x - px, dz = b.z - pz;
+    if (dx * dx + dz * dz <= r2) {
+      unlockedMask[i] = 1;
+      activeMask[i] = 1;
+      seeded.push(i);
     }
   }
-  return changed;
+  return seeded;
 }
 
-/** Count how many buildings are currently active (visible + collidable). */
+/**
+ * Recompute which buildings are within range of (px, pz).
+ * Returns two disjoint index lists:
+ *  - streamIn: never-before-seen buildings that just entered range and must
+ *    be mounted for the first time (a real React re-render).
+ *  - toggle: already-mounted buildings whose `visible` needs to flip (either
+ *    direction) — a cheap property mutation on the existing mesh instance.
+ */
+export function scanBuildingProximity(px: number, pz: number): { streamIn: number[]; toggle: number[] } {
+  const streamIn: number[] = [];
+  const toggle: number[] = [];
+  const r2 = BUILDING_ACTIVATION_RADIUS * BUILDING_ACTIVATION_RADIUS;
+  for (let i = 0; i < BUILDINGS.length; i++) {
+    const b = BUILDINGS[i];
+    const dx = b.x - px, dz = b.z - pz;
+    const inRange = (dx * dx + dz * dz) <= r2;
+    if (inRange && activeMask[i] === 0) {
+      activeMask[i] = 1;
+      if (unlockedMask[i] === 0) streamIn.push(i);
+      else toggle.push(i);
+    } else if (!inRange && activeMask[i] === 1) {
+      activeMask[i] = 0;
+      toggle.push(i);
+    }
+  }
+  return { streamIn, toggle };
+}
+
+/** Count how many buildings are currently active (visible + collidable) per the mask. */
 export function countActiveBuildings(): number {
   let count = 0;
   for (let i = 0; i < activeMask.length; i++) count += activeMask[i];
@@ -74,7 +109,7 @@ export function countActiveBuildings(): number {
  * activeMask can briefly diverge from what's rendered; the Memory Safety
  * Monitor must threshold on what's truly on screen, not on pending intent.
  */
-export function countVisibleBuildingMeshes(refs: (THREE.Mesh | null)[]): number {
+export function countVisibleBuildingMeshes(refs: (import('three').Mesh | null)[]): number {
   let count = 0;
   for (const mesh of refs) if (mesh?.visible) count++;
   return count;
@@ -96,17 +131,9 @@ const memoryMonitorState: { overLimitSince: number | null; reloaded: boolean } =
 };
 
 /**
- * Called every frame (City passes the *actually rendered* visible-mesh
- * count, computed via `countVisibleBuildingMeshes` — never activeMask
- * intent, since that can briefly lead the real on-screen state while
- * batched toggles are still draining) plus the current timestamp
- * (caller-supplied so this stays testable and doesn't reach for Date.now()
- * internally).
- *
- * `getConfirmedVisibleCount` is a second, independent re-read of the same
- * real mesh state used only to double-check the sustained breach right
- * before reloading — guards against a false positive caused by a stale
- * closure over `visibleCount` from several frames ago.
+ * Called every scan with the freshly-recomputed *actually rendered*
+ * visible-mesh count and the current timestamp (caller-supplied so this
+ * stays testable and doesn't reach for Date.now() internally).
  */
 export function checkMemorySafety(
   visibleCount: number,

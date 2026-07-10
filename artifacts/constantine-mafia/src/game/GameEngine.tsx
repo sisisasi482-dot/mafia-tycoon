@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { KeyboardControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -85,6 +85,31 @@ function ShadowsController({ enabled }: { enabled: boolean }) {
 
     gl.shadowMap.needsUpdate = true;
   }, [enabled, gl, scene]);
+  return null;
+}
+
+/**
+ * Reports real map-loading progress to the store so the Loading screen's
+ * progress bar reflects actual milestones, not a fake timer:
+ *   50%  → Canvas/renderer created (onCreated fired)
+ *   80%  → world content mounted (City/Environment/Houses committed to the
+ *          scene graph — texture generation + Stage-1 building unlock done)
+ *  100%  → the first real frame has been rendered — the map is genuinely on
+ *          screen, so the overlay can drop instantly with zero black-screen
+ *          risk (frameloop="demand", so this only fires once invalidate()
+ *          has actually produced a frame).
+ */
+function LoadingMilestones() {
+  const reportedReady = useRef(false);
+  useEffect(() => {
+    // Content mount effect runs after City/Environment/Houses have committed.
+    useGameStore.getState().setPlayerState({ mapLoadProgress: 80 });
+  }, []);
+  useFrame(() => {
+    if (reportedReady.current) return;
+    reportedReady.current = true;
+    useGameStore.getState().setPlayerState({ mapLoadProgress: 100, mapReady: true });
+  });
   return null;
 }
 
@@ -190,6 +215,7 @@ export function GameEngine() {
           frameloop="demand"
           camera={{ position: [0, 10, 10], fov: cameraMode === 'first' ? 80 : 60 }}
           gl={{ antialias: false }}
+          onCreated={() => useGameStore.getState().setPlayerState({ mapLoadProgress: 50 })}
         >
           {/* Base background & fog — DayNight overwrites these every frame */}
           <color attach="background" args={['#050810']} />
@@ -200,6 +226,8 @@ export function GameEngine() {
           {!IS_MOBILE_DEVICE && (
             <Stars radius={200} depth={60} count={3000} factor={4} saturation={0} fade speed={1} />
           )}
+
+          <LoadingMilestones />
 
           {/* Performance controllers — settings apply live, no reload */}
           <FpsCapController fpsCap={fpsCap} />

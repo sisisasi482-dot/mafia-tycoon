@@ -56,6 +56,8 @@ export function useSaveSystem() {
           inVehicle: false,
           equippedVehicleId: null,
           playerPosition: [-125, 1, 0],
+          mapLoadProgress: 0,
+          mapReady: false,
         });
         return true;
       }

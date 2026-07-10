@@ -21,6 +21,8 @@ export function CharacterCreation() {
       careerPath: 'street_thug',
       district: 'ali_mendjeli',
       playerPosition: [-125, 1, 0],
+      mapLoadProgress: 0,
+      mapReady: false,
     });
   };
 

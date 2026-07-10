@@ -121,6 +121,11 @@ export type GameState = {
   // Screen
   screen: 'main_menu' | 'character_creation' | 'playing' | 'game_over';
 
+  /** 0–100, real progress of the staged map load — drives the loading bar. */
+  mapLoadProgress: number;
+  /** True once the map has finished its initial load — hides the loading overlay. */
+  mapReady: boolean;
+
   // Garage vehicle storage
   garageStoredVehicles: Record<string, string[]>;
 
@@ -279,6 +284,8 @@ const initialState: Omit<GameState,
   dizzyUntil:          0,
 
   screen:              'main_menu',
+  mapLoadProgress:     0,
+  mapReady:            false,
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
