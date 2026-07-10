@@ -1,80 +1,59 @@
 # Constantine Mafia: City Under Siege
 
-A multiplayer GTA-style 3D browser game set in Constantine, Algeria. Players explore an open-world city, drive vehicles, complete missions, and interact with NPCs and other players in real time.
-
-## Run & Operate
-
-Three services run in parallel:
-
-| Service | Workflow | Notes |
-|---|---|---|
-| Game client | `artifacts/constantine-mafia: web` | Vite dev server, hot reload |
-| API + Socket.io | `artifacts/api-server: API Server` | Express 5, esbuild bundle |
-| Mockup sandbox | `artifacts/mockup-sandbox: Component Preview Server` | Dev only, UI prototyping |
-
-- `pnpm install` — install all workspace dependencies
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-
-**Required env:**
-- `DATABASE_URL` — Postgres connection string (provided by Replit's built-in PostgreSQL)
-- `SESSION_SECRET` — secret for session signing
+A multiplayer browser-based mafia game set in Constantine, Algeria. Players choose a career path, complete missions, earn money, and compete on a leaderboard — all in real-time.
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- **Frontend:** React 19, Three.js via `@react-three/fiber` + `@react-three/drei`, Vite, Tailwind CSS 4, Zustand, Framer Motion
-- **Backend:** Express 5, Socket.io (real-time multiplayer)
-- **DB:** PostgreSQL (Replit built-in) + Drizzle ORM
-- **Validation:** Zod (`zod/v4`), `drizzle-zod`
-- **Build:** esbuild (API server CJS bundle)
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19, Vite, Tailwind CSS v4, Wouter |
+| Backend | Express 5, Socket.IO, Pino logging |
+| Database | PostgreSQL via Drizzle ORM |
+| Shared libs | `lib/db` (schema + client), `lib/api-zod` (Zod schemas) |
+| Monorepo | pnpm workspaces |
 
-## Where things live
+## Project structure
 
 ```
-artifacts/constantine-mafia/   Game client (React + Three.js)
-  src/game/                    Core engine: GameEngine, Player, City, Vehicles, NPCs
-  src/ui/                      HUD, Minimap, Radio, Shop panels
-artifacts/api-server/          REST API + Socket.io server
-  src/index.ts                 Entry point — Express + Socket.io setup
-  src/routes/game.ts           Player CRUD and game-state endpoints
-lib/db/                        Shared DB package (Drizzle schema + connection)
-  src/schema/                  Source of truth for DB schema
-lib/api-zod/                   Zod schemas generated from OpenAPI spec
-lib/api-client-react/          React Query hooks generated from OpenAPI spec
+artifacts/
+  constantine-mafia/   # React/Vite frontend (preview path: /)
+  api-server/          # Express + Socket.IO backend (preview path: /api)
+  mockup-sandbox/      # Design/canvas preview server
+lib/
+  db/                  # Drizzle schema + PostgreSQL client
+  api-zod/             # Shared Zod API schemas
+config/
+  platforms/           # Platform-specific config (PC, iOS, Android)
 ```
 
-## Architecture decisions
+## Running locally on Replit
 
-- **Monorepo with pnpm workspaces** — game client, API server, and shared libs are separate packages; `lib/db` is imported directly as a workspace dep so schema types are shared end-to-end.
-- **Socket.io for multiplayer** — real-time player position sync goes through Socket.io; REST routes handle persistent state (player records, scores).
-- **esbuild for API bundle** — the API server is bundled to a single CJS file for fast startup; source maps are emitted for debugging.
-- **Drizzle ORM** — schema-first, all migrations run via `drizzle-kit push` in dev; Replit's Publish flow handles production schema diffs.
+Both services start automatically via configured workflows:
 
-## Product
+- **Frontend** (`artifacts/constantine-mafia: web`): `pnpm --filter @workspace/constantine-mafia run dev`
+- **API Server** (`artifacts/api-server: API Server`): `pnpm --filter @workspace/api-server run dev`
 
-Players join an open 3D city, choose a character, and roam freely — on foot or in vehicles. Missions, NPCs, a day/night cycle, and a shop system provide progression. Real-time multiplayer lets players see and interact with each other in the same city instance.
+The API server builds with esbuild then starts the compiled output.
 
-## Gotchas
+## Environment variables
 
-- `DATABASE_URL` must be set before the API server starts — it is provided automatically by Replit's built-in PostgreSQL.
-- After any DB schema change, run `pnpm --filter @workspace/db run push` before restarting the API server.
-- The API server dev script is build + start (no watch). Restart the workflow manually after backend changes.
-- Socket.io client path is `/api/socket.io` — this must match the server's `path` option and the Vite proxy config.
+- `DATABASE_URL` — auto-provided by Replit's managed PostgreSQL (runtime-managed, do not set manually)
+- `SESSION_SECRET` — stored as a Replit Secret
+
+## Database
+
+Schema is managed by Drizzle ORM. To push schema changes to the development database:
+
+```bash
+cd lib/db && npx drizzle-kit push
+```
+
+Production schema migrations are handled automatically by Replit's Publish flow.
+
+## Languages
+
+The game supports EN, AR (Arabic), and FR (French).
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Setup status
-
-- Dependencies installed via `pnpm install`, DB schema pushed via `pnpm --filter @workspace/db run push`, and all three workflows (client, API server, mockup sandbox) are running.
-- `DATABASE_URL` is provided automatically by Replit's built-in PostgreSQL; `SESSION_SECRET` is set.
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
-- DB schema source of truth: `lib/db/src/schema/index.ts`
-- API contract source of truth: `lib/api-spec/` (OpenAPI spec)
+_None recorded yet._

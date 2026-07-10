@@ -219,13 +219,14 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     const camRightZ = -Math.sin(moveYaw);
 
     direction.current.set(0, 0, 0);
-    if (keys.forward) { direction.current.x += camFwdX; direction.current.z += camFwdZ; }
-    if (keys.back) { direction.current.x -= camFwdX; direction.current.z -= camFwdZ; }
-    if (keys.left) { direction.current.x -= camRightX; direction.current.z -= camRightZ; }
-    if (keys.right) { direction.current.x += camRightX; direction.current.z += camRightZ; }
+    if (keys.forward) { direction.current.x += camFwdX;   direction.current.z += camFwdZ; }
+    if (keys.back)    { direction.current.x -= camFwdX;   direction.current.z -= camFwdZ; }
+    if (keys.left)    { direction.current.x -= camRightX; direction.current.z -= camRightZ; }
+    if (keys.right)   { direction.current.x += camRightX; direction.current.z += camRightZ; }
+    direction.current.normalize();
 
+    // Rotate player model to face movement direction
     if (direction.current.lengthSq() > 0) {
-      direction.current.normalize();
       const targetAngle = Math.atan2(-direction.current.x, -direction.current.z);
       let diff = targetAngle - innerRef.current.rotation.y;
       while (diff < -Math.PI) diff += Math.PI * 2;
@@ -268,10 +269,12 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
         const penZ = aabb.hd + PLAYER_RADIUS - Math.abs(dz);
         if (penX > 0 && penZ > 0) {
           if (penX < penZ) {
-            pos.x += penX * Math.sign(dx || 1);
+            const nx = Math.sign(dx) || (velocity.current.x >= 0 ? 1 : -1);
+            pos.x += penX * nx;
             velocity.current.x = 0;
           } else {
-            pos.z += penZ * Math.sign(dz || 1);
+            const nz = Math.sign(dz) || (velocity.current.z >= 0 ? 1 : -1);
+            pos.z += penZ * nz;
             velocity.current.z = 0;
           }
         }
@@ -283,14 +286,133 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     const swing = Math.sin(walkCycle.current) * 0.55;
     const bob = Math.abs(Math.sin(walkCycle.current)) * 0.03;
 
-    if (leftLegRef.current) leftLegRef.current.rotation.x = swing * 0.65;
+    if (leftLegRef.current)  leftLegRef.current.rotation.x  =  swing * 0.65;
     if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.65;
-    if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.45;
-    if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.45;
-    if (torsoRef.current) torsoRef.current.position.y = bob;
+    if (leftArmRef.current)  leftArmRef.current.rotation.x  = -swing * 0.45;
+    if (rightArmRef.current) rightArmRef.current.rotation.x =  swing * 0.45;
+    if (torsoRef.current)    torsoRef.current.position.y    =  bob;
 
+    /* ── Interaction system ───────────────────────────────────────────────── */
+    const interactDown = keys.interact;
+    const justPressed  = interactDown && !interactWasDown.current;
+    interactWasDown.current = interactDown;
+
+    if (indoors && interiorId) {
+      const layout = INTERIORS[interiorId];
+      if (layout) {
+        const exitX = layout.centerX + layout.exitOffsetX;
+        const exitZ = layout.centerZ + layout.exitOffsetZ;
+        const dist  = Math.hypot(pos.x - exitX, pos.z - exitZ);
+        if (dist < 3.0) {
+          pushHint(`[E] Exit ${layout.label}`);
+          if (justPressed) {
+            const exitPos = useGameStore.getState().interiorExitPos;
+            exitInterior();
+            innerRef.current.position.set(exitPos[0], exitPos[1], exitPos[2]);
+            velocity.current.set(0, 0, 0);
+          }
+        } else {
+          pushHint(null);
+        }
+      }
+    } else {
+      let nearDoor: typeof DOOR_TRIGGERS[0] | null = null;
+      let nearNpc:  typeof NPC_TALKERS[0]  | null = null;
+      let minDist = Infinity;
+
+      for (const dt of DOOR_TRIGGERS) {
+        const d = Math.hypot(pos.x - dt.worldX, pos.z - dt.worldZ);
+        if (d < dt.radius && d < minDist) { nearDoor = dt; minDist = d; }
+      }
+
+      if (!nearDoor) {
+        let minNpcDist = Infinity;
+        for (const npc of NPC_TALKERS) {
+          const d = Math.hypot(pos.x - npc.worldX, pos.z - npc.worldZ);
+          if (d < npc.radius && d < minNpcDist) { nearNpc = npc; minNpcDist = d; }
+        }
+      }
+
+      if (nearDoor) {
+        const propId  = nearDoor.propertyId;
+        const gs      = useGameStore.getState();
+        const owned   = !propId || gs.ownedAssetIds.includes(propId);
+        const locked  = !!propId && gs.lockedPropertyIds.includes(propId);
+
+        if (propId && !owned) {
+          pushHint(`🔒 ${nearDoor.label} — Buy in Shop`);
+        } else if (propId && locked) {
+          pushHint(`[E] Unlock ${nearDoor.label}`);
+          if (justPressed) {
+            gs.togglePropertyLock(propId);
+            pushHint(`🔓 ${nearDoor.label} unlocked`);
+          }
+        } else {
+          if (!showingDialogue.current) pushHint(`[E] Enter ${nearDoor.label}`);
+          if (justPressed) {
+            const layout = INTERIORS[nearDoor.interiorId];
+            if (layout) {
+              enterInterior(nearDoor.interiorId, [pos.x, pos.y, pos.z]);
+              innerRef.current.position.set(layout.centerX, 1, layout.centerZ);
+              velocity.current.set(0, 0, 0);
+              pushHint(null);
+            }
+          }
+        }
+      } else if (nearNpc) {
+        if ((nearNpc as any).shopType === 'hospital') {
+          // Hospital — heals directly, no shop panel
+          const gs = useGameStore.getState();
+          const full = gs.health >= 100;
+          if (!showingDialogue.current) pushHint(full ? `${nearNpc.label}: Already at full health` : `[E] ${nearNpc.label} — Heal (free)`);
+          if (justPressed && !full) {
+            gs.healPlayer(100);
+            pushHint(`⚕ ${nearNpc.label}: Fully healed`);
+            setTimeout(() => { if (currentHint.current?.includes('Fully healed')) pushHint(null); }, 2000);
+          }
+        } else if ((nearNpc as any).shopType) {
+          // Shop NPC — open the Shop panel at the relevant tab
+          if (!showingDialogue.current) pushHint(`[E] Shop · ${nearNpc.label}`);
+          if (justPressed) {
+            useGameStore.getState().setPlayerState({
+              isPaused:    true,
+              activePanel: 'shop',
+              shopNpcTab:  (nearNpc as any).shopType,
+            });
+            pushHint(null);
+          }
+        } else if (nearNpc.options && nearNpc.options.length > 0) {
+          // Multi-option dialogue — open DialogueUI overlay
+          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
+          if (justPressed && !showingDialogue.current) {
+            useGameStore.getState().setDialogueNpc(nearNpc.id);
+            pushHint(null);
+          }
+        } else {
+          // Legacy single-line dialogue
+          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
+          if (justPressed && !showingDialogue.current) {
+            showingDialogue.current = true;
+            pushHint(nearNpc.dialogue);
+            if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
+            npcDialogTimer.current = setTimeout(() => {
+              showingDialogue.current = false;
+              currentHint.current = null;
+            }, 3500);
+          }
+        }
+      } else {
+        if (!showingDialogue.current) pushHint(null);
+        if (npcDialogTimer.current && !showingDialogue.current) {
+          clearTimeout(npcDialogTimer.current);
+          npcDialogTimer.current = null;
+        }
+      }
+    }
+
+    /* ── Sync position + rotationY to store (throttled ~10 Hz) ──────────── */
     syncTimer.current += delta;
-    if (syncTimer.current > 0.3) {
+    if (syncTimer.current > 0.1) {
       syncTimer.current = 0;
       setPlayerPosition([pos.x, pos.y, pos.z], innerRef.current.rotation.y);
     }

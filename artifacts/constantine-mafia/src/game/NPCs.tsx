@@ -404,20 +404,40 @@ export function NPCs() {
         return;
       }
 
+      /* ── Move toward waypoint ── */
+      const ndx  = dx / dist;
+      const ndz  = dz / dist;
       const step = def.speed * delta;
-      s.x += (dx / dist) * Math.min(step, dist);
-      s.z += (dz / dist) * Math.min(step, dist);
+      const nx   = s.x + ndx * Math.min(step, dist);
+      const nz   = s.z + ndz * Math.min(step, dist);
 
-      // التصادم: تقليل عدد الفحوصات
-      if (Math.random() > 0.6) { 
-        for (const aabb of BUILDING_AABBS) {
-          if (Math.abs(s.x - aabb.cx) < aabb.hw + NPC_RADIUS && 
-              Math.abs(s.z - aabb.cz) < aabb.hd + NPC_RADIUS) {
-            s.waitTimer = 0.5;
-            break;
-          }
+      /* ── Building AABB collision avoidance ── */
+      let blocked = false;
+      for (const aabb of BUILDING_AABBS) {
+        const adx  = nx - aabb.cx;
+        const adz  = nz - aabb.cz;
+        const penX = aabb.hw + NPC_RADIUS - Math.abs(adx);
+        const penZ = aabb.hd + NPC_RADIUS - Math.abs(adz);
+        if (penX > 0 && penZ > 0) {
+          blocked = true;
+          break;
         }
       }
+
+      if (blocked) {
+        /* Re-pick a random nearby waypoint and idle briefly */
+        s.waitTimer = 0.3 + rng() * 1.0;
+        const angle = rng() * Math.PI * 2;
+        const r     = def.radius * (0.4 + rng() * 0.6);
+        s.targetX   = def.spawnX + Math.cos(angle) * r;
+        s.targetZ   = def.spawnZ + Math.sin(angle) * r;
+        group.position.set(s.x, 1, s.z);
+        group.rotation.y = s.rotY;
+        return;
+      }
+
+      s.x = nx;
+      s.z = nz;
 
       const targetRotY = Math.atan2(-dx, -dz);
       s.rotY += (targetRotY - s.rotY) * 8 * delta;
