@@ -155,6 +155,21 @@ export type GameState = {
   /** timestamp (ms) when cigarette dizziness ends; 0 = not dizzy */
   dizzyUntil:         number;
 
+  // ── Bank heist ───────────────────────────────────────────────────────────
+  /** True while the bank vault heist sequence (alarm/lights) is active. */
+  heistActive:        boolean;
+  /** Timestamp (ms) the last heist completed; 0 = never robbed. */
+  heistCompletedAt:   number;
+
+  // ── Gang followers ───────────────────────────────────────────────────────
+  /** NPC spawn ids of currently-recruited gang followers (max 3). */
+  gangMemberIds:      number[];
+
+  // ── Inventory panel UI ───────────────────────────────────────────────────
+  showInventory:      boolean;
+  /** True while the player is aiming their equipped weapon. */
+  aimMode:            boolean;
+
   // Actions
   setPlayerState:     (state: Partial<GameState>) => void;
   setPlayerPosition:  (pos: [number, number, number], rotY?: number) => void;
@@ -215,6 +230,17 @@ export type GameState = {
   redeemCode:         (code: string) => { ok: boolean; amount: number; msg: string };
   /** Atomically deduct money and add one consumable to inventory. Returns false if insufficient funds. */
   buyConsumable:      (id: string, price: number) => boolean;
+
+  // ── Bank heist actions ─────────────────────────────────────────────────────
+  /** Starts the vault heist: credits money, sets wanted level, flashes alarm. */
+  startHeist:         () => void;
+
+  // ── Gang follower actions ───────────────────────────────────────────────────
+  recruitGangMember:  (id: number) => void;
+  dismissGangMember:  (id: number) => void;
+
+  // ── Inventory panel actions ─────────────────────────────────────────────────
+  toggleInventory:    () => void;
 };
 
 const initialState: Omit<GameState,
@@ -229,6 +255,7 @@ const initialState: Omit<GameState,
   | 'storeVehicleInGarage' | 'retrieveVehicleFromGarage'
   | 'addInventoryItem' | 'useConsumable'  | 'dropConsumable' | 'buyAmmo'
   | 'fireWeapon'     | 'reloadWeapon'    | 'dropWeapon'     | 'redeemCode' | 'buyConsumable'
+  | 'startHeist'     | 'recruitGangMember' | 'dismissGangMember' | 'toggleInventory'
 > = {
   playerId:            null,
   username:            '',
@@ -315,6 +342,14 @@ const initialState: Omit<GameState,
   weaponMags:          {},
   redeemedCodes:       [],
   dizzyUntil:          0,
+
+  heistActive:         false,
+  heistCompletedAt:    0,
+
+  gangMemberIds:       [],
+
+  showInventory:       false,
+  aimMode:             false,
 
   screen:              'main_menu',
   mapLoadProgress:     0,
@@ -567,4 +602,31 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   resetGame: () => set(initialState),
+
+  // ── Bank heist ───────────────────────────────────────────────────────────
+  startHeist: () => {
+    set((s) => ({
+      heistActive:      true,
+      money:            s.money + 50_000,
+      wantedLevel:      5,
+      pursuitActive:    true,
+      lastCrimeTime:    Date.now(),
+      heistCompletedAt: Date.now(),
+    }));
+    setTimeout(() => set({ heistActive: false }), 3000);
+  },
+
+  // ── Gang followers ───────────────────────────────────────────────────────
+  recruitGangMember: (id) => set((s) =>
+    s.gangMemberIds.includes(id) || s.gangMemberIds.length >= 3
+      ? {}
+      : { gangMemberIds: [...s.gangMemberIds, id] },
+  ),
+
+  dismissGangMember: (id) => set((s) => ({
+    gangMemberIds: s.gangMemberIds.filter((m) => m !== id),
+  })),
+
+  // ── Inventory panel ──────────────────────────────────────────────────────
+  toggleInventory: () => set((s) => ({ showInventory: !s.showInventory })),
 }));

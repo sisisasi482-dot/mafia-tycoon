@@ -264,7 +264,7 @@ export function GangFollowers() {
   return (
     <>
       <RecruitWatcher />
-      {gangMemberIds.slice(0, 3).map((memberId, i) => (
+      {gangMemberIds.slice(0, 3).map((memberId: number, i: number) => (
         <Follower key={memberId} slotIndex={i} memberId={memberId} />
       ))}
     </>
