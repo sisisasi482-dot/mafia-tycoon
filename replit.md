@@ -39,6 +39,7 @@ The API server builds with esbuild then starts the compiled output.
 
 - `DATABASE_URL` — auto-provided by Replit's managed PostgreSQL (runtime-managed, do not set manually)
 - `SESSION_SECRET` — stored as a Replit Secret
+- `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` — auto-provisioned by Replit-managed Clerk (do not set manually)
 
 ## Database
 
