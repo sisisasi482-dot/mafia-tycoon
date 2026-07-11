@@ -46,6 +46,9 @@ const PERSIST_KEYS = [
   'shadowsEnabled', 'postProcessing', 'npcDensity', 'textureQuality', 'npcCount', 'fpsCap',
   // Owned vehicle instances (spawned via car key) + their lock state
   'ownedVehicleInstances', 'lockedVehicleIds',
+  // Property lock state (house/garage keys) — ownership itself lives in
+  // ownedAssetIds (already persisted + cloud-synced above).
+  'lockedPropertyIds',
 ] as const;
 
 /**

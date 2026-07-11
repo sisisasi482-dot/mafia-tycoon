@@ -108,3 +108,42 @@ export const VEHICLE_RENDER_MAP: Record<string, { type: 'sedan' | 'taxi' | 'poli
   moto:       { type: 'sedan', bodyColor: '#cc2222', roofColor: '#111111' },
   police_car: { type: 'police', bodyColor: '#1a3aee', roofColor: '#f0f0f0' },
 };
+
+// ─── House keys ───────────────────────────────────────────────────────────────
+
+/** Inventory item prefix for property/house keys granted on purchase. */
+export const HOUSE_KEY_PREFIX = 'house_key_';
+
+/** True if an inventory slot ID is a house/property key. */
+export function isHouseKey(id: string): boolean { return id.startsWith(HOUSE_KEY_PREFIX); }
+
+/** Extract the property ID encoded in a house key inventory ID. */
+export function propertyIdFromKey(keyId: string): string {
+  return keyId.slice(HOUSE_KEY_PREFIX.length);
+}
+
+// ─── Identity documents ─────────────────────────────────────────────────────────
+
+/** National ID — required to legally purchase property from the Real Estate Agency. */
+export const NATIONAL_ID_ID = 'national_id';
+export const NATIONAL_ID_PRICE = 3000;
+
+/** Driving License — earned via a short quiz at the DMV desk (Ali Mendjeli Garage). */
+export const DRIVING_LICENSE_ID = 'driving_license';
+
+export interface QuizQuestion {
+  id:      string;
+  q:       string;
+  options: string[];
+  answer:  number; // index into options
+}
+
+/** Question bank for the Driving License test — 3 are drawn each attempt. */
+export const DRIVING_LICENSE_QUIZ: QuizQuestion[] = [
+  { id: 'q1', q: 'What does a red traffic light mean?', options: ['Speed up', 'Stop', 'Turn left only', 'Ignore it'], answer: 1 },
+  { id: 'q2', q: 'Before overtaking another vehicle, you should:', options: ['Honk and swerve', 'Check mirrors & blind spot', 'Close your eyes', 'Flash your lights only'], answer: 1 },
+  { id: 'q3', q: 'The maximum urban speed limit is typically:', options: ['50 km/h', '150 km/h', '10 km/h', 'No limit'], answer: 0 },
+  { id: 'q4', q: 'At a pedestrian crossing, a driver must:', options: ['Accelerate', 'Yield to pedestrians', 'Honk continuously', 'Reverse'], answer: 1 },
+  { id: 'q5', q: 'Driving under the influence of alcohol is:', options: ['Illegal and dangerous', 'Allowed at night', 'Encouraged', 'Only a minor issue'], answer: 0 },
+  { id: 'q6', q: 'A seatbelt should be worn:', options: ['Only on highways', 'Never', 'At all times while driving', 'Only by passengers'], answer: 2 },
+];

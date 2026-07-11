@@ -285,7 +285,7 @@ export function GameEngine() {
           {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
           {!indoors && <NPCs />}
           {!indoors && <ChildNPCs />}
-          {!indoors && <ShopkeeperNPCs />}
+          <ShopkeeperNPCs />
           {!indoors && <Traffic />}
           {!indoors && <Police />}
           {!indoors && <Houses />}

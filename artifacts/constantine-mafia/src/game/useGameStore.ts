@@ -96,11 +96,11 @@ export type GameState = {
   showShop:           boolean;
   showMissions:       boolean;
   showLeaderboard:    boolean;
-  activePanel: 'none' | 'settings' | 'map' | 'missions' | 'shop' | 'leaderboard';
+  activePanel: 'none' | 'settings' | 'map' | 'missions' | 'shop' | 'leaderboard' | 'hotel' | 'license_quiz';
   interactionHint:    string | null;
   hudEditMode:        boolean;
   /** Tab the shop should pre-select when opened via a shop NPC. */
-  shopNpcTab:         'consumables' | 'ammo' | 'weapons' | 'vehicles' | null;
+  shopNpcTab:         'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'properties' | null;
 
   // Settings
   language:           'en' | 'ar' | 'fr';
@@ -203,7 +203,10 @@ export type GameState = {
   decayWanted:        () => void;
   setOutfit:          (id: string) => void;
   setDialogueNpc:     (id: string | null) => void;
-  sleep:              (hours?: number) => void;
+  /** Advances the clock. When `snapToMorning` is true (Hotel stays), time-skips directly to the next morning. */
+  sleep:              (hours?: number, snapToMorning?: boolean) => void;
+  /** Sells an owned property back: removes ownership + house key + lock state, refunds money. */
+  sellProperty:       (id: string, refund: number) => void;
 
   // Vehicle key / theft / arrest actions
   /** Spawns an owned vehicle near the player. No-op if already spawned. */
@@ -258,7 +261,7 @@ const initialState: Omit<GameState,
   | 'togglePause'    | 'setActivePanel'   | 'setInteractionHint'
   | 'setDayTime'     | 'enterInterior'    | 'exitInterior'  | 'resetGame'
   | 'togglePropertyLock' | 'markVehicleStolen' | 'triggerCrime' | 'decayWanted'
-  | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'
+  | 'setOutfit'      | 'setDialogueNpc'   | 'sleep'          | 'sellProperty'
   | 'spawnOwnedVehicle' | 'despawnOwnedVehicle' | 'toggleVehicleLock'
   | 'reportVehicleStolen' | 'arrestPlayer' | 'clearArrest'
   | 'storeVehicleInGarage' | 'retrieveVehicleFromGarage'
@@ -448,9 +451,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   setOutfit:      (currentOutfitId) => set({ currentOutfitId }),
   setDialogueNpc: (dialogueNpcId)   => set({ dialogueNpcId }),
 
-  sleep: (hours = 8) => set((s) => ({
-    dayTime: (s.dayTime + hours / 24) % 1,
+  sleep: (hours = 8, snapToMorning = false) => set((s) => ({
+    dayTime: snapToMorning ? 0.28 : (s.dayTime + hours / 24) % 1,
     health:  100,
+  })),
+
+  sellProperty: (id, refund) => set((s) => ({
+    ownedAssetIds:     s.ownedAssetIds.filter((a) => a !== id && a !== `house_key_${id}`),
+    lockedPropertyIds: s.lockedPropertyIds.filter((p) => p !== id),
+    money:             s.money + refund,
   })),
 
   // ── Vehicle keys / theft / arrest ──────────────────────────────────────────

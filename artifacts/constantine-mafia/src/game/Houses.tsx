@@ -43,6 +43,22 @@ const GARAGES: GarageDef[] = [
   { id: 'garage_2', x: 360, z: 192, rotY: 0 },
 ];
 
+interface CivicDef {
+  id:    string;
+  x:     number;
+  z:     number;
+  w:     number;
+  d:     number;
+  h:     number;
+  color: string;
+}
+
+// Real Estate Agency + Hotel — further down the suburb road, past the houses.
+const CIVIC_BUILDINGS: CivicDef[] = [
+  { id: 'real_estate', x: 440, z: 150, w: 10, d: 8,  h: 5,  color: '#d8c898' },
+  { id: 'hotel_lobby', x: 480, z: 155, w: 14, d: 12, h: 11, color: '#5a4028' },
+];
+
 // ─── House exterior ───────────────────────────────────────────────────────────
 
 function HouseExterior({ def, streamRef }: { def: HouseDef; streamRef: (obj: THREE.Object3D | null) => void }) {
@@ -154,6 +170,55 @@ function GarageExterior({ def, streamRef }: { def: GarageDef; streamRef: (obj: T
   );
 }
 
+// ─── Civic building exterior (Real Estate Agency / Hotel) ─────────────────────
+
+function CivicExterior({ def, streamRef }: { def: CivicDef; streamRef: (obj: THREE.Object3D | null) => void }) {
+  const isHotel = def.id === 'hotel_lobby';
+  return (
+    <group ref={streamRef} position={[def.x, 0, def.z]}>
+      {/* Main block */}
+      <mesh castShadow receiveShadow position={[0, def.h / 2, 0]}>
+        <boxGeometry args={[def.w, def.h, def.d]} />
+        <meshStandardMaterial color={def.color} roughness={0.75} />
+      </mesh>
+
+      {/* Flat roof cap */}
+      <mesh castShadow position={[0, def.h + 0.15, 0]}>
+        <boxGeometry args={[def.w + 0.4, 0.3, def.d + 0.4]} />
+        <meshStandardMaterial color="#2a2018" roughness={0.8} />
+      </mesh>
+
+      {/* Window rows */}
+      {Array.from({ length: isHotel ? 3 : 1 }, (_, floor) =>
+        [-def.w * 0.28, 0, def.w * 0.28].map((wx, i) => (
+          <mesh key={`${floor}-${i}`} position={[wx, 1.6 + floor * 2.6, def.d / 2 + 0.06]}>
+            <boxGeometry args={[1.3, 1.3, 0.08]} />
+            <meshStandardMaterial color="#ffe8b0" emissive="#ffcc66" emissiveIntensity={0.9} />
+          </mesh>
+        )),
+      )}
+
+      {/* Entrance canopy */}
+      <mesh castShadow position={[0, 2.3, def.d / 2 + 1.1]}>
+        <boxGeometry args={[isHotel ? 6 : 3.5, 0.2, 2]} />
+        <meshStandardMaterial color="#7a1a1a" roughness={0.6} />
+      </mesh>
+
+      {/* Door */}
+      <mesh position={[0, 1.2, def.d / 2 + 0.06]}>
+        <boxGeometry args={[isHotel ? 2.4 : 1.6, 2.4, 0.12]} />
+        <meshStandardMaterial color="#3a2818" roughness={0.5} metalness={0.2} />
+      </mesh>
+
+      {/* Sign */}
+      <mesh position={[0, def.h + 0.9, def.d / 2 - 0.2]}>
+        <boxGeometry args={[isHotel ? 7 : 5, 0.9, 0.15]} />
+        <meshStandardMaterial color="#111111" emissive={isHotel ? '#ffaa44' : '#ffdd66'} emissiveIntensity={1.4} />
+      </mesh>
+    </group>
+  );
+}
+
 // ─── Public export ────────────────────────────────────────────────────────────
 
 export function Houses() {
@@ -174,6 +239,12 @@ export function Houses() {
     getPlayerXZ,
     SPAWN_XZ,
   );
+  const civicStream = useProximityStream(
+    CIVIC_BUILDINGS.length,
+    (i) => [CIVIC_BUILDINGS[i].x, CIVIC_BUILDINGS[i].z] as const,
+    getPlayerXZ,
+    SPAWN_XZ,
+  );
 
   return (
     <>
@@ -185,6 +256,11 @@ export function Houses() {
       {GARAGES.map((g, i) => (
         garageStream.isUnlocked(i)
           ? <GarageExterior key={g.id} def={g} streamRef={garageStream.refFor(i)} />
+          : null
+      ))}
+      {CIVIC_BUILDINGS.map((c, i) => (
+        civicStream.isUnlocked(i)
+          ? <CivicExterior key={c.id} def={c} streamRef={civicStream.refFor(i)} />
           : null
       ))}
     </>

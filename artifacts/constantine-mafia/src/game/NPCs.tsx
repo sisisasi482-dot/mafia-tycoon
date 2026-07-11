@@ -7,6 +7,7 @@
  */
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
@@ -608,21 +609,53 @@ function ShopkeeperMesh({ x, z, isArms }: { x: number; z: number; isArms: boolea
   );
 }
 
-/** Renders stationary shopkeeper figures at all shop NPC talker positions. */
+/** Small floating name-tag over a shopkeeper — clear signage for the relocated NPCs. */
+function ShopSign({ label }: { label: string }) {
+  return (
+    <Html position={[0, 2.15, 0]} center distanceFactor={12} occlude={false}>
+      <div
+        style={{
+          background: 'rgba(10,10,10,0.82)',
+          border: '1px solid rgba(255,255,255,0.25)',
+          borderRadius: 6,
+          padding: '3px 9px',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 800,
+          whiteSpace: 'nowrap',
+          letterSpacing: 0.3,
+          pointerEvents: 'none',
+        }}
+      >
+        {label}
+      </div>
+    </Html>
+  );
+}
+
+/**
+ * Renders stationary shopkeeper figures at all shop / dialogue NPC talker
+ * positions. Indoor NPCs (relocated inside their shops) only render while the
+ * player is inside the matching interior; outdoor NPCs only render outdoors.
+ */
 export function ShopkeeperNPCs() {
-  const screen = useGameStore((s) => s.screen);
+  const screen  = useGameStore((s) => s.screen);
+  const indoors = useGameStore((s) => s.indoors);
+  const interiorId = useGameStore((s) => s.interiorId);
   if (screen !== 'playing') return null;
 
-  const shopNpcs = NPC_TALKERS.filter((n) => n.shopType);
+  const visibleNpcs = NPC_TALKERS.filter((n) => {
+    if (!(n.shopType || n.quiz || n.options)) return false;
+    return n.interiorId ? (indoors && interiorId === n.interiorId) : !indoors;
+  });
+
   return (
     <>
-      {shopNpcs.map((npc) => (
-        <ShopkeeperMesh
-          key={npc.id}
-          x={npc.worldX}
-          z={npc.worldZ}
-          isArms={npc.shopType === 'ammo'}
-        />
+      {visibleNpcs.map((npc) => (
+        <group key={npc.id} position={[npc.worldX, 0, npc.worldZ]}>
+          <ShopkeeperMesh x={0} z={0} isArms={npc.shopType === 'ammo'} />
+          <ShopSign label={npc.label} />
+        </group>
       ))}
     </>
   );

@@ -61,9 +61,11 @@ export interface InteriorLayout {
 export interface DialogueOption {
   id:           string;
   label:        string;
-  kind:         'buy' | 'info' | 'conflict';
+  kind:         'buy' | 'info' | 'conflict' | 'shop';
   cost?:        number;
   itemId?:      string;
+  /** For kind:'shop' — which ShopPanel tab to jump to. */
+  shopTab?:     'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'properties';
   responseText: string;
 }
 
@@ -75,7 +77,11 @@ export interface NpcTalker {
   radius:   number;
   dialogue: string;
   options?: DialogueOption[];
-  shopType?: 'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'hospital';
+  shopType?: 'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'hospital' | 'hotel';
+  /** Interior the NPC stands inside (relocated from the outdoor city scene). Undefined = outdoor NPC. */
+  interiorId?: string;
+  /** Marks the Driving License examiner — opens the quiz overlay instead of dialogue/shop. */
+  quiz?: boolean;
 }
 
 // ─── Interior room layouts ────────────────────────────────────────────────────
@@ -325,6 +331,131 @@ export const INTERIORS: Record<string, InteriorLayout> = {
       { pos: [0, 0.015, 6.5], size: [4, 0.03, 1.5], color: '#335533', roughness: 0.98 },
     ],
   },
+
+  // ── Real Estate Agency ───────────────────────────────────────────────────
+  real_estate: {
+    id: 'real_estate',
+    label: 'Constantine Real Estate',
+    centerX: 920, centerZ: 0,
+    roomW: 12, roomH: 3.0, roomD: 9,
+    lightColor: '#fff2cc', lightIntensity: 2.6,
+    floorColor: '#c0a878',
+    wallColor:  '#e8dcc0',
+    exitOffsetX: 0, exitOffsetZ: 4.5,
+    furniture: [
+      // Agent's desk
+      { pos: [0, 0.75, -3.4], size: [3.2, 1.5, 1.3], color: '#5a4028', roughness: 0.6 },
+      { pos: [0, 1.5, -3.4], size: [3.3, 0.06, 1.4], color: '#8a6840', roughness: 0.5 },
+      // Monitor
+      { pos: [0.6, 1.7, -3.6], size: [0.6, 0.5, 0.1], color: '#1a1a1a', emissive: '#224488', emissiveIntensity: 0.5 },
+      // Property model board (back wall — framed listings)
+      { pos: [-4, 1.8, -4.4], size: [1.6, 1.1, 0.1], color: '#ffffff', emissive: '#ccddff', emissiveIntensity: 0.2 },
+      { pos: [-1.8, 1.8, -4.4], size: [1.6, 1.1, 0.1], color: '#ffffff', emissive: '#ccddff', emissiveIntensity: 0.2 },
+      { pos: [1.8, 1.8, -4.4], size: [1.6, 1.1, 0.1], color: '#ffffff', emissive: '#ccddff', emissiveIntensity: 0.2 },
+      { pos: [4, 1.8, -4.4], size: [1.6, 1.1, 0.1], color: '#ffffff', emissive: '#ccddff', emissiveIntensity: 0.2 },
+      // Waiting chairs
+      { pos: [4.2, 0.4, 1.5], size: [0.9, 0.8, 0.9], color: '#3a3020', roughness: 0.8 },
+      { pos: [-4.2, 0.4, 1.5], size: [0.9, 0.8, 0.9], color: '#3a3020', roughness: 0.8 },
+      // Ceiling light
+      { pos: [0, 2.9, -1], size: [4, 0.08, 0.2], color: '#ffffff', emissive: '#ffeecc', emissiveIntensity: 1.8 },
+      // Entrance mat
+      { pos: [0, 0.015, 4.0], size: [2.6, 0.03, 1.3], color: '#5a4a30', roughness: 0.98 },
+    ],
+  },
+
+  // ── Grand Hotel Constantine ──────────────────────────────────────────────
+  hotel_lobby: {
+    id: 'hotel_lobby',
+    label: 'Grand Hotel Constantine',
+    centerX: 940, centerZ: 0,
+    roomW: 16, roomH: 3.6, roomD: 12,
+    lightColor: '#ffe0b0', lightIntensity: 3.0,
+    floorColor: '#8a7040',
+    wallColor:  '#3a2c1c',
+    exitOffsetX: 0, exitOffsetZ: 5.5,
+    furniture: [
+      // Reception counter
+      { pos: [0, 1.0, -4.8], size: [6.5, 2.0, 1.2], color: '#2a1c10', roughness: 0.5 },
+      { pos: [0, 2.0, -4.8], size: [6.6, 0.06, 1.3], color: '#c8a860', roughness: 0.4, metalness: 0.3 },
+      // Key rack behind counter
+      { pos: [0, 2.5, -5.6], size: [3.5, 0.9, 0.15], color: '#1a120a', roughness: 0.8 },
+      // Lounge sofas
+      { pos: [-5.5, 0.4, 1.0], size: [3.2, 0.8, 1.5], color: '#7a2020', roughness: 0.75 },
+      { pos: [5.5, 0.4, 1.0], size: [3.2, 0.8, 1.5], color: '#7a2020', roughness: 0.75 },
+      // Chandelier (emissive)
+      { pos: [0, 3.5, -1], size: [1.2, 0.4, 1.2], color: '#ffdd88', emissive: '#ffcc66', emissiveIntensity: 2.2, roughness: 0.4 },
+      // Marble pillars
+      { pos: [-6.5, 1.8, -2], size: [0.6, 3.6, 0.6], color: '#d8d0c0', roughness: 0.4 },
+      { pos: [6.5, 1.8, -2], size: [0.6, 3.6, 0.6], color: '#d8d0c0', roughness: 0.4 },
+      // Entrance mat
+      { pos: [0, 0.015, 5.0], size: [4, 0.03, 1.8], color: '#4a1010', roughness: 0.95 },
+    ],
+  },
+
+  // ── Suburb houses (shared simple interior template) ──────────────────────
+  house_1: {
+    id: 'house_1', label: 'Old City Villa',
+    centerX: 960, centerZ: 0, roomW: 12, roomH: 2.8, roomD: 9,
+    lightColor: '#ffddaa', lightIntensity: 2.4, floorColor: '#c8a878', wallColor: '#e0d4b8',
+    exitOffsetX: 0, exitOffsetZ: 4.5,
+    furniture: [
+      { pos: [-3.5, 0.35, -3.0], size: [2.6, 0.7, 4.0], color: '#1a1a2a', roughness: 0.9 },
+      { pos: [-3.5, 0.72, -3.0], size: [2.7, 0.05, 4.1], color: '#8a4a2a', roughness: 0.85 },
+      { pos: [3.0, 0.4, -3.0], size: [3.0, 0.8, 1.6], color: '#3a2a1a', roughness: 0.88 },
+      { pos: [1.5, 0.35, 1.5], size: [1.8, 0.7, 1.2], color: '#4a3818', roughness: 0.8 },
+      { pos: [0, 2.75, -1], size: [3, 0.06, 0.15], color: '#fff2cc', emissive: '#ffe0aa', emissiveIntensity: 1.6 },
+    ],
+  },
+  house_2: {
+    id: 'house_2', label: 'Riverside House',
+    centerX: 980, centerZ: 0, roomW: 13, roomH: 2.9, roomD: 9,
+    lightColor: '#ffddaa', lightIntensity: 2.4, floorColor: '#b8a888', wallColor: '#d8ccb0',
+    exitOffsetX: 0, exitOffsetZ: 4.5,
+    furniture: [
+      { pos: [-3.8, 0.35, -3.0], size: [2.8, 0.7, 4.2], color: '#1a2a1a', roughness: 0.9 },
+      { pos: [-3.8, 0.72, -3.0], size: [2.9, 0.05, 4.3], color: '#5a6a3a', roughness: 0.85 },
+      { pos: [3.2, 0.4, -3.0], size: [3.2, 0.8, 1.6], color: '#2a3a2a', roughness: 0.88 },
+      { pos: [1.8, 0.35, 1.8], size: [2.0, 0.7, 1.2], color: '#4a3818', roughness: 0.8 },
+      { pos: [0, 2.85, -1], size: [3.2, 0.06, 0.15], color: '#fff2cc', emissive: '#ffe0aa', emissiveIntensity: 1.6 },
+    ],
+  },
+  house_3: {
+    id: 'house_3', label: 'Hilltop Residence',
+    centerX: 1000, centerZ: 0, roomW: 14, roomH: 3.1, roomD: 10,
+    lightColor: '#ffe8c8', lightIntensity: 2.6, floorColor: '#d0c8d8', wallColor: '#eee8f0',
+    exitOffsetX: 0, exitOffsetZ: 5,
+    furniture: [
+      { pos: [-4.2, 0.35, -3.4], size: [3.0, 0.7, 4.6], color: '#2a2a3a', roughness: 0.9 },
+      { pos: [-4.2, 0.72, -3.4], size: [3.1, 0.05, 4.7], color: '#8a4a5a', roughness: 0.85 },
+      { pos: [3.6, 0.4, -3.4], size: [3.4, 0.8, 1.8], color: '#3a3a4a', roughness: 0.88 },
+      { pos: [2.0, 0.35, 2.0], size: [2.2, 0.7, 1.4], color: '#5a4838', roughness: 0.8 },
+      { pos: [0, 3.05, -1.5], size: [3.6, 0.06, 0.15], color: '#fff2cc', emissive: '#ffe0aa', emissiveIntensity: 1.8 },
+    ],
+  },
+
+  // ── Suburb garages (shared simple interior template) ─────────────────────
+  garage_1: {
+    id: 'garage_1', label: 'Garage – Suburb',
+    centerX: 1020, centerZ: 0, roomW: 10, roomH: 3.0, roomD: 8,
+    lightColor: '#ffffff', lightIntensity: 2.0, floorColor: '#222222', wallColor: '#333330',
+    exitOffsetX: 0, exitOffsetZ: 4,
+    furniture: [
+      { pos: [0, 0.06, 0], size: [4, 0.12, 6], color: '#1a1a18', roughness: 0.85, metalness: 0.2 },
+      { pos: [-4, 1.0, -2.5], size: [1.4, 2.0, 0.6], color: '#cc3300', roughness: 0.5 },
+      { pos: [0, 2.9, 0], size: [4, 0.06, 0.15], color: '#ffffff', emissive: '#eeeeff', emissiveIntensity: 1.8 },
+    ],
+  },
+  garage_2: {
+    id: 'garage_2', label: 'Garage – Riverside',
+    centerX: 1040, centerZ: 0, roomW: 10, roomH: 3.0, roomD: 8,
+    lightColor: '#ffffff', lightIntensity: 2.0, floorColor: '#242424', wallColor: '#353330',
+    exitOffsetX: 0, exitOffsetZ: 4,
+    furniture: [
+      { pos: [0, 0.06, 0], size: [4, 0.12, 6], color: '#1a1a18', roughness: 0.85, metalness: 0.2 },
+      { pos: [4, 1.0, -2.5], size: [1.4, 2.0, 0.6], color: '#2266cc', roughness: 0.5 },
+      { pos: [0, 2.9, 0], size: [4, 0.06, 0.15], color: '#ffffff', emissive: '#eeeeff', emissiveIntensity: 1.8 },
+    ],
+  },
 };
 
 // ─── Door triggers ────────────────────────────────────────────────────────────
@@ -393,6 +524,81 @@ export const DOOR_TRIGGERS: DoorTrigger[] = [
     interiorId: 'bar_old_city',
     color:      '#884400',
   },
+  // ── Real Estate / Hotel (suburb road, past the houses) ─────────────────
+  {
+    id:         'door-real-estate',
+    label:      'Constantine Real Estate',
+    worldX:     440,
+    worldZ:     155,
+    radius:     4.5,
+    interiorId: 'real_estate',
+    color:      '#cc9922',
+  },
+  {
+    id:         'door-hotel',
+    label:      'Grand Hotel Constantine',
+    worldX:     480,
+    worldZ:     162,
+    radius:     5.0,
+    interiorId: 'hotel_lobby',
+    color:      '#ffaa44',
+  },
+  // ── Suburb houses & garages (own properties, south-east suburb zone) ───
+  {
+    id:          'door-house-1',
+    label:       'Old City Villa',
+    worldX:      250,
+    worldZ:      156,
+    radius:      4.5,
+    interiorId:  'house_1',
+    color:       '#2a8a3a',
+    propertyId:  'house_1',
+    propertyType:'home',
+  },
+  {
+    id:          'door-house-2',
+    label:       'Riverside House',
+    worldX:      323,
+    worldZ:      175,
+    radius:      4.5,
+    interiorId:  'house_2',
+    color:       '#2a8a3a',
+    propertyId:  'house_2',
+    propertyType:'home',
+  },
+  {
+    id:          'door-house-3',
+    label:       'Hilltop Residence',
+    worldX:      397,
+    worldZ:      146,
+    radius:      4.5,
+    interiorId:  'house_3',
+    color:       '#2a8a3a',
+    propertyId:  'house_3',
+    propertyType:'home',
+  },
+  {
+    id:          'door-garage-1',
+    label:       'Garage – Suburb',
+    worldX:      280,
+    worldZ:      196.5,
+    radius:      4.5,
+    interiorId:  'garage_1',
+    color:       '#3a9a4a',
+    propertyId:  'garage_1',
+    propertyType:'garage',
+  },
+  {
+    id:          'door-garage-2',
+    label:       'Garage – Riverside',
+    worldX:      360,
+    worldZ:      196.5,
+    radius:      4.5,
+    interiorId:  'garage_2',
+    color:       '#3a9a4a',
+    propertyId:  'garage_2',
+    propertyType:'garage',
+  },
 ];
 
 // ─── NPC Talkers / Shop vendors ───────────────────────────────────────────────
@@ -402,69 +608,87 @@ export const DOOR_TRIGGERS: DoorTrigger[] = [
 // so they are visible before the door interaction radius is entered.
 //
 export const NPC_TALKERS: NpcTalker[] = [
-  // ── Weapons dealer (in front of armory door) ───────────────────────────
+  // ── Weapons dealer (relocated inside the armory, behind the counter) ───
   {
     id:       'npc-weapons-dealer',
     label:    '🔫 Dealer — Weapons',
-    worldX:   240,
-    worldZ:   23,
-    radius:   5.0,
-    dialogue: 'You need hardware? Step inside. Best prices in Constantine.',
+    worldX:   797,
+    worldZ:   -3,
+    radius:   2.8,
+    dialogue: 'You need hardware? Best prices in Constantine.',
     shopType: 'weapons',
+    interiorId: 'weapons_shop',
   },
 
-  // ── Ammo resupply NPC (near spawn, at weapons armory vicinity) ─────────
+  // ── Ammo resupply NPC (relocated inside the armory, opposite counter) ──
   {
     id:       'npc-ammo-vendor',
     label:    '🔹 Ammo Vendor',
-    worldX:   325,
-    worldZ:   -26,
-    radius:   5.0,
+    worldX:   803,
+    worldZ:   -3,
+    radius:   2.8,
     dialogue: 'Need rounds? I\'ve got everything from 9mm to 7.62.',
     shopType: 'ammo',
+    interiorId: 'weapons_shop',
   },
 
-  // ── Convenience store clerk (in front of corner store door) ────────────
+  // ── Convenience store clerk (relocated behind the shop counter) ────────
   {
     id:       'npc-store-clerk',
     label:    '🥙 Corner Store',
-    worldX:   60,
-    worldZ:   -20,
-    radius:   5.0,
+    worldX:   820,
+    worldZ:   -3,
+    radius:   3.0,
     dialogue: 'Food, drinks, cigarettes — we have it all, habibi.',
     shopType: 'consumables',
+    interiorId: 'convenience',
   },
 
-  // ── Car dealer (City A, near garage) ──────────────────────────────────
+  // ── Car dealer (relocated inside Ali Mendjeli Garage) ──────────────────
   {
     id:       'npc-car-dealer',
     label:    '🚗 Car Dealer',
-    worldX:   -220,
-    worldZ:   21,
-    radius:   5.0,
+    worldX:   864,
+    worldZ:   -4,
+    radius:   4.0,
     dialogue: 'Need wheels? I have keys for Renault, BMW, even a Kangoo.',
     shopType: 'vehicles',
+    interiorId: 'garage_am',
   },
 
-  // ── Hospital doctor (in front of hospital door) ─────────────────────────
+  // ── DMV examiner (shares the garage — driving license quiz desk) ───────
+  {
+    id:       'npc-license-examiner',
+    label:    '🪪 Licensing Desk',
+    worldX:   856,
+    worldZ:   -4,
+    radius:   3.0,
+    dialogue: 'Take the driving test and I\'ll issue your license on the spot.',
+    interiorId: 'garage_am',
+    quiz: true,
+  },
+
+  // ── Hospital doctor (relocated behind the reception desk) ──────────────
   {
     id:       'npc-doctor',
     label:    '⚕ Dr. Amrani',
-    worldX:   360,
-    worldZ:   21,
-    radius:   5.5,
+    worldX:   900,
+    worldZ:   -4,
+    radius:   4.0,
     dialogue: 'You look rough. Let me patch you up — no charge.',
     shopType: 'hospital',
+    interiorId: 'hospital',
   },
 
-  // ── Bar owner (City A) ──────────────────────────────────────────────────
+  // ── Bar owner (relocated behind the bar counter) ────────────────────────
   {
     id:       'npc-bar-owner',
     label:    '☕ Café Owner',
-    worldX:   -300,
-    worldZ:   -20,
-    radius:   4.5,
+    worldX:   880,
+    worldZ:   -3.2,
+    radius:   3.2,
     dialogue: 'Welcome to Café Constantine. Best kahwa in the city, my friend.',
+    interiorId: 'bar_old_city',
     options: [
       {
         id:           'opt-coffee',
@@ -480,5 +704,51 @@ export const NPC_TALKERS: NpcTalker[] = [
         responseText: 'The police are running extra checkpoints tonight. Watch yourself.',
       },
     ],
+  },
+
+  // ── Real Estate agent (inside the agency — sells National ID + property) ─
+  {
+    id:       'npc-real-estate-agent',
+    label:    '🏠 Real Estate Agent',
+    worldX:   920,
+    worldZ:   -3.4,
+    radius:   3.2,
+    dialogue: 'Looking for a place in Constantine? I can set you up — with the right papers.',
+    interiorId: 'real_estate',
+    options: [
+      {
+        id:           'opt-national-id',
+        label:        'Apply for National ID',
+        kind:         'buy',
+        cost:         3000,
+        itemId:       'national_id',
+        responseText: 'Your National ID is ready. You can now legally purchase property.',
+      },
+      {
+        id:           'opt-browse-properties',
+        label:        'Browse properties',
+        kind:         'shop',
+        shopTab:      'properties',
+        responseText: '',
+      },
+      {
+        id:           'opt-info',
+        label:        'What do I need to buy a house?',
+        kind:         'info',
+        responseText: 'A National ID, and enough cash. Come back once you have both.',
+      },
+    ],
+  },
+
+  // ── Hotel clerk (inside the lobby — offers a stay of 1 day to 1 month) ──
+  {
+    id:       'npc-hotel-clerk',
+    label:    '🛎 Hotel Clerk',
+    worldX:   940,
+    worldZ:   -4.4,
+    radius:   3.5,
+    dialogue: 'Welcome to the Grand Hotel. How long will you be staying?',
+    shopType: 'hotel',
+    interiorId: 'hotel_lobby',
   },
 ];
