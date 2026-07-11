@@ -501,14 +501,14 @@ function DynamicCheckpoint() {
 
   // Mandatory null-check safeguard before rendering: bail out entirely if
   // there is no valid, fully-populated segment to build geometry from.
-  if (!active.current || !currentSeg.current) return null;
-
+  // Reading seg.x0 (formerly seg2.x0 in transpiled output) on a null ref
+  // was the source of the "undefined is not an object" runtime crash — the
+  // combined guard below prevents it in all edge cases.
   const seg = currentSeg.current;
-  if (
-    seg.x0 === undefined || seg.x1 === undefined ||
-    seg.z0 === undefined || seg.z1 === undefined ||
-    seg.width === undefined
-  ) {
+  if (!active.current || !seg ||
+      seg.x0 === undefined || seg.x1 === undefined ||
+      seg.z0 === undefined || seg.z1 === undefined ||
+      seg.width === undefined) {
     return null;
   }
 
