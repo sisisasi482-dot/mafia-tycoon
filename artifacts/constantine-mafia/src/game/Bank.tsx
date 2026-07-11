@@ -141,7 +141,13 @@ export function Bank() {
       const sinceHeist = Date.now() - state.heistCompletedAt;
       const cooldownOk = sinceHeist > HEIST_COOLDOWN_MS || state.heistCompletedAt === 0;
       if (cooldownOk) {
-        state.setInteractionHint('[E] 🏦 Bank of Constantine — Rob the Vault  (+50 000 DA)');
+        const crew = state.gangMemberIds.length;
+        const take = 50_000 + crew * 15_000;
+        state.setInteractionHint(
+          crew > 0
+            ? `[E] 🏦 Bank of Constantine — Rob the Vault with your crew (+${take.toLocaleString()} DA)`
+            : `[E] 🏦 Bank of Constantine — Rob the Vault  (+${take.toLocaleString()} DA)`,
+        );
       } else {
         const secs = Math.ceil((HEIST_COOLDOWN_MS - sinceHeist) / 1000);
         state.setInteractionHint(`🏦 Bank — Security on alert (${secs}s cooldown)`);

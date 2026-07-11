@@ -15,10 +15,12 @@ import { useGameStore } from './useGameStore';
 import { audioManager } from './audio/AudioManager';
 
 // ── Gang spawn positions (mirrors NPCs.tsx SPAWNS indices 18–20) ──────────────
+// Kept in sync with the hideout cluster in NPCs.tsx — real walkable ground
+// west of Ain M'lila, inside the player movement clamp (±455/±205).
 const GANG_SPAWNS = [
-  { id: 18, x: -500, z: -60 },
-  { id: 19, x: -540, z:  80 },
-  { id: 20, x: -460, z:   0 },
+  { id: 18, x: -380, z: 130 },
+  { id: 19, x: -410, z: 150 },
+  { id: 20, x: -350, z: 145 },
 ];
 
 const RECRUIT_RADIUS   = 6;    // units — how close to press [E]

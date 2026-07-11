@@ -75,9 +75,12 @@ const SPAWNS: Array<{ x: number; z: number; r: number; type?: NpcType }> = [
   { x:  200, z:  -30, r: 15 }, { x:  215, z:   35, r: 12 },
   // Ain M'lila — citizens + gang
   { x: -265, z:  -30, r: 18 }, { x: -240, z:   40, r: 15 },
-  { x: -500, z:  -60, r: 20, type: 'gang' },
-  { x: -540, z:   80, r: 22, type: 'gang' },
-  { x: -460, z:    0, r: 18, type: 'gang' },
+  // Gang hideout — back alleys west of Ain M'lila. Was previously placed at
+  // x:-500/-540/-460, well past the player movement clamp (±455), making the
+  // whole recruitment feature unreachable; relocated to real walkable ground.
+  { x: -380, z:  130, r: 20, type: 'gang' },
+  { x: -410, z:  150, r: 22, type: 'gang' },
+  { x: -350, z:  145, r: 18, type: 'gang' },
   // Police patrols — near station + checkpoints
   { x:   60, z:   60, r: 15, type: 'police' },
   { x:  270, z:   15, r: 12, type: 'police' },

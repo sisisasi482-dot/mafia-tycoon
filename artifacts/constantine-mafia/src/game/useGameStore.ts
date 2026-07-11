@@ -634,17 +634,32 @@ export const useGameStore = create<GameState>((set, get) => ({
   resetGame: () => set(initialState),
 
   // ── Bank heist ───────────────────────────────────────────────────────────
+  // Crew bonus: every recruited gang member adds 15,000 DA — a direct,
+  // tangible payoff for building a gang before pulling the job. The vault
+  // "cracks" over the alarm-light window (3s) rather than paying out
+  // instantly, so the cash lands right as sirens start closing in.
   startHeist: () => {
-    set((s) => ({
+    const crew = get().gangMemberIds.length;
+    const take = 50_000 + crew * 15_000;
+    set({
       heistActive:      true,
-      money:            s.money + 50_000,
       wantedLevel:      5,
       pursuitActive:    true,
       lastCrimeTime:    Date.now(),
       heistCompletedAt: Date.now(),
-    }));
+    });
     audioManager.playOneShot('siren', 'alarm', [...get().playerPosition]);
-    setTimeout(() => set({ heistActive: false }), 3000);
+    setTimeout(() => {
+      set((s) => ({ heistActive: false, money: s.money + take }));
+      get().setInteractionHint(
+        crew > 0
+          ? `🏦 Vault cracked! +${take.toLocaleString()} DA (crew bonus: +${(crew * 15_000).toLocaleString()})`
+          : `🏦 Vault cracked! +${take.toLocaleString()} DA`,
+      );
+      setTimeout(() => {
+        if (get().interactionHint?.includes('Vault cracked')) get().setInteractionHint(null);
+      }, 3000);
+    }, 3000);
   },
 
   // ── Gang followers ───────────────────────────────────────────────────────

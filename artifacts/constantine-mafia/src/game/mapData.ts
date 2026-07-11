@@ -20,7 +20,7 @@ import { DISTRICTS } from './constants';
  *  that extend past where the player can currently walk. */
 export const WORLD_BOUNDS = { x0: -620, x1: 520, z0: -215, z1: 510 };
 
-export type LandmarkCategory = 'police' | 'hospital' | 'shop' | 'property' | 'landmark';
+export type LandmarkCategory = 'police' | 'hospital' | 'shop' | 'property' | 'landmark' | 'gang';
 
 export interface MapLandmark {
   id:       string;
@@ -57,6 +57,9 @@ export const LANDMARKS: MapLandmark[] = [
   { id: 'real_estate',    label: 'Constantine Real Estate',    icon: '🏠', x: 440,  z: 155,   category: 'landmark' },
   { id: 'bar',            label: 'Café Constantine',            icon: '🍷', x: -300, z: -25,   category: 'landmark' },
   { id: 'safehouse_cv',   label: 'Centre-Ville Safehouse',      icon: '🔑', x: 270,  z: -26,   category: 'property' },
+
+  // Gang hideout — mirrors the recruit spawn cluster in NPCs.tsx/GangFollowers.tsx.
+  { id: 'gang_hideout',   label: 'Gang Hideout',                icon: '💀', x: -380, z: 138,   category: 'gang'     },
 ];
 
 /** District bounding boxes — same DISTRICTS data used by real gameplay logic

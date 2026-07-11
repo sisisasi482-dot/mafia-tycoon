@@ -7,3 +7,4 @@
 - [R3F texture lifecycle](r3f-texture-lifecycle.md) — never clone textures inside JSX map; pre-create in useMemo with dispose on cleanup.
 - [Staged/proximity loading](staged-loading-streaming.md) — mount-once/toggle-visible streaming pattern; module-singleton pools risk stale renders on remount, gate on an `initialized` flag.
 - [Clerk cloud save on existing player table](clerk-cloud-save-cross-artifact.md) — add nullable clerkUserId column + parallel /me routes, don't restructure existing table; sync only DB-backed fields.
+- [Gang/Bank heist integration](gang-bank-heist-integration.md) — gang spawn coords duplicated in 2 files, must stay inside player movement clamp; heist payout scales with crew size.

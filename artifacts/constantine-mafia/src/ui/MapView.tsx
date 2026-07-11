@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<LandmarkCategory, string> = {
   shop:     'Shop',
   property: 'Property',
   landmark: 'Landmark',
+  gang:     'Gang',
 };
 
 export function MapView() {
