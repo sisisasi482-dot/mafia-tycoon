@@ -38,7 +38,7 @@ export function ArrestOverlay() {
               animate={{ opacity: 1 }}
               className="text-gray-400 text-sm tracking-widest uppercase"
             >
-              Weapons confiscated · Released at the station
+              Weapons & belongings confiscated · Cash seized down to 500 DA · Released at the station
             </motion.div>
           )}
         </motion.div>

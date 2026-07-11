@@ -184,7 +184,11 @@ function CheckpointZone({ cp }: { cp: Checkpoint }) {
 
 // ─── Pursuit vehicle ──────────────────────────────────────────────────────────
 
-const PURSUIT_COUNT = 3;
+// Pool size — the max number of cruisers a full 5-star response can field.
+// Each car only activates once wantedLevel reaches its own slot number, so a
+// 1-star pursuit is one lone cruiser while 5 stars throws the whole pool at
+// the player.
+const PURSUIT_COUNT = 5;
 
 // Reusable vector — avoids allocating a new THREE.Vector3 inside useFrame each tick
 const _pursuitFwd = new THREE.Vector3();
@@ -193,17 +197,20 @@ function PursuitCar({ index, positions }: { index: number; positions: React.RefO
   const groupRef    = useRef<THREE.Group>(null);
   const active      = useRef(false);
   const spawnAngle  = useRef((index / PURSUIT_COUNT) * Math.PI * 2);
+  // This car only joins the chase once the wanted level reaches its slot number.
+  const requiredWanted = index + 1;
 
   useFrame((_, delta) => {
     const state = useGameStore.getState();
     if (state.screen !== 'playing' || state.isPaused || !groupRef.current) return;
 
-    const wanted = state.wantedLevel > 0 && state.pursuitActive;
+    const wanted = state.wantedLevel >= requiredWanted && state.pursuitActive;
 
-    // Bank-heist escalation: a heist in progress means every active pursuit
-    // car chases harder — a "high-level" response layered on top of the
-    // normal wanted-level pursuit, without altering the base chase logic.
-    const heistBoost = state.heistActive ? 1.35 : 1;
+    // Escalation: a heist in progress boosts every active car further, and
+    // each star above the first sharpens the chase (faster, closer-following
+    // cruisers) so a 5-star pursuit is meaningfully harder to shake than 1-star.
+    const wantedBoost = 1 + Math.max(0, state.wantedLevel - 1) * 0.15;
+    const heistBoost   = (state.heistActive ? 1.35 : 1) * wantedBoost;
 
     if (!wanted) {
       if (active.current) {
@@ -337,9 +344,12 @@ function ArrestWatcher({ pursuitPositions }: { pursuitPositions: React.RefObject
     const positions = pursuitPositions.current ?? [];
     const anyClose = positions.some((p) => Math.hypot(px - p.x, pz - p.z) < ARREST_RADIUS);
 
+    // Higher wanted levels tighten the hold window — up to ~2s faster at 5 stars.
+    const holdSeconds = Math.max(2, ARREST_HOLD_SECONDS - (state.wantedLevel - 1) * 0.6);
+
     if (anyClose) {
       proximityTimer.current += delta;
-      if (proximityTimer.current >= ARREST_HOLD_SECONDS) {
+      if (proximityTimer.current >= holdSeconds) {
         proximityTimer.current = 0;
         useGameStore.getState().arrestPlayer();
         useGameStore.getState().setPlayerPosition(POLICE_STATION_RESPAWN, 0);

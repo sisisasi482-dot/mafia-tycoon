@@ -12,9 +12,10 @@ export type HudLayoutMap = Record<string, ElementLayout>;
 
 /** Default positions (designed for 390×844 mobile viewport) */
 export const DEFAULT_HUD_LAYOUT: HudLayoutMap = {
-  wanted:   { x: 12,  y: 12,  opacity: 1, width: 160, height: 70  },
-  money:    { x: 170, y: 12,  opacity: 1, width: 200, height: 80  },
-  health:   { x: 12,  y: 700, opacity: 1, width: 200, height: 44  },
+  // Health bar anchors the top-left corner; wanted stars sit directly beneath it.
+  health:   { x: 12,  y: 12,  opacity: 1, width: 180, height: 56  },
+  wanted:   { x: 12,  y: 74,  opacity: 1, width: 180, height: 36  },
+  money:    { x: 200, y: 12,  opacity: 1, width: 200, height: 80  },
   minimap:  { x: 260, y: 100, opacity: 1, width: 120, height: 120 },
   hints:    { x: 120, y: 740, opacity: 1, width: 160, height: 40  },
   ammo:     { x: 220, y: 700, opacity: 1, width: 160, height: 48  },

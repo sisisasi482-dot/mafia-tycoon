@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useGameStore } from '../game/useGameStore';
 import { t } from '../game/constants';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -75,30 +75,6 @@ function DraggableElement({ id, editMode, layout, updateElement, children, label
   );
 }
 
-// ── Pursuit banner ────────────────────────────────────────────────────────────
-
-function PursuitBanner({ wantedLevel }: { wantedLevel: number }) {
-  const [visible, setVisible] = React.useState(true);
-
-  React.useEffect(() => {
-    const id = setInterval(() => setVisible((v) => !v), 500);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <div
-      className="absolute top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-      style={{ opacity: visible ? 1 : 0.4, transition: 'opacity 0.1s' }}
-    >
-      <div className="bg-red-600/95 backdrop-blur-sm text-white font-black text-xs uppercase tracking-[0.2em] px-5 py-2 rounded-full border border-red-400/50 shadow-[0_0_20px_rgba(220,38,38,0.6)] flex items-center gap-2">
-        <span>🚨</span>
-        <span>POLICE PURSUIT</span>
-        <span>{Array.from({ length: wantedLevel }, () => '★').join('')}</span>
-      </div>
-    </div>
-  );
-}
-
 // ── Main HUD ──────────────────────────────────────────────────────────────────
 
 export function HUD() {
@@ -106,13 +82,7 @@ export function HUD() {
   const lang  = store.language;
   const { layout, updateElement, resetLayout } = useHudLayout();
 
-  const [districtName, setDistrictName] = useState('');
   const [showMinimap, setShowMinimap] = useState(true);
-
-  useEffect(() => {
-    const f = store.district.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    setDistrictName(f);
-  }, [store.district]);
 
   if (store.screen !== 'playing' || store.isPaused) return null;
 
@@ -144,18 +114,53 @@ export function HUD() {
         </div>
       )}
 
-      {/* ── Wanted / District ── */}
-      <DraggableElement id="wanted" editMode={editMode} layout={layout} updateElement={updateElement} label="Wanted">
+      {/* ── Health / Armor ── */}
+      <DraggableElement id="health" editMode={editMode} layout={layout} updateElement={updateElement} label="Health">
         <div
-          className="bg-black/80 backdrop-blur-md text-white p-3 rounded-lg border border-white/10 shadow-lg"
+          className="bg-black/80 backdrop-blur-md p-2.5 rounded-lg border border-white/10 shadow-lg flex flex-col gap-1.5"
           style={{ pointerEvents: editMode ? 'none' : 'auto' }}
         >
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">❤️</span>
+            <div className="flex-1 h-3 bg-black/60 border border-white/10 rounded overflow-hidden p-0.5">
+              <div
+                className={`h-full transition-all rounded-sm shadow-[0_0_8px_rgba(220,20,60,0.6)] ${store.health <= 25 ? 'bg-red-600 animate-pulse' : 'bg-destructive'}`}
+                style={{ width: `${store.health}%` }}
+              />
+            </div>
+            <span className="text-[10px] font-mono text-gray-400 w-7 text-right shrink-0">{Math.ceil(store.health)}</span>
+          </div>
+          {store.armor > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🛡️</span>
+              <div className="flex-1 h-3 bg-black/60 border border-white/10 rounded overflow-hidden p-0.5">
+                <div className="h-full bg-blue-400 transition-all rounded-sm shadow-[0_0_6px_rgba(96,165,250,0.6)]" style={{ width: `${store.armor}%` }} />
+              </div>
+              <span className="text-[10px] font-mono text-gray-400 w-7 text-right shrink-0">{Math.ceil(store.armor)}</span>
+            </div>
+          )}
+        </div>
+      </DraggableElement>
+
+      {/* ── Wanted stars (directly under the health bar) ── */}
+      <DraggableElement id="wanted" editMode={editMode} layout={layout} updateElement={updateElement} label="Wanted">
+        <div
+          className="bg-black/80 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10 shadow-lg flex items-center gap-1.5"
+          style={{ pointerEvents: editMode ? 'none' : 'auto' }}
+        >
+          <span className="text-sm">👮</span>
+          <div className="flex gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} className={i < store.wantedLevel ? 'text-white drop-shadow-[0_0_4px_white]' : 'text-gray-700 opacity-50'}>★</span>
+              <span
+                key={i}
+                className={
+                  i < store.wantedLevel
+                    ? 'text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.9)]'
+                    : 'text-gray-700 opacity-50'
+                }
+              >★</span>
             ))}
           </div>
-          <p className="text-xs font-medium text-gray-300 mt-1 uppercase tracking-wide">{districtName}</p>
         </div>
       </DraggableElement>
 
@@ -174,20 +179,6 @@ export function HUD() {
               />
             </div>
           </div>
-        </div>
-      </DraggableElement>
-
-      {/* ── Health / Armor ── */}
-      <DraggableElement id="health" editMode={editMode} layout={layout} updateElement={updateElement} label="Health">
-        <div className="flex flex-col gap-1.5">
-          <div className="w-full h-3.5 bg-black/60 border border-white/10 rounded overflow-hidden p-0.5">
-            <div className="h-full bg-destructive transition-all rounded-sm shadow-[0_0_8px_rgba(220,20,60,0.5)]" style={{ width: `${store.health}%` }} />
-          </div>
-          {store.armor > 0 && (
-            <div className="w-full h-3.5 bg-black/60 border border-white/10 rounded overflow-hidden p-0.5">
-              <div className="h-full bg-blue-400 transition-all rounded-sm" style={{ width: `${store.armor}%` }} />
-            </div>
-          )}
         </div>
       </DraggableElement>
 
@@ -218,11 +209,6 @@ export function HUD() {
           >🗺</button>
         )}
       </DraggableElement>
-
-      {/* ── Police pursuit alert ── */}
-      {store.pursuitActive && store.wantedLevel > 0 && (
-        <PursuitBanner wantedLevel={store.wantedLevel} />
-      )}
 
       {/* ── In-vehicle radio toggle ── */}
       {store.inVehicle && (

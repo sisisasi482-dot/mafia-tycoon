@@ -489,19 +489,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     interactionHint: '🚗 Your car was stolen!',
   })),
 
+  /**
+   * Full arrest strip: officers confiscate every weapon magazine, ammo
+   * reserve, and carried consumable, unequip the current weapon, and empty
+   * the player's pockets down to a flat 500 DA — matching a real booking.
+   * Permanently-owned assets (properties, vehicle keys) are not revoked.
+   */
   arrestPlayer: () => set((s) => {
-    // Confiscate contraband: empty every owned weapon's magazine + ammo reserves.
     const clearedMags: Record<string, number> = {};
     for (const k of Object.keys(s.weaponMags)) clearedMags[k] = 0;
     return {
-      isArrested:    true,
-      wantedLevel:   0,
-      pursuitActive: false,
-      lastCrimeTime: Date.now(),
-      weaponMags:    clearedMags,
-      ammoReserves:  {},
-      inVehicle:     false,
+      isArrested:       true,
+      wantedLevel:      0,
+      pursuitActive:    false,
+      lastCrimeTime:    Date.now(),
+      weaponMags:       clearedMags,
+      ammoReserves:     {},
+      inventory:        {},
+      equippedWeaponId: null,
+      inVehicle:        false,
       equippedVehicleId: null,
+      money:            500,
     };
   }),
 
