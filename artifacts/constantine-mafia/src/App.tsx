@@ -29,7 +29,7 @@ function GameApp() {
           <h1 className="text-7xl font-black text-red-500 mb-8 uppercase tracking-widest">WASTED</h1>
           <p className="text-xl text-white mb-8">You lost 20% of your money.</p>
           <button 
-            onClick={() => useGameStore.getState().setPlayerState({ screen: 'playing', health: 100, wantedLevel: 0, playerPosition: [-125, 1, 0], mapLoadProgress: 0, mapReady: false })}
+            onClick={() => useGameStore.getState().setPlayerState({ screen: 'playing', health: 100, wantedLevel: 0, playerPosition: [310, 1, 0], mapLoadProgress: 0, mapReady: false })}
             className="px-10 py-4 bg-white text-black font-bold text-xl uppercase tracking-widest hover:bg-gray-200 rounded"
           >
             Respawn

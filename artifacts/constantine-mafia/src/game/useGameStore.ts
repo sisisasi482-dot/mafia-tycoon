@@ -281,7 +281,7 @@ const initialState: Omit<GameState,
   gameMode:            'free_world',
 
   // Spawn at central plaza (0, 1, 0) — open area at main road intersection
-  playerPosition:      [0, 1, 0],
+  playerPosition:      [310, 1, 0], // City B (Modern Downtown) — see worldConstants.SPAWN_XZ
   playerRotationY:     0,
   inVehicle:           false,
   lastDrivenVehicleId: null,

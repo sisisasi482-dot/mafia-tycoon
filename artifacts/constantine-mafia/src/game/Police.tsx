@@ -426,17 +426,29 @@ function DynamicCheckpoint() {
       idleTimer.current -= delta;
       if (idleTimer.current <= 0) {
         if (state.heistActive) heistSpawned.current = true;
-        const seg = DYNAMIC_CHECKPOINT_ROADS[Math.floor(Math.random() * DYNAMIC_CHECKPOINT_ROADS.length)];
-        const t = 0.15 + Math.random() * 0.7;
-        const x = seg.x0 + (seg.x1 - seg.x0) * t;
-        const z = seg.z0 + (seg.z1 - seg.z0) * t;
-        currentSeg.current  = seg;
-        currentPos.current  = [x, 0, z];
-        currentRotY.current = seg.horizontal ? Math.PI / 2 : 0;
-        active.current   = true;
-        lifeTimer.current = DYNAMIC_LIFETIME;
-        wasSearching.current = false;
-        force();
+
+        // Mandatory null-check safeguard: never index/derive from a road
+        // segment that doesn't exist. If the pool is empty or the lookup
+        // somehow misses, just retry on the next interval instead of
+        // crashing on `undefined.x0`.
+        const pool = DYNAMIC_CHECKPOINT_ROADS;
+        const seg: RoadSegment | undefined =
+          pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : undefined;
+
+        if (seg) {
+          const t = 0.15 + Math.random() * 0.7;
+          const x = seg.x0 + (seg.x1 - seg.x0) * t;
+          const z = seg.z0 + (seg.z1 - seg.z0) * t;
+          currentSeg.current  = seg;
+          currentPos.current  = [x, 0, z];
+          currentRotY.current = seg.horizontal ? Math.PI / 2 : 0;
+          active.current   = true;
+          lifeTimer.current = DYNAMIC_LIFETIME;
+          wasSearching.current = false;
+          force();
+        } else {
+          idleTimer.current = DYNAMIC_INTERVAL;
+        }
       }
       return;
     }
@@ -487,9 +499,19 @@ function DynamicCheckpoint() {
     }
   });
 
+  // Mandatory null-check safeguard before rendering: bail out entirely if
+  // there is no valid, fully-populated segment to build geometry from.
   if (!active.current || !currentSeg.current) return null;
 
   const seg = currentSeg.current;
+  if (
+    seg.x0 === undefined || seg.x1 === undefined ||
+    seg.z0 === undefined || seg.z1 === undefined ||
+    seg.width === undefined
+  ) {
+    return null;
+  }
+
   const offsets = officerOffsets(seg.width);
 
   return (

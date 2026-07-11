@@ -71,7 +71,7 @@ export function useSaveSystem() {
           isArrested: false,
           inVehicle: false,
           equippedVehicleId: null,
-          playerPosition: [-125, 1, 0],
+          playerPosition: [310, 1, 0], // City B (Modern Downtown) — see worldConstants.SPAWN_XZ
           mapLoadProgress: 0,
           mapReady: false,
         });
