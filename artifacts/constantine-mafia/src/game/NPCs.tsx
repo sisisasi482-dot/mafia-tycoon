@@ -12,6 +12,34 @@ import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
 import { NPC_TALKERS } from './interiors';
+import { triggerNpcInteraction } from './npcInteraction';
+
+// ─── Click-to-interact flavor lines (wandering NPCs have no shop/dialogue) ───
+// Clicking opens a short, no-cost interaction via the shared interactionHint
+// toast — reuses the existing hint pipeline instead of building a new UI.
+
+const CITIZEN_LINES = [
+  "Nice day in Constantine, isn't it?",
+  "Watch yourself around here at night.",
+  "You look like you're up to something...",
+  "Busy street today.",
+  "I don't have any spare change, sorry.",
+];
+const POLICE_LINES = [
+  "Move along, citizen.",
+  "Keep your nose clean and we won't have a problem.",
+  "Nothing to see here.",
+];
+const GANG_LINES = [
+  "You lookin' for trouble?",
+  "This block belongs to us.",
+  "Talk to the boss if you want in.",
+];
+
+function flavorLineFor(def: NpcDef): string {
+  const lines = def.type === 'police' ? POLICE_LINES : def.type === 'gang' ? GANG_LINES : CITIZEN_LINES;
+  return lines[def.id % lines.length];
+}
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -162,11 +190,12 @@ function makeInitialState(): NpcState[] {
 // ─── NPC mesh ─────────────────────────────────────────────────────────────────
 
 interface NpcMeshProps {
-  def:   NpcDef;
-  onRef: (el: THREE.Group | null) => void;
+  def:     NpcDef;
+  onRef:   (el: THREE.Group | null) => void;
+  onClick: (def: NpcDef) => void;
 }
 
-function NpcMesh({ def, onRef }: NpcMeshProps) {
+function NpcMesh({ def, onRef, onClick }: NpcMeshProps) {
   const isPolice = def.type === 'police';
   const isGang   = def.type === 'gang';
   const model    = def.modelType;
@@ -176,7 +205,13 @@ function NpcMesh({ def, onRef }: NpcMeshProps) {
   const armX     = torsoW / 2 + 0.12;
 
   return (
-    <group ref={onRef} scale={[def.scale, def.scale, def.scale]}>
+    <group
+      ref={onRef}
+      scale={[def.scale, def.scale, def.scale]}
+      onClick={(e) => { e.stopPropagation(); onClick(def); }}
+      onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
 
       {/* ── Lower body ──────────────────────────────────────────────────── */}
       {model === 'female_dress' ? (
@@ -378,6 +413,16 @@ export function NPCs() {
   const groupRefs = useRef<(THREE.Group | null)[]>(NPC_DEFS.map(() => null));
   const npcState  = useRef<NpcState[]>(makeInitialState());
   const rngs      = useMemo(() => NPC_DEFS.map((_, i) => seededRng(i * 137.5 + 42)), []);
+  const flavorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNpcClick = (def: NpcDef) => {
+    if (useGameStore.getState().isPaused) return;
+    useGameStore.getState().setInteractionHint(`💬 ${flavorLineFor(def)}`);
+    if (flavorTimer.current) clearTimeout(flavorTimer.current);
+    flavorTimer.current = setTimeout(() => {
+      useGameStore.getState().setInteractionHint(null);
+    }, 2500);
+  };
 
   useFrame((_, delta) => {
     if (screen !== 'playing' || isPaused) return;
@@ -459,6 +504,7 @@ export function NPCs() {
           key={def.id}
           def={def}
           onRef={(el) => { groupRefs.current[i] = el; }}
+          onClick={handleNpcClick}
         />
       ))}
     </>
@@ -652,10 +698,32 @@ export function ShopkeeperNPCs() {
     return n.interiorId ? (indoors && interiorId === n.interiorId) : !indoors;
   });
 
+  const handleClick = (npc: (typeof NPC_TALKERS)[number]) => {
+    if (useGameStore.getState().isPaused) return;
+    const [px, , pz] = useGameStore.getState().playerPosition;
+    const d = Math.hypot(px - npc.worldX, pz - npc.worldZ);
+    if (d > npc.radius) {
+      useGameStore.getState().setInteractionHint(`Get closer to ${npc.label}`);
+      setTimeout(() => {
+        if (useGameStore.getState().interactionHint?.startsWith('Get closer')) {
+          useGameStore.getState().setInteractionHint(null);
+        }
+      }, 1500);
+      return;
+    }
+    triggerNpcInteraction(npc);
+  };
+
   return (
     <>
       {visibleNpcs.map((npc) => (
-        <group key={npc.id} position={[npc.worldX, 0, npc.worldZ]}>
+        <group
+          key={npc.id}
+          position={[npc.worldX, 0, npc.worldZ]}
+          onClick={(e) => { e.stopPropagation(); handleClick(npc); }}
+          onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+          onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+        >
           <ShopkeeperMesh x={0} z={0} isArms={npc.shopType === 'ammo'} />
           <ShopSign label={npc.label} />
         </group>

@@ -14,6 +14,7 @@ import { WorldBoundary } from './WorldBoundary';
 import { Camera } from './Camera';
 import { Vehicles } from './Vehicles';
 import { NPCs, ShopkeeperNPCs, ChildNPCs } from './NPCs';
+import { DoorSigns } from './DoorSigns';
 import { DayNight } from './DayNight';
 import { InteriorRoom } from './InteriorRoom';
 import { Traffic } from './Traffic';
@@ -285,6 +286,7 @@ export function GameEngine() {
           {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
           {!indoors && <NPCs />}
           {!indoors && <ChildNPCs />}
+          {!indoors && <DoorSigns />}
           <ShopkeeperNPCs />
           {!indoors && <Traffic />}
           {!indoors && <Police />}

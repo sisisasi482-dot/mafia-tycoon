@@ -666,6 +666,8 @@ export const NPC_TALKERS: NpcTalker[] = [
     dialogue: 'Take the driving test and I\'ll issue your license on the spot.',
     interiorId: 'garage_am',
     quiz: true,
+    // NOTE: `quiz` opens the dedicated LicenseQuizPanel (see Player.tsx / PauseMenu.tsx) —
+    // `options` is intentionally omitted here so the quiz branch takes priority.
   },
 
   // ── Hospital doctor (relocated behind the reception desk) ──────────────

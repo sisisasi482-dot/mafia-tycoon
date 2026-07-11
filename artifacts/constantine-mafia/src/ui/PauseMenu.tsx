@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapView } from './MapView';
 import { ShopPanel } from './ShopPanel';
 import { MissionPanel } from './MissionPanel';
+import { LicenseQuizPanel } from './LicenseQuizPanel';
 import { DEFAULT_BINDINGS } from '../game/Player';
 
 export function PauseMenu() {
@@ -102,6 +103,7 @@ export function PauseMenu() {
             {store.activePanel === 'map'        && <MapView />}
             {store.activePanel === 'missions'   && <MissionPanel />}
             {store.activePanel === 'shop'       && <ShopPanel />}
+            {store.activePanel === 'license_quiz' && <LicenseQuizPanel />}
             {store.activePanel === 'none'       && (
               <div className="h-full flex items-center justify-center text-gray-600 text-sm">
                 Select an option from the menu.

@@ -8,7 +8,7 @@ import { activeMask } from './buildingPool';
 import { GLB_BUILDING_AABBS } from './cityLayout';
 import { DOOR_TRIGGERS, NPC_TALKERS, INTERIORS } from './interiors';
 import { cameraDrag } from './cameraState';
-import { WEAPON_AMMO } from './items';
+import { WEAPON_AMMO, DRIVING_LICENSE_ID } from './items';
 import { audioManager } from './audio/AudioManager';
 import { DEFAULT_BINDINGS } from './keyBindings';
 
@@ -410,8 +410,22 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
             useGameStore.getState().setDialogueNpc(nearNpc.id);
             pushHint(null);
           }
+        } else if ((nearNpc as any).quiz) {
+          // Driving License examiner — opens the LicenseQuizPanel overlay
+          const gs = useGameStore.getState();
+          const licensed = gs.ownedAssetIds.includes(DRIVING_LICENSE_ID);
+          if (!showingDialogue.current) {
+            pushHint(licensed
+              ? `🪪 ${nearNpc.label} — License already issued`
+              : `[E] ${nearNpc.label} — Take Driving Test`);
+          }
+          if (justPressed && !licensed) {
+            gs.setPlayerState({ isPaused: true, activePanel: 'license_quiz' });
+            pushHint(null);
+          }
         } else {
-          // Legacy single-line dialogue
+          // All NPC_TALKERS entries now carry shopType, options, or quiz —
+          // this branch is unreachable but kept as a safe fallback.
           if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
           if (justPressed && !showingDialogue.current) {
             showingDialogue.current = true;
