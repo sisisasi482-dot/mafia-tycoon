@@ -65,8 +65,8 @@ function CityALights() {
 // ─── City A ground — slightly lighter than void to distinguish the district ───
 function CityAGround() {
   return (
-    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[-290, 0.01, 0]}>
-      <planeGeometry args={[280, 220]} />
+    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[-310, 0.01, 0]}>
+      <planeGeometry args={[280, 250]} />
       <meshStandardMaterial color="#28282e" roughness={0.94} />
     </mesh>
   );

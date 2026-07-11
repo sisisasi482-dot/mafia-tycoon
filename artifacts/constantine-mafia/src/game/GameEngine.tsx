@@ -9,6 +9,7 @@ import { Terrain } from './Terrain';
 import { CityA } from './CityA';
 import { CityB } from './CityB';
 import { Highway } from './Highway';
+import { Industrial } from './Industrial';
 import { WorldBoundary } from './WorldBoundary';
 import { Camera } from './Camera';
 import { Vehicles } from './Vehicles';
@@ -279,6 +280,7 @@ export function GameEngine() {
           {!indoors && <CityA />}
           {!indoors && <CityB />}
           {!indoors && <Highway />}
+          {!indoors && <Industrial />}
           {!indoors && <WorldBoundary />}
           {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
           {!indoors && <NPCs />}

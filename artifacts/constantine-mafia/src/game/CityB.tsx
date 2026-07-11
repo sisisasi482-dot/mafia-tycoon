@@ -65,8 +65,8 @@ function CityBLights() {
 // ─── City B ground ────────────────────────────────────────────────────────────
 function CityBGround() {
   return (
-    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[295, 0.01, 0]}>
-      <planeGeometry args={[280, 220]} />
+    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[310, 0.01, 0]}>
+      <planeGeometry args={[280, 250]} />
       <meshStandardMaterial color="#252530" roughness={0.92} />
     </mesh>
   );
