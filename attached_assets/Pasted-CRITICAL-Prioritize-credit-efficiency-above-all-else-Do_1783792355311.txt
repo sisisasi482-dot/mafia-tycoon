@@ -1,0 +1,22 @@
+CRITICAL: Prioritize credit efficiency above all else. Do not rebuild systems from scratch; analyze existing code and only perform surgical, high-impact changes. We are moving to a full-scale Open World overhaul. I need you to implement the following features systematically, prioritizing Task 1 and 2. Use existing scripts—do not rebuild unless absolutely necessary:
+Task 1: World & Interaction Polish:
+ Enterable Buildings: Fix triggers for all buildings (Bank, Corner Stores, etc.). Replace random triggers with a consistent 'Press E to Enter' system that appears only when close to the door. Add descriptive signs above each entry point.
+ NPC Interaction: Enable the interaction system so players can click on NPCs in shops/streets to open trading menus or dialogues. Ensure ALL UI buttons and interaction prompts are fully functional and linked to their respective game logic—no 'dead' buttons.
+Task 2: Asset Overhaul & NPC Population:
+ New Models: Replace current NPC models with assets from ⁠/assets/glb4⁠ and vehicle models with those from ⁠/assets/glb5⁠.
+ Dynamic Population: Increase NPC/civilian density and vehicle traffic in Cities A and B. Add roaming children.
+ Police Patrols: Implement police patrols that roam the streets.
+Task 3: Economy, Jobs & Inventory:
+ Inventory Logic: Make 'ID Cards' and 'Driving Licenses' appear in the inventory only when requirements are met.
+ Job System: Implement jobs (Bus Driver, Taxi Driver, Farmer, etc.) with unique scenarios, tasks, and difficulty-based hourly pay.
+ Economy: Adjust prices. High-end items (Cars/Houses) must be very expensive. Food/Drugs/Cigarettes should have balanced, logical prices.
+ Consumption Effects: If the player uses drugs/substances, trigger a 10-second 'Blur/Dizzy' screen effect or random slow-motion movement.
+Task 4: Police, Crime & AI Mechanics:
+ Police Checkpoints: Redesign checkpoints: use traffic cones and 'STOP POLICE' signs in a straight line. Police officers must be positioned at edges and center. Implement dialogue-based license/registration checks and searches.
+ Drug Dealing: Implement a scenario to sell drugs to NPCs, with a high chance of triggering a police chase.
+ AI Behavior:
+ Gang AI: Recruited gang members must follow the player (walking behind/beside).
+ Vehicle AI: When the player enters a vehicle, gang members must spawn/board their own vehicle and follow the player. When the player exits, they exit, and their vehicle disappears.
+ Traffic AI: AI NPCs and vehicles must stop at police checkpoints and undergo the same search/check scenarios as the player.
+ Redeem Code: Add a 'Redeem Code' system where entering 'car' grants a free vehicle.
+Please start by reviewing the codebase, analyzing existing scripts, and executing Task 1 and 2 first."
