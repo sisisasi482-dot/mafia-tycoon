@@ -1,9 +1,11 @@
 import React, { memo } from 'react';
 import { useGameStore } from '../game/useGameStore';
-import { BUILDINGS } from '../game/buildings';
+import {
+  WORLD_BOUNDS, LANDMARKS, MAP_DISTRICTS, clampDistrictRect,
+  HIGHWAY, GORGE, BRIDGE, districtAt,
+} from '../game/mapData';
 
-const WX0 = -300; const WX1 = 250;
-const WZ0 = -150; const WZ1 = 250;
+const { x0: WX0, x1: WX1, z0: WZ0, z1: WZ1 } = WORLD_BOUNDS;
 const WW = WX1 - WX0;
 const WH = WZ1 - WZ0;
 const SW = 110; const SH = 110;
@@ -11,34 +13,10 @@ const SW = 110; const SH = 110;
 function wx(x: number) { return ((x - WX0) / WW) * SW; }
 function wz(z: number) { return ((z - WZ0) / WH) * SH; }
 
-const DISTRICT_COLORS: Record<string, string> = {
-  ali_mendjeli: '#ff8c00',
-  centre_ville: '#ffd700',
-  old_city:     '#dc143c',
-  ain_mlila:    '#808080',
-  airport:      '#4169e1',
-};
-
-const DISTRICTS = [
-  { id: 'ain_mlila',    x0: -300, x1: -200, z0: -100, z1:  100 },
-  { id: 'ali_mendjeli', x0: -200, x1:  -50, z0: -100, z1:  100 },
-  { id: 'airport',      x0: -200, x1: -100, z0:  100, z1:  250 },
-  { id: 'centre_ville', x0:  -50, x1:  100, z0: -100, z1:  100 },
-  { id: 'old_city',     x0:  100, x1:  250, z0:  -50, z1:   50 },
-];
-
-/** Physical store icons shown on the minimap (mirrors interiors.ts NPC/door positions). */
-const STORE_MARKERS = [
-  { icon: '🔫', x: -160, z:  40 },
-  { icon: '🚗', x:  140, z:  40 },
-  { icon: '⚕', x:  -90, z: -50 },
-  { icon: '👮', x:   60, z: 108 },
-];
-
 export const MiniMap = memo(function MiniMap() {
   const [px, , pz] = useGameStore((s) => s.playerPosition);
   const rotY       = useGameStore((s) => s.playerRotationY);
-  const district   = useGameStore((s) => s.district);
+  const district   = districtAt(px, pz);
 
   const mx = wx(px);
   const mz = wz(pz);
@@ -57,52 +35,40 @@ export const MiniMap = memo(function MiniMap() {
     >
       <rect x={0} y={0} width={SW} height={SH} fill="#06060f" />
 
-      {/* District fill zones */}
-      {DISTRICTS.map((d) => (
-        <rect
-          key={d.id}
-          x={wx(d.x0)} y={wz(d.z0)}
-          width={Math.max(1, wx(d.x1) - wx(d.x0))}
-          height={Math.max(1, wz(d.z1) - wz(d.z0))}
-          fill={DISTRICT_COLORS[d.id]}
-          fillOpacity={district === d.id ? 0.22 : 0.08}
-          stroke={DISTRICT_COLORS[d.id]}
-          strokeWidth={district === d.id ? 0.8 : 0.3}
-          strokeOpacity={0.6}
-        />
-      ))}
-
-      {/* Building footprints */}
-      {BUILDINGS.map((b, i) => (
-        <rect
-          key={i}
-          x={wx(b.x - b.w / 2)}
-          y={wz(b.z - b.d / 2)}
-          width={Math.max(0.6, (b.w / WW) * SW)}
-          height={Math.max(0.6, (b.d / WH) * SH)}
-          fill={DISTRICT_COLORS[b.district]}
-          fillOpacity={0.55}
-        />
-      ))}
-
-      {/* Airport terminal */}
-      <rect x={wx(-190)} y={wz(140)} width={wx(-110) - wx(-190)} height={wz(170) - wz(140)} fill="#4169e1" fillOpacity={0.6} />
+      {/* District fill zones — real bounds from game/constants.ts, clamped to the drawable world */}
+      {MAP_DISTRICTS.map((d) => {
+        const r = clampDistrictRect(d.bounds);
+        if (r.x1 <= r.x0 || r.z1 <= r.z0) return null;
+        return (
+          <rect
+            key={d.id}
+            x={wx(r.x0)} y={wz(r.z0)}
+            width={Math.max(1, wx(r.x1) - wx(r.x0))}
+            height={Math.max(1, wz(r.z1) - wz(r.z0))}
+            fill={d.color}
+            fillOpacity={district === d.id ? 0.22 : 0.06}
+            stroke={d.color}
+            strokeWidth={district === d.id ? 0.8 : 0.3}
+            strokeOpacity={0.6}
+          />
+        );
+      })}
 
       {/* Gorge */}
-      <rect x={wx(138)} y={wz(-50)} width={Math.max(1, wx(182) - wx(138))} height={Math.max(1, wz(50) - wz(-50))} fill="#020208" />
+      <rect x={wx(GORGE.x0)} y={wz(GORGE.z0)} width={Math.max(1, wx(GORGE.x1) - wx(GORGE.x0))} height={Math.max(1, wz(GORGE.z1) - wz(GORGE.z0))} fill="#020208" />
 
       {/* Bridge */}
-      <line x1={wx(138)} y1={wz(0)} x2={wx(182)} y2={wz(0)} stroke="#888" strokeWidth={1} />
+      <line x1={wx(BRIDGE.x0)} y1={wz(BRIDGE.z)} x2={wx(BRIDGE.x1)} y2={wz(BRIDGE.z)} stroke="#888" strokeWidth={1} />
 
-      {/* Main road */}
-      <line x1={wx(-290)} y1={wz(0)} x2={wx(240)} y2={wz(0)} stroke="#1a1a2a" strokeWidth={1.5} />
+      {/* Highway */}
+      <line x1={wx(HIGHWAY.x0)} y1={wz(HIGHWAY.z)} x2={wx(HIGHWAY.x1)} y2={wz(HIGHWAY.z)} stroke="#1a1a2a" strokeWidth={1.5} />
 
-      {/* Store icons */}
-      {STORE_MARKERS.map((m, i) => (
-        <text key={i} x={wx(m.x)} y={wz(m.z) + 1.6} fontSize={5} textAnchor="middle">{m.icon}</text>
+      {/* Landmark icons: Police, Hospital, Shops, and other real-world doors */}
+      {LANDMARKS.map((m) => (
+        <text key={m.id} x={wx(m.x)} y={wz(m.z) + 1.6} fontSize={5} textAnchor="middle">{m.icon}</text>
       ))}
 
-      {/* Player arrow */}
+      {/* Player arrow — live position + heading */}
       <polygon
         points={`${tip.x},${tip.y} ${lr.x},${lr.y} ${ll.x},${ll.y}`}
         fill="#00ff88"

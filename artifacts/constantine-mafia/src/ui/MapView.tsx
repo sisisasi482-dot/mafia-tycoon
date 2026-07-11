@@ -1,70 +1,34 @@
 import React from 'react';
 import { useGameStore } from '../game/useGameStore';
-import { DISTRICTS, t } from '../game/constants';
+import { t } from '../game/constants';
+import {
+  WORLD_BOUNDS, LANDMARKS, MAP_DISTRICTS, clampDistrictRect,
+  HIGHWAY, GORGE, BRIDGE, districtAt,
+} from '../game/mapData';
+import type { LandmarkCategory } from '../game/mapData';
 
-// World bounds: X -300..250, Z -150..250
-const WORLD = { x0: -300, x1: 250, z0: -150, z1: 250 };
 const W = 600;
 const H = 450;
 
 function worldToSvg(wx: number, wz: number) {
-  const sx = ((wx - WORLD.x0) / (WORLD.x1 - WORLD.x0)) * W;
-  const sy = ((wz - WORLD.z0) / (WORLD.z1 - WORLD.z0)) * H;
+  const sx = ((wx - WORLD_BOUNDS.x0) / (WORLD_BOUNDS.x1 - WORLD_BOUNDS.x0)) * W;
+  const sy = ((wz - WORLD_BOUNDS.z0) / (WORLD_BOUNDS.z1 - WORLD_BOUNDS.z0)) * H;
   return { sx, sy };
 }
 
-const DISTRICT_SHAPES = [
-  {
-    id: 'ain_mlila',
-    name: "Ain M'lila",
-    color: '#808080',
-    wx0: -300, wx1: -200, wz0: -100, wz1: 100,
-  },
-  {
-    id: 'ali_mendjeli',
-    name: 'Ali Mendjeli',
-    color: '#ff8c00',
-    wx0: -200, wx1: -50, wz0: -100, wz1: 100,
-  },
-  {
-    id: 'airport',
-    name: 'Airport',
-    color: '#4169e1',
-    wx0: -200, wx1: -100, wz0: 100, wz1: 250,
-  },
-  {
-    id: 'centre_ville',
-    name: 'Centre-Ville',
-    color: '#ffd700',
-    wx0: -50, wx1: 100, wz0: -100, wz1: 100,
-  },
-  {
-    id: 'old_city',
-    name: 'Old City',
-    color: '#dc143c',
-    wx0: 100, wx1: 250, wz0: -50, wz1: 50,
-  },
-];
-
-// Static mission blips
-const MISSION_BLIPS = [
-  { wx: -120, wz: 20, label: 'M', color: '#ff0' },
-  { wx: 30,   wz: -30, label: 'M', color: '#ff0' },
-  { wx: 150,  wz: 10,  label: 'M', color: '#ff0' },
-];
-
-/** Physical store buildings — Weapon Store / Car Dealership / Hospital / Police Station. */
-const STORE_BLIPS = [
-  { wx: -160, wz:  40, icon: '🔫', label: 'Weapon Store'   },
-  { wx:  140, wz:  40, icon: '🚗', label: 'Car Dealership' },
-  { wx:  -90, wz: -50, icon: '⚕',  label: 'Hospital'        },
-  { wx:   60, wz: 108, icon: '👮', label: 'Police Station'  },
-];
+const CATEGORY_LABELS: Record<LandmarkCategory, string> = {
+  police:   'Police',
+  hospital: 'Hospital',
+  shop:     'Shop',
+  property: 'Property',
+  landmark: 'Landmark',
+};
 
 export function MapView() {
   const store = useGameStore();
   const lang = store.language;
   const [px, , pz] = store.playerPosition;
+  const playerDistrict = districtAt(px, pz);
   const { sx: playerX, sy: playerY } = worldToSvg(px, pz);
 
   return (
@@ -79,10 +43,12 @@ export function MapView() {
             {/* Background */}
             <rect x={0} y={0} width={W} height={H} fill="#0d0d18" />
 
-            {/* Districts */}
-            {DISTRICT_SHAPES.map((d) => {
-              const { sx: x0, sy: y0 } = worldToSvg(d.wx0, d.wz0);
-              const { sx: x1, sy: y1 } = worldToSvg(d.wx1, d.wz1);
+            {/* Districts — real bounds from game/constants.ts, clamped to the drawable world */}
+            {MAP_DISTRICTS.map((d) => {
+              const r = clampDistrictRect(d.bounds);
+              if (r.x1 <= r.x0 || r.z1 <= r.z0) return null;
+              const { sx: x0, sy: y0 } = worldToSvg(r.x0, r.z0);
+              const { sx: x1, sy: y1 } = worldToSvg(r.x1, r.z1);
               const rx = Math.min(x0, x1);
               const ry = Math.min(y0, y1);
               const rw = Math.abs(x1 - x0);
@@ -94,9 +60,9 @@ export function MapView() {
                   <rect
                     x={rx} y={ry} width={rw} height={rh}
                     fill={d.color}
-                    fillOpacity={store.district === d.id ? 0.35 : 0.18}
+                    fillOpacity={playerDistrict === d.id ? 0.32 : 0.12}
                     stroke={d.color}
-                    strokeWidth={store.district === d.id ? 2.5 : 1}
+                    strokeWidth={playerDistrict === d.id ? 2.5 : 1}
                     strokeOpacity={0.8}
                     rx={4}
                   />
@@ -104,7 +70,7 @@ export function MapView() {
                     x={cx} y={cy}
                     textAnchor="middle" dominantBaseline="middle"
                     fill={d.color}
-                    fontSize={d.id === 'old_city' ? 10 : 12}
+                    fontSize={11}
                     fontWeight="bold"
                     fontFamily="monospace"
                     style={{ textShadow: '0 0 6px #000' }}
@@ -115,69 +81,44 @@ export function MapView() {
               );
             })}
 
-            {/* Roads */}
-            {/* Main highway */}
+            {/* Highway */}
             <line
-              x1={worldToSvg(-290, 0).sx} y1={worldToSvg(-290, 0).sy}
-              x2={worldToSvg(240, 0).sx}  y2={worldToSvg(240, 0).sy}
+              x1={worldToSvg(HIGHWAY.x0, HIGHWAY.z).sx} y1={worldToSvg(HIGHWAY.x0, HIGHWAY.z).sy}
+              x2={worldToSvg(HIGHWAY.x1, HIGHWAY.z).sx} y2={worldToSvg(HIGHWAY.x1, HIGHWAY.z).sy}
               stroke="#333" strokeWidth={4}
             />
-            {/* North avenue */}
-            <line
-              x1={worldToSvg(0, -100).sx} y1={worldToSvg(0, -100).sy}
-              x2={worldToSvg(0, 100).sx}  y2={worldToSvg(0, 100).sy}
-              stroke="#333" strokeWidth={3}
-            />
-            {/* Airport road */}
-            <line
-              x1={worldToSvg(-150, 100).sx} y1={worldToSvg(-150, 100).sy}
-              x2={worldToSvg(-150, 250).sx}  y2={worldToSvg(-150, 250).sy}
-              stroke="#334" strokeWidth={3}
-            />
+
             {/* Gorge */}
             <rect
-              x={worldToSvg(138, -50).sx} y={worldToSvg(138, -50).sy}
-              width={worldToSvg(182, -50).sx - worldToSvg(138, -50).sx}
-              height={worldToSvg(138, 50).sy - worldToSvg(138, -50).sy}
+              x={worldToSvg(GORGE.x0, GORGE.z0).sx} y={worldToSvg(GORGE.x0, GORGE.z0).sy}
+              width={worldToSvg(GORGE.x1, GORGE.z0).sx - worldToSvg(GORGE.x0, GORGE.z0).sx}
+              height={worldToSvg(GORGE.x0, GORGE.z1).sy - worldToSvg(GORGE.x0, GORGE.z0).sy}
               fill="#060610"
             />
             {/* Bridge line */}
             <line
-              x1={worldToSvg(138, 0).sx} y1={worldToSvg(138, 0).sy}
-              x2={worldToSvg(182, 0).sx}  y2={worldToSvg(182, 0).sy}
+              x1={worldToSvg(BRIDGE.x0, BRIDGE.z).sx} y1={worldToSvg(BRIDGE.x0, BRIDGE.z).sy}
+              x2={worldToSvg(BRIDGE.x1, BRIDGE.z).sx}  y2={worldToSvg(BRIDGE.x1, BRIDGE.z).sy}
               stroke="#888" strokeWidth={3} strokeDasharray="6 3"
             />
-            <text x={worldToSvg(160, 0).sx} y={worldToSvg(160, -8).sy}
+            <text x={worldToSvg((BRIDGE.x0 + BRIDGE.x1) / 2, BRIDGE.z).sx} y={worldToSvg(BRIDGE.x0, BRIDGE.z - 8).sy}
               textAnchor="middle" fill="#aaa" fontSize={8} fontFamily="monospace">
-              Sidi M'Cid
+              {BRIDGE.label}
             </text>
 
-            {/* Mission blips */}
-            {MISSION_BLIPS.map((b, i) => {
-              const { sx, sy } = worldToSvg(b.wx, b.wz);
+            {/* Landmarks: Police Station, Hospital, Shops, and other real-world doors */}
+            {LANDMARKS.map((m) => {
+              const { sx, sy } = worldToSvg(m.x, m.z);
               return (
-                <g key={`blip-${i}`}>
-                  <circle cx={sx} cy={sy} r={8} fill={b.color} fillOpacity={0.25} stroke={b.color} strokeWidth={1.5} />
-                  <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle" fill={b.color} fontSize={8} fontWeight="bold" fontFamily="monospace">
-                    {b.label}
-                  </text>
+                <g key={m.id}>
+                  <circle cx={sx} cy={sy} r={9} fill="#000" fillOpacity={0.45} stroke="#fff" strokeWidth={1} strokeOpacity={0.4} />
+                  <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle" fontSize={10}>{m.icon}</text>
                 </g>
               );
             })}
 
-            {/* Physical store buildings */}
-            {STORE_BLIPS.map((b, i) => {
-              const { sx, sy } = worldToSvg(b.wx, b.wz);
-              return (
-                <g key={`store-${i}`}>
-                  <circle cx={sx} cy={sy} r={9} fill="#000" fillOpacity={0.4} stroke="#fff" strokeWidth={1} strokeOpacity={0.4} />
-                  <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle" fontSize={10}>{b.icon}</text>
-                </g>
-              );
-            })}
-
-            {/* Player marker */}
-            <g transform={`translate(${playerX}, ${playerY})`}>
+            {/* Player marker — live position + heading */}
+            <g transform={`translate(${playerX}, ${playerY}) rotate(${(store.playerRotationY * 180) / Math.PI})`}>
               <circle r={10} fill="#00ff88" fillOpacity={0.25} stroke="#00ff88" strokeWidth={2} />
               <polygon points="0,-7 5,5 -5,5" fill="#00ff88" />
             </g>
@@ -187,7 +128,7 @@ export function MapView() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 pt-2 border-t border-white/10">
-        {DISTRICT_SHAPES.map((d) => (
+        {MAP_DISTRICTS.map((d) => (
           <div key={d.id} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm" style={{ background: d.color }} />
             <span className="text-xs text-gray-400">{d.name}</span>
@@ -197,14 +138,10 @@ export function MapView() {
           <div className="w-3 h-3 rounded-full bg-[#00ff88]" />
           <span className="text-xs text-gray-400">You</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-yellow-400" />
-          <span className="text-xs text-gray-400">Mission</span>
-        </div>
-        {STORE_BLIPS.map((b) => (
-          <div key={b.label} className="flex items-center gap-1.5">
-            <span className="text-xs">{b.icon}</span>
-            <span className="text-xs text-gray-400">{b.label}</span>
+        {LANDMARKS.map((m) => (
+          <div key={m.id} className="flex items-center gap-1.5" title={CATEGORY_LABELS[m.category]}>
+            <span className="text-xs">{m.icon}</span>
+            <span className="text-xs text-gray-400">{m.label}</span>
           </div>
         ))}
       </div>

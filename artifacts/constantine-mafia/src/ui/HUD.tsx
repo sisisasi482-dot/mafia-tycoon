@@ -182,33 +182,20 @@ export function HUD() {
         </div>
       </DraggableElement>
 
-      {/* ── Minimap (top-right by default) ── */}
-      <DraggableElement id="minimap" editMode={editMode} layout={layout} updateElement={updateElement} label="Minimap">
-        {showMinimap ? (
+      {/* ── Minimap (top-right by default; toggle lives under the Pause button) ── */}
+      {showMinimap && (
+        <DraggableElement id="minimap" editMode={editMode} layout={layout} updateElement={updateElement} label="Minimap">
           <div className="relative rounded-xl overflow-hidden border-2 border-black/60 shadow-2xl" style={{ width: '100%', height: layout.minimap?.height ?? 120 }}>
             <div className="absolute inset-0">
               <MiniMap />
             </div>
-            {/* Close button */}
-            <button
-              className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-black/70
-                         text-gray-400 hover:text-white flex items-center justify-center text-xs leading-none"
-              style={{ pointerEvents: 'all' }}
-              onClick={() => setShowMinimap(false)}
-            >✕</button>
             {/* Camera mode badge */}
             <div className="absolute bottom-1 left-1 text-[8px] font-bold text-gray-400 uppercase tracking-wider bg-black/60 px-1 rounded">
               {store.cameraMode === 'first' ? 'FPV' : store.cameraMode === 'second' ? '2nd' : '3rd'}
             </div>
           </div>
-        ) : (
-          <button
-            className="w-8 h-8 rounded-lg bg-black/70 border border-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm"
-            style={{ pointerEvents: 'all' }}
-            onClick={() => setShowMinimap(true)}
-          >🗺</button>
-        )}
-      </DraggableElement>
+        </DraggableElement>
+      )}
 
       {/* ── In-vehicle radio toggle ── */}
       {store.inVehicle && (
@@ -316,6 +303,18 @@ export function HUD() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
             <line x1="8" y1="4" x2="8" y2="20" /><line x1="16" y1="4" x2="16" y2="20" />
           </svg>
+        </button>
+      </div>
+
+      {/* ── Mini-map toggle (directly under the Pause button) ── */}
+      <div className="absolute top-16 right-4" style={{ pointerEvents: 'all' }}>
+        <button
+          onClick={() => setShowMinimap((v) => !v)}
+          title={showMinimap ? 'Hide mini-map' : 'Show mini-map'}
+          className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm border text-sm transition-colors
+                      ${showMinimap ? 'bg-primary/80 border-primary text-black' : 'bg-black/50 border-white/20 text-white active:bg-white/20'}`}
+        >
+          🗺
         </button>
       </div>
     </div>
