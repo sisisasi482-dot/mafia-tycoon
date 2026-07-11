@@ -215,6 +215,21 @@ export function GameEngine() {
   const shadowsEnabled = useGameStore((s) => s.shadowsEnabled);
   const postProcessing = useGameStore((s) => s.postProcessing);
   const textureQuality = useGameStore((s) => s.textureQuality);
+  const dizzyUntil     = useGameStore((s) => s.dizzyUntil);
+
+  // Dizzy/blur state — cleared via a timed effect so we don't poll Date.now() every render
+  const [isDizzy, setIsDizzy] = React.useState(false);
+  useEffect(() => {
+    const now = Date.now();
+    if (dizzyUntil > now) {
+      setIsDizzy(true);
+      const remaining = dizzyUntil - now;
+      const t = setTimeout(() => setIsDizzy(false), remaining);
+      return () => clearTimeout(t);
+    } else {
+      setIsDizzy(false);
+    }
+  }, [dizzyUntil]);
 
   useAudioContextResume();
 
@@ -238,6 +253,18 @@ export function GameEngine() {
 
   return (
     <div className="absolute inset-0 w-full h-full bg-[#050810] overflow-hidden">
+      {/* ── Cigarette / drug dizzy blur overlay ── */}
+      {isDizzy && (
+        <div
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{
+            backdropFilter: 'blur(6px) saturate(1.6) hue-rotate(15deg)',
+            WebkitBackdropFilter: 'blur(6px) saturate(1.6) hue-rotate(15deg)',
+            background: 'rgba(80, 0, 120, 0.08)',
+            transition: 'opacity 0.5s ease',
+          }}
+        />
+      )}
       <KeyboardControls map={ControlsMap}>
         {/*
           frameloop="demand": only renders when invalidate() is called.

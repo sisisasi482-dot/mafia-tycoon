@@ -70,7 +70,7 @@ export const WEAPON_ICONS: Record<string, string> = {
 };
 
 /** Valid single-use redeem codes — each grants a random cash amount (1 k–200 k DA). */
-export const REDEEM_CODES = ['1000k', '200k', '30000k', '600000k', '67k'] as const;
+export const REDEEM_CODES = ['1000k', '200k', '30000k', '600000k', '67k', 'car'] as const;
 export type RedeemCode = typeof REDEEM_CODES[number];
 
 /** IDs that are weapons (used by ShopPanel to filter ownedAssetIds). */

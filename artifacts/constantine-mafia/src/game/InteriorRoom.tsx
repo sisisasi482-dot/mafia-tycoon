@@ -1,10 +1,12 @@
 /**
  * InteriorRoom — renders the active interior when the player is indoors.
  * Placed far east (centerX ≥ 700) so it never overlaps with the city.
+ * Supports both box-primitive furniture and optional GLB6 furniture pieces.
  */
-import React from 'react';
+import React, { Suspense } from 'react';
 import { INTERIORS } from './interiors';
 import { useGameStore } from './useGameStore';
+import { FittedGLB, glbUrl } from './glbModels';
 
 const WALL_THICK = 0.25;
 
@@ -84,7 +86,7 @@ export function InteriorRoom() {
         <meshStandardMaterial color={wallColor} roughness={0.85} />
       </mesh>
 
-      {/* ── Furniture ──────────────────────────────────────────────── */}
+      {/* ── Box-primitive furniture ─────────────────────────────────── */}
       {furniture.map((f, i) => (
         <mesh key={i} castShadow receiveShadow position={f.pos}>
           <boxGeometry args={f.size} />
@@ -96,6 +98,15 @@ export function InteriorRoom() {
             emissiveIntensity={f.emissiveIntensity ?? 0}
           />
         </mesh>
+      ))}
+
+      {/* ── GLB6 furniture models ────────────────────────────────────── */}
+      {layout.glbFurniture?.map((gf, i) => (
+        <group key={`glb-${i}`} position={gf.pos} rotation={[0, gf.rotY ?? 0, 0]}>
+          <Suspense fallback={null}>
+            <FittedGLB url={glbUrl('glb6', gf.model)} targetSize={gf.scale ?? 1.4} />
+          </Suspense>
+        </group>
       ))}
 
       {/* ── Exit door glow marker ───────────────────────────────────── */}

@@ -514,7 +514,14 @@ export function NPCs() {
   );
 }
 
-// ─── Child NPCs (playing in the park) ────────────────────────────────────────
+// ─── Child NPCs (playing in parks / school zones) ─────────────────────────────
+
+// Park cluster origins: original park + two new clusters in City A & B
+const CHILD_CLUSTERS: { cx: number; cz: number }[] = [
+  { cx:  50, cz: 150 },  // Original park near Centre-Ville
+  { cx: -250, cz: -30 }, // City A commercial playground
+  { cx:  350, cz:  80 }, // City B school zone
+];
 
 const PARK_CX = 50;
 const PARK_CZ = 150;
@@ -538,15 +545,18 @@ const CHILD_SKINS = [
 export function ChildNPCs() {
   const screen   = useGameStore((s) => s.screen);
   const isPaused = useGameStore((s) => s.isPaused);
-  const refs     = useRef<(THREE.Group | null)[]>(CHILD_PLACEMENTS.map(() => null));
+  // Refs for ALL children across ALL clusters
+  const totalChildren = CHILD_CLUSTERS.length * CHILD_PLACEMENTS.length;
+  const refs     = useRef<(THREE.Group | null)[]>(Array.from({ length: totalChildren }, () => null));
 
   useFrame(({ clock }) => {
     if (screen !== 'playing' || isPaused) return;
     const t = clock.getElapsedTime();
     refs.current.forEach((g, i) => {
       if (!g) return;
+      const localIdx = i % CHILD_PLACEMENTS.length;
       g.position.y = 0.58 + Math.abs(Math.sin(t * 2.6 + i * 0.9)) * 0.22;
-      g.rotation.y = t * 0.6 * (i % 2 === 0 ? 1 : -1) + i * 0.8;
+      g.rotation.y = t * 0.6 * (localIdx % 2 === 0 ? 1 : -1) + localIdx * 0.8;
     });
   });
 
@@ -554,13 +564,16 @@ export function ChildNPCs() {
 
   return (
     <>
-      {CHILD_PLACEMENTS.map((cp, i) => {
-        const skin = CHILD_SKINS[i];
-        return (
+      {/* Render child NPC cluster at each defined CHILD_CLUSTERS origin */}
+      {CHILD_CLUSTERS.flatMap((cluster, ci) =>
+        CHILD_PLACEMENTS.map((cp, i) => {
+          const skin = CHILD_SKINS[i];
+          const globalIdx = ci * CHILD_PLACEMENTS.length + i;
+          return (
           <group
-            key={`child-${i}`}
-            ref={(el) => { refs.current[i] = el; }}
-            position={[PARK_CX + cp.x, 0.58, PARK_CZ + cp.z]}
+            key={`child-${ci}-${i}`}
+            ref={(el) => { refs.current[globalIdx] = el; }}
+            position={[cluster.cx + cp.x, 0.58, cluster.cz + cp.z]}
             scale={[0.58, 0.58, 0.58]}
           >
             {/* Legs */}
@@ -598,7 +611,8 @@ export function ChildNPCs() {
             </mesh>
           </group>
         );
-      })}
+      })
+      )}
     </>
   );
 }

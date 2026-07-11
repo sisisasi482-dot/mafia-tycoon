@@ -32,4 +32,29 @@ export const DYNAMIC_CHECKPOINT_ROADS: RoadSegment[] = [
   { id: 'city-b-boulevard', horizontal: true,  x0:  185, x1:  435, z0:    0, z1:    0, width: 14 },
 ];
 
-export const CHECKPOINTS: Checkpoint[] = [];
+export const CHECKPOINTS: Checkpoint[] = [
+  {
+    id:     'cp-highway-east',
+    label:  'Highway East Checkpoint',
+    worldX: 155,
+    worldZ: 0,
+    radius: 12,
+    rotY:   Math.PI / 2,
+  },
+  {
+    id:     'cp-city-a-south',
+    label:  'Ali Mendjeli Checkpoint',
+    worldX: -310,
+    worldZ: -80,
+    radius: 10,
+    rotY:   0,
+  },
+  {
+    id:     'cp-city-b-south',
+    label:  'City B Checkpoint',
+    worldX: 310,
+    worldZ: -80,
+    radius: 10,
+    rotY:   0,
+  },
+];

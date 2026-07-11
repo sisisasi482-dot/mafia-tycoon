@@ -1,11 +1,17 @@
 /**
  * HomePanel — shown when indoors in an owned home or garage.
  * Provides:
- *   Home:   Sleep · Eat · Watch TV · Wardrobe · Lock & Exit
+ *   Home:   Sleep · Eat · Watch TV · Wardrobe · Illegal Stash · Lock & Exit
  *   Garage: Sleep · Eat · Store Vehicle · Retrieve Vehicle · Lock & Exit
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameStore } from '../game/useGameStore';
+
+const STASHABLE_LABELS: Record<string, string> = {
+  food:       '🥙 Food',
+  cigarettes: '🚬 Cigarettes',
+  stimulants: '💊 Stimulants',
+};
 
 const HOME_IDS   = new Set(['house_1', 'house_2', 'house_3']);
 const GARAGE_IDS = new Set(['garage_1', 'garage_2']);
@@ -163,7 +169,60 @@ export function HomePanel() {
             )}
           </div>
         )}
+
+        {/* ── Home: illegal item stash ── */}
+        {isHome && (
+          <StashSection interiorId={interiorId} />
+        )}
       </div>
+    </div>
+  );
+}
+
+// ── Stash sub-component ───────────────────────────────────────────────────────
+
+const STASHABLE_IDS = ['cigarettes', 'stimulants', 'food'] as const;
+const STASH_ICONS: Record<string, string> = { cigarettes: '🚬', stimulants: '💊', food: '🥙' };
+
+function StashSection({ interiorId }: { interiorId: string }) {
+  const store        = useGameStore();
+  const stash        = store.homeStash[interiorId] ?? {};
+  const inventoryQty = (id: string) => store.inventory[id] ?? 0;
+  const stashQty     = (id: string) => stash[id] ?? 0;
+
+  const hasAnything = STASHABLE_IDS.some((id) => inventoryQty(id) > 0 || stashQty(id) > 0);
+  if (!hasAnything) return null;
+
+  return (
+    <div className="border-t border-white/10 pt-2 flex flex-col gap-1.5">
+      <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">🔒 Illegal Stash</p>
+      {STASHABLE_IDS.map((id) => {
+        const inv   = inventoryQty(id);
+        const stashed = stashQty(id);
+        if (inv === 0 && stashed === 0) return null;
+        return (
+          <div key={id} className="flex items-center gap-2 text-xs">
+            <span className="text-base">{STASH_ICONS[id]}</span>
+            <span className="text-gray-300 flex-1">{id.charAt(0).toUpperCase() + id.slice(1)}</span>
+            <span className="text-gray-500 w-14 text-right">inv: {inv}</span>
+            <span className="text-amber-500 w-16 text-right">stashed: {stashed}</span>
+            <button
+              disabled={inv === 0}
+              onClick={() => store.stashItem(interiorId, id, 1)}
+              className="px-2 py-0.5 rounded-md border border-amber-500/30 text-amber-400 text-[10px] font-bold hover:bg-amber-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              Stash
+            </button>
+            <button
+              disabled={stashed === 0}
+              onClick={() => store.unstashItem(interiorId, id, 1)}
+              className="px-2 py-0.5 rounded-md border border-emerald-500/30 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              Take
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

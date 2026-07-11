@@ -127,6 +127,13 @@ function Follower({
     const state = useGameStore.getState();
     if (!groupRef.current || state.screen !== 'playing' || state.isPaused) return;
 
+    // Board the vehicle — followers "disappear" when the player drives,
+    // then reappear in formation when the player exits.
+    if (state.inVehicle) {
+      groupRef.current.position.y = -50;
+      return;
+    }
+
     const [px, , pz] = state.playerPosition;
     const ry         = state.playerRotationY;
 

@@ -41,6 +41,15 @@ export interface FurniturePiece {
   emissiveIntensity?: number;
 }
 
+export interface GlbFurniturePiece {
+  /** GLB model filename without extension, e.g. 'bedDouble' */
+  model:  string;
+  pos:    [number, number, number];
+  rotY?:  number;
+  /** Target bounding-box size passed to FittedGLB (default 1.4) */
+  scale?: number;
+}
+
 export interface InteriorLayout {
   id:     string;
   label:  string;
@@ -50,6 +59,8 @@ export interface InteriorLayout {
   roomH:  number;
   roomD:  number;
   furniture: FurniturePiece[];
+  /** Optional GLB6 models rendered on top of the box-primitive furniture layer. */
+  glbFurniture?: GlbFurniturePiece[];
   lightColor:     string;
   lightIntensity: number;
   floorColor: string;
@@ -61,11 +72,15 @@ export interface InteriorLayout {
 export interface DialogueOption {
   id:           string;
   label:        string;
-  kind:         'buy' | 'info' | 'conflict' | 'shop';
+  kind:         'buy' | 'info' | 'conflict' | 'shop' | 'job' | 'drug_deal';
   cost?:        number;
+  /** Money paid TO the player (used by drug deals, job payouts, etc.) */
+  reward?:      number;
   itemId?:      string;
   /** For kind:'shop' — which ShopPanel tab to jump to. */
   shopTab?:     'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'properties';
+  /** For kind:'job' — hourly earnings rate in DA. */
+  hourlyRate?:  number;
   responseText: string;
 }
 
@@ -399,11 +414,14 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     lightColor: '#ffddaa', lightIntensity: 2.4, floorColor: '#c8a878', wallColor: '#e0d4b8',
     exitOffsetX: 0, exitOffsetZ: 4.5,
     furniture: [
-      { pos: [-3.5, 0.35, -3.0], size: [2.6, 0.7, 4.0], color: '#1a1a2a', roughness: 0.9 },
-      { pos: [-3.5, 0.72, -3.0], size: [2.7, 0.05, 4.1], color: '#8a4a2a', roughness: 0.85 },
-      { pos: [3.0, 0.4, -3.0], size: [3.0, 0.8, 1.6], color: '#3a2a1a', roughness: 0.88 },
-      { pos: [1.5, 0.35, 1.5], size: [1.8, 0.7, 1.2], color: '#4a3818', roughness: 0.8 },
       { pos: [0, 2.75, -1], size: [3, 0.06, 0.15], color: '#fff2cc', emissive: '#ffe0aa', emissiveIntensity: 1.6 },
+      // Floor rug
+      { pos: [1.5, 0.018, 0], size: [5, 0.03, 4], color: '#7a4a28', roughness: 0.98 },
+    ],
+    glbFurniture: [
+      { model: 'bedDouble',    pos: [-3.5, 0, -3.0], rotY: 0,           scale: 2.4 },
+      { model: 'chair',        pos: [ 3.0, 0, -3.2], rotY: Math.PI,     scale: 1.1 },
+      { model: 'desk',         pos: [ 3.8, 0,  1.2], rotY: -Math.PI/2,  scale: 1.4 },
     ],
   },
   house_2: {
@@ -412,11 +430,14 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     lightColor: '#ffddaa', lightIntensity: 2.4, floorColor: '#b8a888', wallColor: '#d8ccb0',
     exitOffsetX: 0, exitOffsetZ: 4.5,
     furniture: [
-      { pos: [-3.8, 0.35, -3.0], size: [2.8, 0.7, 4.2], color: '#1a2a1a', roughness: 0.9 },
-      { pos: [-3.8, 0.72, -3.0], size: [2.9, 0.05, 4.3], color: '#5a6a3a', roughness: 0.85 },
-      { pos: [3.2, 0.4, -3.0], size: [3.2, 0.8, 1.6], color: '#2a3a2a', roughness: 0.88 },
-      { pos: [1.8, 0.35, 1.8], size: [2.0, 0.7, 1.2], color: '#4a3818', roughness: 0.8 },
       { pos: [0, 2.85, -1], size: [3.2, 0.06, 0.15], color: '#fff2cc', emissive: '#ffe0aa', emissiveIntensity: 1.6 },
+      // Floor rug
+      { pos: [1.5, 0.018, 0.5], size: [5.5, 0.03, 4.5], color: '#5a6a3a', roughness: 0.98 },
+    ],
+    glbFurniture: [
+      { model: 'bedDouble',         pos: [-3.8, 0, -3.0], rotY: 0,           scale: 2.5 },
+      { model: 'bookcaseOpen',      pos: [ 5.5, 0, -4.2], rotY: 0,           scale: 1.6 },
+      { model: 'chairDesk',         pos: [ 3.5, 0,  1.5], rotY: -Math.PI/2,  scale: 1.1 },
     ],
   },
   house_3: {
@@ -425,11 +446,15 @@ export const INTERIORS: Record<string, InteriorLayout> = {
     lightColor: '#ffe8c8', lightIntensity: 2.6, floorColor: '#d0c8d8', wallColor: '#eee8f0',
     exitOffsetX: 0, exitOffsetZ: 5,
     furniture: [
-      { pos: [-4.2, 0.35, -3.4], size: [3.0, 0.7, 4.6], color: '#2a2a3a', roughness: 0.9 },
-      { pos: [-4.2, 0.72, -3.4], size: [3.1, 0.05, 4.7], color: '#8a4a5a', roughness: 0.85 },
-      { pos: [3.6, 0.4, -3.4], size: [3.4, 0.8, 1.8], color: '#3a3a4a', roughness: 0.88 },
-      { pos: [2.0, 0.35, 2.0], size: [2.2, 0.7, 1.4], color: '#5a4838', roughness: 0.8 },
       { pos: [0, 3.05, -1.5], size: [3.6, 0.06, 0.15], color: '#fff2cc', emissive: '#ffe0aa', emissiveIntensity: 1.8 },
+      // Floor rug
+      { pos: [1.5, 0.018, 0.5], size: [6, 0.03, 5], color: '#6a4888', roughness: 0.98 },
+    ],
+    glbFurniture: [
+      { model: 'bedDouble',         pos: [-4.2, 0, -3.4], rotY: 0,           scale: 2.6 },
+      { model: 'computerScreen',    pos: [ 4.0, 0,  0.5], rotY: -Math.PI/2,  scale: 0.9 },
+      { model: 'chairRounded',      pos: [ 3.0, 0, -3.0], rotY: Math.PI/2,   scale: 1.1 },
+      { model: 'cabinetTelevision', pos: [-1.0, 0,  4.3], rotY: Math.PI,      scale: 1.8 },
     ],
   },
 
@@ -752,5 +777,123 @@ export const NPC_TALKERS: NpcTalker[] = [
     dialogue: 'Welcome to the Grand Hotel. How long will you be staying?',
     shopType: 'hotel',
     interiorId: 'hotel_lobby',
+  },
+
+  // ── Outdoor job dispatchers ───────────────────────────────────────────────
+
+  // Bus dispatcher — near the highway junction (City B side)
+  {
+    id:       'npc-bus-dispatcher',
+    label:    '🚌 Bus Dispatcher',
+    worldX:   200,
+    worldZ:   -18,
+    radius:   5,
+    dialogue: 'Need a steady income? Drive the City B bus route — 1,500 DA per hour.',
+    options: [
+      {
+        id:          'opt-start-bus',
+        label:       'Start bus driver shift (1,500 DA/hr)',
+        kind:        'job',
+        itemId:      'bus_driver',
+        hourlyRate:  1500,
+        responseText: 'Shift started! Drive safely. Come back here when you want to end the shift and collect your pay.',
+      },
+      {
+        id:          'opt-end-bus',
+        label:       'End current shift & collect pay',
+        kind:        'job',
+        itemId:      'bus_driver_end',
+        responseText: 'Great work today.',
+      },
+    ],
+  },
+
+  // Taxi company recruiter — City B commercial area
+  {
+    id:       'npc-taxi-company',
+    label:    '🚕 Taxi Dispatcher',
+    worldX:   340,
+    worldZ:   -18,
+    radius:   5,
+    dialogue: 'Join our taxi fleet! 2,000 DA per hour — best rates in Constantine.',
+    options: [
+      {
+        id:          'opt-start-taxi',
+        label:       'Start taxi driver shift (2,000 DA/hr)',
+        kind:        'job',
+        itemId:      'taxi_driver',
+        hourlyRate:  2000,
+        responseText: 'Shift started! Pick up passengers and come back when done.',
+      },
+      {
+        id:          'opt-end-taxi',
+        label:       'End current shift & collect pay',
+        kind:        'job',
+        itemId:      'taxi_driver_end',
+        responseText: 'Good driving today.',
+      },
+    ],
+  },
+
+  // Farm manager — near Ain M'lila / City A outskirts
+  {
+    id:       'npc-farm-manager',
+    label:    '🌾 Farm Manager',
+    worldX:   -390,
+    worldZ:   -18,
+    radius:   5,
+    dialogue: 'Looking for honest work? We pay 1,000 DA an hour. Good land, good people.',
+    options: [
+      {
+        id:          'opt-start-farm',
+        label:       'Start farming shift (1,000 DA/hr)',
+        kind:        'job',
+        itemId:      'farmer',
+        hourlyRate:  1000,
+        responseText: 'Shift started! Come back when you want to end the shift and collect your earnings.',
+      },
+      {
+        id:          'opt-end-farm',
+        label:       'End current shift & collect pay',
+        kind:        'job',
+        itemId:      'farmer_end',
+        responseText: 'Good work in the fields today.',
+      },
+    ],
+  },
+
+  // ── Drug dealer — near the gang hideout ─────────────────────────────────
+  {
+    id:       'npc-drug-dealer',
+    label:    '💊 Street Dealer',
+    worldX:   -355,
+    worldZ:   140,
+    radius:   5,
+    dialogue: 'Looking for something? I got cigarettes, pills — whatever you need. Cops don\'t come here often.',
+    options: [
+      {
+        id:          'opt-buy-street-cigs',
+        label:       'Buy contraband cigarettes (100 DA)',
+        kind:        'buy',
+        cost:        100,
+        itemId:      'cigarettes',
+        responseText: 'Here you go. Don\'t flash those in front of the law.',
+      },
+      {
+        id:          'opt-buy-stims',
+        label:       'Buy stimulants (300 DA)',
+        kind:        'buy',
+        cost:        300,
+        itemId:      'stimulants',
+        responseText: 'Quality stuff. Effects kick in fast.',
+      },
+      {
+        id:          'opt-deal-sell',
+        label:       'Sell drugs to him — risky! (+500 DA)',
+        kind:        'drug_deal',
+        reward:      500,
+        responseText: 'Deal done. But someone saw that exchange — the cops will be looking for you.',
+      },
+    ],
   },
 ];

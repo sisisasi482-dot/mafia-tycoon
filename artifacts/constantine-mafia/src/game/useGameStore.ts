@@ -174,6 +174,18 @@ export type GameState = {
   /** Timestamp (ms) until which gang cover-fire is suppressing nearby police (pauses arrest hold). */
   gangSuppressionUntil: number;
 
+  // ── Jobs ─────────────────────────────────────────────────────────────────
+  /** Active job id ('bus_driver', 'taxi_driver', 'farmer') or null. */
+  activeJob:          string | null;
+  /** Timestamp (ms) when the current job shift started. */
+  jobStartedAt:       number;
+  /** Hourly earnings rate in DA for the current job. */
+  jobEarningsPerHour: number;
+
+  // ── Home stash ────────────────────────────────────────────────────────────
+  /** Stashed items per owned house interior: interiorId → itemId → quantity */
+  homeStash:          Record<string, Record<string, number>>;
+
   // ── Inventory panel UI ───────────────────────────────────────────────────
   showInventory:      boolean;
   /** True while the player is aiming their equipped weapon. */
@@ -251,6 +263,18 @@ export type GameState = {
   recruitGangMember:  (id: number) => void;
   dismissGangMember:  (id: number) => void;
 
+  // ── Job actions ─────────────────────────────────────────────────────────────
+  /** Begin a job shift. */
+  startJob:           (jobId: string, earningsPerHour: number) => void;
+  /** End the current shift and return total earnings in DA. */
+  endJob:             () => number;
+
+  // ── Home stash actions ──────────────────────────────────────────────────────
+  /** Move qty of itemId from inventory into the home stash at interiorId. */
+  stashItem:          (interiorId: string, itemId: string, qty?: number) => void;
+  /** Move qty of itemId from the home stash at interiorId back into inventory. */
+  unstashItem:        (interiorId: string, itemId: string, qty?: number) => void;
+
   // ── Inventory panel actions ─────────────────────────────────────────────────
   toggleInventory:    () => void;
 };
@@ -268,6 +292,7 @@ const initialState: Omit<GameState,
   | 'addInventoryItem' | 'useConsumable'  | 'dropConsumable' | 'buyAmmo'
   | 'fireWeapon'     | 'reloadWeapon'    | 'dropWeapon'     | 'redeemCode' | 'buyConsumable'
   | 'startHeist'     | 'recruitGangMember' | 'dismissGangMember' | 'toggleInventory'
+  | 'startJob'       | 'endJob'          | 'stashItem'      | 'unstashItem'
 > = {
   playerId:            null,
   username:            '',
@@ -363,6 +388,11 @@ const initialState: Omit<GameState,
 
   gangMemberIds:       [],
   gangSuppressionUntil: 0,
+
+  activeJob:           null,
+  jobStartedAt:        0,
+  jobEarningsPerHour:  0,
+  homeStash:           {},
 
   showInventory:       false,
   aimMode:             false,
@@ -621,6 +651,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!(REDEEM_CODES as readonly string[]).includes(trimmed)) return { ok: false, amount: 0, msg: 'Invalid code.' };
     const s = get();
     if (s.redeemedCodes.includes(trimmed)) return { ok: false, amount: 0, msg: 'Already redeemed.' };
+
+    // Special: 'car' code gives a free Renault 25 key
+    if (trimmed === 'car') {
+      const keyId = 'car_key_renault';
+      set((st) => ({
+        redeemedCodes: [...st.redeemedCodes, trimmed],
+        inventory: { ...st.inventory, [keyId]: (st.inventory[keyId] ?? 0) + 1 },
+      }));
+      return { ok: true, amount: 0, msg: '🚗 Free Renault 25 key added to your inventory!' };
+    }
+
     // Parse amount from code name: e.g. "200k" → 200 × 1000 = 200,000 DA
     const match = trimmed.match(/^(\d+)k$/i);
     const amount = match ? parseInt(match[1], 10) * 1_000 : 10_000;
@@ -630,6 +671,48 @@ export const useGameStore = create<GameState>((set, get) => ({
     }));
     return { ok: true, amount, msg: `+${amount.toLocaleString()} DA credited!` };
   },
+
+  // ── Job actions ──────────────────────────────────────────────────────────────
+
+  startJob: (jobId, earningsPerHour) => set({
+    activeJob:          jobId,
+    jobStartedAt:       Date.now(),
+    jobEarningsPerHour: earningsPerHour,
+  }),
+
+  endJob: () => {
+    const s = get();
+    if (!s.activeJob) return 0;
+    const hoursWorked = (Date.now() - s.jobStartedAt) / (1000 * 3600);
+    const earnings    = Math.max(1, Math.round(hoursWorked * s.jobEarningsPerHour));
+    set((st) => ({
+      activeJob:          null,
+      jobStartedAt:       0,
+      jobEarningsPerHour: 0,
+      money:              st.money + earnings,
+    }));
+    return earnings;
+  },
+
+  // ── Home stash actions ───────────────────────────────────────────────────────
+
+  stashItem: (interiorId, itemId, qty = 1) => set((s) => {
+    const owned = (s.inventory[itemId] ?? 0);
+    if (owned < qty) return {};
+    const inventory = { ...s.inventory, [itemId]: owned - qty };
+    if (inventory[itemId] === 0) delete inventory[itemId];
+    const room  = { ...(s.homeStash[interiorId] ?? {}), [itemId]: (s.homeStash[interiorId]?.[itemId] ?? 0) + qty };
+    return { inventory, homeStash: { ...s.homeStash, [interiorId]: room } };
+  }),
+
+  unstashItem: (interiorId, itemId, qty = 1) => set((s) => {
+    const stored = s.homeStash[interiorId]?.[itemId] ?? 0;
+    if (stored < qty) return {};
+    const room = { ...s.homeStash[interiorId], [itemId]: stored - qty };
+    if (room[itemId] === 0) delete room[itemId];
+    const inventory = { ...s.inventory, [itemId]: (s.inventory[itemId] ?? 0) + qty };
+    return { inventory, homeStash: { ...s.homeStash, [interiorId]: room } };
+  }),
 
   resetGame: () => set(initialState),
 

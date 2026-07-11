@@ -1,6 +1,6 @@
 /**
  * DialogueUI — shown when an NPC talker with multiple dialogue options is approached.
- * Handles buy / info / conflict interactions and resolves them against the game store.
+ * Handles buy / info / conflict / shop / job / drug_deal interactions.
  */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,13 @@ import { useGameStore } from '../game/useGameStore';
 import { NPC_TALKERS, type DialogueOption } from '../game/interiors';
 
 const WEAPON_IDS = new Set(['knife', 'pistol', 'shotgun', 'smg', 'rifle']);
+
+/** Job base IDs (without _end suffix) */
+const JOB_NAMES: Record<string, string> = {
+  bus_driver:  'Bus Driver',
+  taxi_driver: 'Taxi Driver',
+  farmer:      'Farmer',
+};
 
 export function DialogueUI() {
   const store  = useGameStore();
@@ -36,12 +43,49 @@ export function DialogueUI() {
         equippedWeaponId: newWeapon,
       });
       setResponse(opt.responseText);
+
     } else if (opt.kind === 'conflict') {
       store.triggerCrime(1);
       store.damagePlayer(5);
       setResponse(opt.responseText);
+
+    } else if (opt.kind === 'drug_deal') {
+      // Give player the reward money and trigger wanted level
+      if (opt.reward) {
+        store.setPlayerState({ money: store.money + opt.reward });
+      }
+      store.triggerCrime(1);
+      setResponse(opt.responseText);
+
+    } else if (opt.kind === 'job') {
+      // itemId ending in '_end' means "collect pay and end shift"
+      const isEndAction = opt.itemId?.endsWith('_end');
+      const baseJobId   = isEndAction ? opt.itemId!.slice(0, -4) : (opt.itemId ?? '');
+
+      if (isEndAction) {
+        // Collect pay and end job
+        const earnings = store.endJob();
+        if (earnings > 0) {
+          setResponse(`${opt.responseText} You earned ${earnings.toLocaleString()} DA!`);
+        } else {
+          setResponse("You haven't started a shift yet — talk to me to begin working.");
+        }
+      } else {
+        // Start a new shift
+        if (store.activeJob && store.activeJob !== baseJobId) {
+          setResponse(`You're already working as a ${JOB_NAMES[store.activeJob] ?? store.activeJob}. End that shift first.`);
+        } else if (store.activeJob === baseJobId) {
+          // Already on this job — collect early
+          const earnings = store.endJob();
+          setResponse(`Shift ended early. You earned ${earnings.toLocaleString()} DA.`);
+        } else {
+          store.startJob(baseJobId, opt.hourlyRate ?? 1000);
+          setResponse(opt.responseText);
+        }
+      }
+
     } else {
-      // info — just display response
+      // info / shop — just display response
       setResponse(opt.responseText);
     }
   };

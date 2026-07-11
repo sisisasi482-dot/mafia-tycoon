@@ -79,18 +79,37 @@ function CheckpointZone({ cp }: { cp: Checkpoint }) {
 
     // ── Trigger on enter ────────────────────────────────────────────────────
     if (inside && !wasInside.current) {
-      if (playerHasContraband()) {
-        blocked.current = true;
-        state.triggerCrime(1);
-        state.setInteractionHint(`🚨 ${cp.label}: Contraband detected! Pull over!`);
+      if (state.inVehicle) {
+        // Dialogue-based license check when driving
+        const hasLicense   = state.ownedAssetIds.includes('driving_license');
+        const hasContraband = playerHasContraband();
+        if (!hasLicense) {
+          blocked.current = true;
+          state.triggerCrime(1);
+          state.setInteractionHint(`🚔 ${cp.label}: No driving license! Pull over immediately!`);
+        } else if (hasContraband) {
+          blocked.current = true;
+          state.triggerCrime(2);
+          state.setInteractionHint(`🚨 ${cp.label}: License check failed — contraband detected!`);
+        } else {
+          blocked.current = false;
+          state.setInteractionHint(`✅ ${cp.label}: License verified — proceed safely`);
+        }
       } else {
-        blocked.current = false;
-        state.setInteractionHint(`✅ ${cp.label}: All clear — proceed`);
+        // On foot — standard contraband check
+        if (playerHasContraband()) {
+          blocked.current = true;
+          state.triggerCrime(1);
+          state.setInteractionHint(`🚨 ${cp.label}: Contraband detected! Halt!`);
+        } else {
+          blocked.current = false;
+          state.setInteractionHint(`✅ ${cp.label}: All clear — proceed`);
+        }
       }
       setTimeout(() => {
         const curr = useGameStore.getState().interactionHint ?? '';
         if (curr.includes(cp.label)) useGameStore.getState().setInteractionHint(null);
-      }, 3000);
+      }, 3500);
     }
 
     // Clear blocked flag when player leaves the zone
