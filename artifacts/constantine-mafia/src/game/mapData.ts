@@ -11,11 +11,14 @@
 
 import { DISTRICTS } from './constants';
 
-/** Real playable world extent — see cityLayout.ts header comment + the
- *  outermost door triggers / NPC patrol points (suburb houses, hotel,
- *  real estate, far police patrols). A small margin is added on every
- *  side so markers near the edge never clip. */
-export const WORLD_BOUNDS = { x0: -480, x1: 500, z0: -130, z1: 220 };
+/** Full world extent — the union of every authoritative bound in the
+ *  codebase: the player movement clamp (Player.tsx, x:[-455,455] z:[-205,205]),
+ *  every DISTRICTS bounding box (game/constants.ts, out to x:[-600,500]
+ *  z:[-200,500] for ain_mlila/old_city/airport), and the outermost door
+ *  triggers / NPC patrol points. Deliberately generous so no district or
+ *  landmark is ever cropped off the map, even ones (like the airport zone)
+ *  that extend past where the player can currently walk. */
+export const WORLD_BOUNDS = { x0: -620, x1: 520, z0: -215, z1: 510 };
 
 export type LandmarkCategory = 'police' | 'hospital' | 'shop' | 'property' | 'landmark';
 
