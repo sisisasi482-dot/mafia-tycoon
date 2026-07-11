@@ -1,9 +1,24 @@
 import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useKeyboardControls, Html } from '@react-three/drei';
+import { useKeyboardControls, Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { VEHICLE_RENDER_MAP } from './items';
+import { FittedGLB, glbUrl } from './glbModels';
+
+/** Vehicle type → glb5 model file (Task 2: New Models). */
+const VEHICLE_MODEL_FILE: Record<VehicleDef['type'], string> = {
+  sedan:  'sedan',
+  taxi:   'taxi',
+  police: 'police',
+  truck:  'truck',
+  suv:    'suv',
+};
+// Kenney's car-kit models face +Z nose-forward; this game's driving physics
+// treats -Z as "forward" (see `fwd` vector below), so every model needs a
+// 180° yaw to line its nose up with the direction the car actually drives.
+const VEHICLE_MODEL_ROTATION_Y = Math.PI;
+Object.values(VEHICLE_MODEL_FILE).forEach((f) => useGLTF.preload(glbUrl('glb5', f)));
 
 /* ─── Vehicle definitions (spawn positions 2× scaled) ────────────────────── */
 interface VehicleDef {
@@ -188,25 +203,16 @@ function SingleVehicle({
 
   return (
     <group ref={groupRef}>
-      <mesh castShadow receiveShadow position={[0, bodyTopY / 2 + 0.08, 0]}>
-        <boxGeometry args={[bodyW, bodyTopY, bodyL]} />
-        <meshStandardMaterial color={def.bodyColor} roughness={0.35} metalness={0.4} />
-      </mesh>
-      <mesh castShadow position={[0, bodyTopY + cabH / 2 + 0.08, cabZ]}>
-        <boxGeometry args={[cabW, cabH, cabL]} />
-        <meshStandardMaterial color={def.roofColor} roughness={0.55} metalness={0.1} />
-      </mesh>
-      {([
-        [-bodyW / 2 - 0.06, 0.38, -bodyL / 2 + 1.05],
-        [ bodyW / 2 + 0.06, 0.38, -bodyL / 2 + 1.05],
-        [-bodyW / 2 - 0.06, 0.38,  bodyL / 2 - 1.05],
-        [ bodyW / 2 + 0.06, 0.38,  bodyL / 2 - 1.05],
-      ] as [number, number, number][]).map((wp, i) => (
-        <mesh key={i} castShadow position={wp} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.38, 0.38, 0.26, 10]} />
-          <meshStandardMaterial color="#0a0a0a" roughness={0.95} />
-        </mesh>
-      ))}
+      {/* Real GLB vehicle model (Task 2: New Models) — replaces the old
+          hand-built box body/cab/wheels, fit to the same footprint. */}
+      <FittedGLB
+        set="glb5"
+        model={VEHICLE_MODEL_FILE[def.type]}
+        targetSize={[bodyW + 0.3, bodyTopY + cabH + 0.16, bodyL]}
+        rotationY={VEHICLE_MODEL_ROTATION_Y}
+      />
+      {/* Small light accents kept on top of the model — cheap, and the kit
+          models don't reliably expose emissive head/tail lamps. */}
       {([-0.58, 0.58] as number[]).map((x, i) => (
         <mesh key={i} position={[x, 0.44, -bodyL / 2 - 0.05]}>
           <boxGeometry args={[0.3, 0.18, 0.06]} />

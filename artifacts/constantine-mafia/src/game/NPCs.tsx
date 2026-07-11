@@ -7,12 +7,42 @@
  */
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
 import { NPC_TALKERS } from './interiors';
 import { triggerNpcInteraction } from './npcInteraction';
+import { FittedGLB, glbUrl } from './glbModels';
+
+// ─── Character models (Task 2: New Models, from /glb4) ───────────────────────
+// One glb4 character file per pedestrian template + a dedicated file for
+// police/gang, so every NPC on the street is a real model instead of a
+// stacked-box mannequin. Type-specific accessories (badge, cap, bandana,
+// hijab drape, hard hat) stay as small primitives layered on top — cheaper
+// than sourcing/recoloring per-accessory models and keeps the existing
+// silhouette cues players already recognise.
+const CITIZEN_MODEL_FILE: Record<ModelType, string> = {
+  male_casual:   'character-male-a',
+  female_casual: 'character-female-a',
+  male_business: 'character-male-b',
+  female_hijab:  'character-female-b',
+  male_worker:   'character-male-c',
+  female_dress:  'character-female-c',
+  male_sporty:   'character-male-d',
+};
+const POLICE_MODEL_FILE = 'character-male-e';
+const GANG_MODEL_FILE   = 'character-male-f';
+
+function npcModelFile(def: NpcDef): string {
+  if (def.type === 'police') return POLICE_MODEL_FILE;
+  if (def.type === 'gang') return GANG_MODEL_FILE;
+  return CITIZEN_MODEL_FILE[def.modelType];
+}
+
+Object.values(CITIZEN_MODEL_FILE).forEach((f) => useGLTF.preload(glbUrl('glb4', f)));
+useGLTF.preload(glbUrl('glb4', POLICE_MODEL_FILE));
+useGLTF.preload(glbUrl('glb4', GANG_MODEL_FILE));
 
 // ─── Click-to-interact flavor lines (wandering NPCs have no shop/dialogue) ───
 // Clicking opens a short, no-cost interaction via the shared interactionHint
@@ -213,38 +243,11 @@ function NpcMesh({ def, onRef, onClick }: NpcMeshProps) {
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
     >
 
-      {/* ── Lower body ──────────────────────────────────────────────────── */}
-      {model === 'female_dress' ? (
-        // Single-piece long dress
-        <mesh castShadow receiveShadow position={[0, 0.40, 0]}>
-          <boxGeometry args={[0.62, 0.80, 0.30]} />
-          <meshStandardMaterial color={def.legsColor} roughness={0.9} />
-        </mesh>
-      ) : (model === 'female_casual' || model === 'female_hijab') ? (
-        // Wide trouser / skirt shape
-        <mesh castShadow receiveShadow position={[0, 0.38, 0]}>
-          <boxGeometry args={[0.56, 0.72, 0.26]} />
-          <meshStandardMaterial color={def.legsColor} roughness={0.9} />
-        </mesh>
-      ) : (
-        // Standard two-leg
-        <>
-          <mesh castShadow receiveShadow position={[-0.15, 0.38, 0]}>
-            <boxGeometry args={[0.2, 0.72, 0.2]} />
-            <meshStandardMaterial color={def.legsColor} roughness={0.9} />
-          </mesh>
-          <mesh castShadow receiveShadow position={[0.15, 0.38, 0]}>
-            <boxGeometry args={[0.2, 0.72, 0.2]} />
-            <meshStandardMaterial color={def.legsColor} roughness={0.9} />
-          </mesh>
-        </>
-      )}
-
-      {/* ── Torso ───────────────────────────────────────────────────────── */}
-      <mesh castShadow receiveShadow position={[0, 1.0, 0]}>
-        <boxGeometry args={[torsoW, 0.68, 0.35]} />
-        <meshStandardMaterial color={def.bodyColor} roughness={0.85} />
-      </mesh>
+      {/* ── Body (Task 2: New Models, from /glb4) ─────────────────────────
+          Replaces the old stacked-box mannequin (legs/torso/arms/head) with
+          a real character model fit to the same footprint the boxes used to
+          occupy, so every accessory below still lines up correctly. */}
+      <FittedGLB set="glb4" model={npcModelFile(def)} targetSize={[0.62, 2.05, 0.42]} />
 
       {/* Sporty side stripe */}
       {model === 'male_sporty' && (
