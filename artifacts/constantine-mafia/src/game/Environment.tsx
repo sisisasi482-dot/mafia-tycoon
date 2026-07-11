@@ -41,7 +41,7 @@ function StreetLamp({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number })
         <meshStandardMaterial
           color="#ffeecc"
           emissive="#ffdd88"
-          emissiveIntensity={2.2}
+          emissiveIntensity={4.5}
           roughness={0.45}
         />
       </mesh>
@@ -104,8 +104,8 @@ function CityAStreetLamps() {
   return (
     <>
       {/* Area fill lights — 2 real point lights per city side */}
-      <pointLight position={[-310, 9, -34]} color="#ffcc66" intensity={55} distance={180} decay={2} />
-      <pointLight position={[-310, 9,  34]} color="#ffcc66" intensity={55} distance={180} decay={2} />
+      <pointLight position={[-310, 9, -34]} color="#ffcc66" intensity={110} distance={220} decay={2} />
+      <pointLight position={[-310, 9,  34]} color="#ffcc66" intensity={110} distance={220} decay={2} />
 
       {/* South lamp row */}
       {CITY_A_LAMP_X.map((x, i) => (
@@ -141,8 +141,8 @@ function CityBStreetLamps() {
   return (
     <>
       {/* Area fill lights */}
-      <pointLight position={[310, 9, -34]} color="#cce8ff" intensity={60} distance={190} decay={2} />
-      <pointLight position={[310, 9,  34]} color="#cce8ff" intensity={60} distance={190} decay={2} />
+      <pointLight position={[310, 9, -34]} color="#cce8ff" intensity={120} distance={230} decay={2} />
+      <pointLight position={[310, 9,  34]} color="#cce8ff" intensity={120} distance={230} decay={2} />
 
       {/* South lamp row */}
       {CITY_B_LAMP_X.map((x, i) => (
@@ -175,8 +175,8 @@ function HighwayShoulderLamps() {
   return (
     <>
       {/* 2 real area lights for the highway corridor */}
-      <pointLight position={[0,  9, -13]} color="#ffdd99" intensity={35} distance={160} decay={2} />
-      <pointLight position={[0,  9,  13]} color="#ffdd99" intensity={35} distance={160} decay={2} />
+      <pointLight position={[0,  9, -13]} color="#ffdd99" intensity={70} distance={200} decay={2} />
+      <pointLight position={[0,  9,  13]} color="#ffdd99" intensity={70} distance={200} decay={2} />
 
       {/* Lamp posts — south side only (GLB models cover most of north) */}
       {HW_LAMP_X.map((x, i) => (

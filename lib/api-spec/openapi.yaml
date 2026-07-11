@@ -11,6 +11,8 @@ tags:
     description: Health operations
   - name: player
     description: Player profile and save/load
+  - name: cloudSave
+    description: Google Sign-in linked cloud save/load for the signed-in player
   - name: assets
     description: Purchasable assets (vehicles, properties)
   - name: missions
@@ -97,6 +99,83 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Player"
+
+  /game/player/me:
+    get:
+      operationId: getMyPlayer
+      tags: [cloudSave]
+      summary: Get the cloud-saved player profile linked to the signed-in Google account
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No cloud save linked yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: linkMyPlayer
+      tags: [cloudSave]
+      summary: Link the signed-in Google account to a cloud save (creates one on first use)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerLinkInput"
+      responses:
+        "200":
+          description: Linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: saveMyPlayer
+      tags: [cloudSave]
+      summary: Save current progress to the cloud for the signed-in Google account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerSave"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No cloud save linked yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /game/assets:
     get:
@@ -244,6 +323,8 @@ components:
           type: string
         username:
           type: string
+        height:
+          type: integer
         money:
           type: integer
         level:
@@ -272,6 +353,7 @@ components:
       required:
         - id
         - username
+        - height
         - money
         - level
         - xp
@@ -291,9 +373,24 @@ components:
       required:
         - username
 
+    PlayerLinkInput:
+      type: object
+      properties:
+        username:
+          type: string
+        height:
+          type: integer
+      required:
+        - username
+        - height
+
     PlayerSave:
       type: object
       properties:
+        username:
+          type: string
+        height:
+          type: integer
         money:
           type: integer
         level:

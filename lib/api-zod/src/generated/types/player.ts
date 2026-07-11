@@ -10,6 +10,7 @@ import type { PlayerCareerPath } from './playerCareerPath';
 export interface Player {
   id: string;
   username: string;
+  height: number;
   money: number;
   level: number;
   xp: number;

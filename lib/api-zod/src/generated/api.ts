@@ -26,6 +26,7 @@ export const CreatePlayerBody = zod.object({
 export const CreatePlayerResponse = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "height": zod.number(),
   "money": zod.number(),
   "level": zod.number(),
   "xp": zod.number(),
@@ -49,6 +50,7 @@ export const GetPlayerParams = zod.object({
 export const GetPlayerResponse = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "height": zod.number(),
   "money": zod.number(),
   "level": zod.number(),
   "xp": zod.number(),
@@ -70,6 +72,8 @@ export const SavePlayerParams = zod.object({
 })
 
 export const SavePlayerBody = zod.object({
+  "username": zod.string().optional(),
+  "height": zod.number().optional(),
   "money": zod.number().optional(),
   "level": zod.number().optional(),
   "xp": zod.number().optional(),
@@ -83,6 +87,85 @@ export const SavePlayerBody = zod.object({
 export const SavePlayerResponse = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "height": zod.number(),
+  "money": zod.number(),
+  "level": zod.number(),
+  "xp": zod.number(),
+  "careerPath": zod.enum(['street_thug', 'gangster', 'crime_boss', 'business_tycoon']),
+  "currentMissionId": zod.string().nullable(),
+  "district": zod.string(),
+  "ownedAssetIds": zod.array(zod.string()),
+  "completedMissionIds": zod.array(zod.string()),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Get the cloud-saved player profile linked to the signed-in Google account
+ */
+export const GetMyPlayerResponse = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "height": zod.number(),
+  "money": zod.number(),
+  "level": zod.number(),
+  "xp": zod.number(),
+  "careerPath": zod.enum(['street_thug', 'gangster', 'crime_boss', 'business_tycoon']),
+  "currentMissionId": zod.string().nullable(),
+  "district": zod.string(),
+  "ownedAssetIds": zod.array(zod.string()),
+  "completedMissionIds": zod.array(zod.string()),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Link the signed-in Google account to a cloud save (creates one on first use)
+ */
+export const LinkMyPlayerBody = zod.object({
+  "username": zod.string(),
+  "height": zod.number()
+})
+
+export const LinkMyPlayerResponse = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "height": zod.number(),
+  "money": zod.number(),
+  "level": zod.number(),
+  "xp": zod.number(),
+  "careerPath": zod.enum(['street_thug', 'gangster', 'crime_boss', 'business_tycoon']),
+  "currentMissionId": zod.string().nullable(),
+  "district": zod.string(),
+  "ownedAssetIds": zod.array(zod.string()),
+  "completedMissionIds": zod.array(zod.string()),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Save current progress to the cloud for the signed-in Google account
+ */
+export const SaveMyPlayerBody = zod.object({
+  "username": zod.string().optional(),
+  "height": zod.number().optional(),
+  "money": zod.number().optional(),
+  "level": zod.number().optional(),
+  "xp": zod.number().optional(),
+  "careerPath": zod.enum(['street_thug', 'gangster', 'crime_boss', 'business_tycoon']).optional(),
+  "currentMissionId": zod.string().nullish(),
+  "district": zod.string().optional(),
+  "ownedAssetIds": zod.array(zod.string()).optional(),
+  "completedMissionIds": zod.array(zod.string()).optional()
+})
+
+export const SaveMyPlayerResponse = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "height": zod.number(),
   "money": zod.number(),
   "level": zod.number(),
   "xp": zod.number(),
@@ -132,6 +215,7 @@ export const PurchaseAssetBody = zod.object({
 export const PurchaseAssetResponse = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "height": zod.number(),
   "money": zod.number(),
   "level": zod.number(),
   "xp": zod.number(),
@@ -190,6 +274,7 @@ export const CompleteMissionResponse = zod.object({
   "player": zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "height": zod.number(),
   "money": zod.number(),
   "level": zod.number(),
   "xp": zod.number(),

@@ -32,6 +32,7 @@ import type {
   MissionResult,
   Player,
   PlayerInput,
+  PlayerLinkInput,
   PlayerSave,
   PurchaseInput
 } from './api.schemas';
@@ -356,6 +357,223 @@ export const useSavePlayer = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSavePlayerMutationOptions(options));
+    }
+
+export const getGetMyPlayerUrl = () => {
+
+
+
+
+  return `/api/game/player/me`
+}
+
+/**
+ * @summary Get the cloud-saved player profile linked to the signed-in Google account
+ */
+export const getMyPlayer = async ( options?: RequestInit): Promise<Player> => {
+
+  return customFetch<Player>(getGetMyPlayerUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPlayerQueryKey = () => {
+    return [
+    `/api/game/player/me`
+    ] as const;
+    }
+
+
+export const getGetMyPlayerQueryOptions = <TData = Awaited<ReturnType<typeof getMyPlayer>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPlayer>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPlayerQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPlayer>>> = ({ signal }) => getMyPlayer({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPlayer>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPlayerQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPlayer>>>
+export type GetMyPlayerQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the cloud-saved player profile linked to the signed-in Google account
+ */
+
+export function useGetMyPlayer<TData = Awaited<ReturnType<typeof getMyPlayer>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPlayer>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPlayerQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLinkMyPlayerUrl = () => {
+
+
+
+
+  return `/api/game/player/me`
+}
+
+/**
+ * @summary Link the signed-in Google account to a cloud save (creates one on first use)
+ */
+export const linkMyPlayer = async (playerLinkInput: PlayerLinkInput, options?: RequestInit): Promise<Player> => {
+
+  return customFetch<Player>(getLinkMyPlayerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(playerLinkInput)
+  }
+);}
+
+
+
+
+export const getLinkMyPlayerMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkMyPlayer>>, TError,{data: BodyType<PlayerLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkMyPlayer>>, TError,{data: BodyType<PlayerLinkInput>}, TContext> => {
+
+const mutationKey = ['linkMyPlayer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkMyPlayer>>, {data: BodyType<PlayerLinkInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  linkMyPlayer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkMyPlayerMutationResult = NonNullable<Awaited<ReturnType<typeof linkMyPlayer>>>
+    export type LinkMyPlayerMutationBody = BodyType<PlayerLinkInput>
+    export type LinkMyPlayerMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Link the signed-in Google account to a cloud save (creates one on first use)
+ */
+export const useLinkMyPlayer = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkMyPlayer>>, TError,{data: BodyType<PlayerLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkMyPlayer>>,
+        TError,
+        {data: BodyType<PlayerLinkInput>},
+        TContext
+      > => {
+      return useMutation(getLinkMyPlayerMutationOptions(options));
+    }
+
+export const getSaveMyPlayerUrl = () => {
+
+
+
+
+  return `/api/game/player/me`
+}
+
+/**
+ * @summary Save current progress to the cloud for the signed-in Google account
+ */
+export const saveMyPlayer = async (playerSave: PlayerSave, options?: RequestInit): Promise<Player> => {
+
+  return customFetch<Player>(getSaveMyPlayerUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(playerSave)
+  }
+);}
+
+
+
+
+export const getSaveMyPlayerMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMyPlayer>>, TError,{data: BodyType<PlayerSave>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveMyPlayer>>, TError,{data: BodyType<PlayerSave>}, TContext> => {
+
+const mutationKey = ['saveMyPlayer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveMyPlayer>>, {data: BodyType<PlayerSave>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveMyPlayer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveMyPlayerMutationResult = NonNullable<Awaited<ReturnType<typeof saveMyPlayer>>>
+    export type SaveMyPlayerMutationBody = BodyType<PlayerSave>
+    export type SaveMyPlayerMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save current progress to the cloud for the signed-in Google account
+ */
+export const useSaveMyPlayer = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMyPlayer>>, TError,{data: BodyType<PlayerSave>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveMyPlayer>>,
+        TError,
+        {data: BodyType<PlayerSave>},
+        TContext
+      > => {
+      return useMutation(getSaveMyPlayerMutationOptions(options));
     }
 
 export const getListAssetsUrl = (params?: ListAssetsParams,) => {

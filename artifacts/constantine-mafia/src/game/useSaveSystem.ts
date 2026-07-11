@@ -1,11 +1,39 @@
 import { useEffect } from 'react';
+import { useUser } from '@clerk/react';
 import { useGameStore } from './useGameStore';
+import { getMyPlayer, saveMyPlayer } from '@workspace/api-client-react';
 
 const SAVE_KEY = 'constantine_mafia_save';
 
+// Subset of PERSIST_KEYS that also exists as columns on the cloud player
+// profile (see lib/db/src/schema/players.ts + PlayerSave in openapi.yaml).
+// Fields like inventory/ammo/garage vehicles remain local-only for now —
+// cloud save is an additive sync of the core profile, not a full replica.
+const CLOUD_KEYS = [
+  'username', 'height', 'money', 'level', 'xp', 'careerPath',
+  'district', 'ownedAssetIds', 'completedMissionIds',
+] as const;
+
+/**
+ * Best-effort push of the core player profile to the cloud for the
+ * signed-in Google account. No-ops silently offline/signed-out/on error —
+ * localStorage remains the source of truth for gameplay continuity.
+ */
+async function syncCloudSave(): Promise<void> {
+  const s = useGameStore.getState();
+  if (!s.clerkUserId) return;
+  const payload: Record<string, unknown> = {};
+  for (const key of CLOUD_KEYS) payload[key] = s[key];
+  try {
+    await saveMyPlayer(payload as never);
+  } catch (e) {
+    console.error('Cloud save sync failed (will retry on next autosave)', e);
+  }
+}
+
 // Keys to persist (never persist ephemeral runtime state)
 const PERSIST_KEYS = [
-  'playerId', 'username', 'money', 'level', 'xp', 'careerPath',
+  'playerId', 'username', 'height', 'money', 'level', 'xp', 'careerPath',
   'ownedAssetIds', 'completedMissionIds', 'equippedVehicleId', 'equippedWeaponId',
   'district', 'language', 'graphicsQuality',
   // Inventory & ammo — must persist so purchases survive page reload
@@ -50,8 +78,13 @@ export function useSaveSystem() {
   // Use specific selectors so this hook only re-renders when screen changes.
   // All other reads use getState() so they never subscribe to store changes.
   const screen = useGameStore((s) => s.screen);
+  const { user, isLoaded } = useUser();
 
-  const saveGame = saveGameSnapshot;
+  const saveGame = () => {
+    const ok = saveGameSnapshot();
+    void syncCloudSave();
+    return ok;
+  };
 
   const loadGame = () => {
     try {
@@ -85,12 +118,42 @@ export function useSaveSystem() {
 
   const hasSaveGame = hasSaveGameSnapshot;
 
-  // Auto-save every 30 seconds while playing
+  // Auto-save every 30 seconds while playing (writes local + best-effort cloud)
   useEffect(() => {
     if (screen !== 'playing') return;
     const interval = setInterval(saveGame, 30_000);
     return () => clearInterval(interval);
   }, [screen]); // only depends on screen — saveGame reads store via getState()
+
+  // On first load, if this device has no local save yet but the player is
+  // signed in with Google, pull their cloud profile so returning on a new
+  // device (or after clearing storage) doesn't look like a fresh start.
+  useEffect(() => {
+    if (!isLoaded || !user || hasSaveGameSnapshot()) return;
+    let cancelled = false;
+    getMyPlayer()
+      .then((player) => {
+        if (cancelled) return;
+        useGameStore.getState().setPlayerState({
+          username: player.username,
+          height: player.height,
+          clerkUserId: user.id,
+          money: player.money,
+          level: player.level,
+          xp: player.xp,
+          careerPath: player.careerPath,
+          district: player.district as never,
+          ownedAssetIds: player.ownedAssetIds,
+          completedMissionIds: player.completedMissionIds,
+        });
+        saveGameSnapshot();
+      })
+      .catch(() => {
+        // No cloud save linked yet (404) or offline — fall through to the
+        // normal Character Creation flow, nothing to do here.
+      });
+    return () => { cancelled = true; };
+  }, [isLoaded, user]);
 
   return { saveGame, loadGame, hasSaveGame };
 }

@@ -5,6 +5,10 @@ import { z } from "zod/v4";
 export const playersTable = pgTable("players", {
   id: text("id").primaryKey(),
   username: text("username").notNull().unique(),
+  // Clerk user id — set once a player links Google Sign-in for cloud saves.
+  clerkUserId: text("clerk_user_id").unique(),
+  // Player height in centimeters, captured during character creation.
+  height: integer("height").notNull().default(175),
   money: integer("money").notNull().default(500),
   level: integer("level").notNull().default(1),
   xp: integer("xp").notNull().default(0),

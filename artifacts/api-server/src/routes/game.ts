@@ -1,10 +1,24 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { playersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { getAuth } from "@clerk/express";
 
 const router = Router();
+
+// ── AUTH ───────────────────────────────────────────────────────────────────────
+// Guards the /game/player/me cloud-save routes — requires a signed-in Google
+// (Clerk) session. Does not affect the existing local-save player routes below.
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Not signed in" });
+    return;
+  }
+  (req as Request & { clerkUserId: string }).clerkUserId = userId;
+  next();
+}
 
 // ── STATIC GAME DATA ──────────────────────────────────────────────────────────
 
@@ -81,6 +95,70 @@ router.put("/player/:playerId", async (req, res) => {
     .returning();
   if (!player) {
     res.status(404).json({ error: "Player not found" });
+    return;
+  }
+  res.json(serializePlayer(player));
+});
+
+// ── CLOUD SAVE (Google Sign-in via Clerk) ──────────────────────────────────────
+// Separate from the local-save player routes above: a player row is linked to
+// a Clerk user id the first time they confirm character creation while signed
+// in, then kept in sync on subsequent cloud saves/loads.
+
+router.get("/player/me", requireAuth, async (req, res) => {
+  const clerkUserId = (req as Request & { clerkUserId: string }).clerkUserId;
+  const [player] = await db.select().from(playersTable).where(eq(playersTable.clerkUserId, clerkUserId));
+  if (!player) {
+    res.status(404).json({ error: "No cloud save linked yet" });
+    return;
+  }
+  res.json(serializePlayer(player));
+});
+
+router.post("/player/me", requireAuth, async (req, res) => {
+  const clerkUserId = (req as Request & { clerkUserId: string }).clerkUserId;
+  const { username, height } = req.body as { username: string; height: number };
+  if (!username?.trim()) {
+    res.status(400).json({ error: "Username required" });
+    return;
+  }
+
+  const [existing] = await db.select().from(playersTable).where(eq(playersTable.clerkUserId, clerkUserId));
+  if (existing) {
+    const [updated] = await db.update(playersTable).set({
+      username: username.trim(),
+      height,
+      updatedAt: new Date(),
+    }).where(eq(playersTable.clerkUserId, clerkUserId)).returning();
+    res.json(serializePlayer(updated));
+    return;
+  }
+
+  const [player] = await db.insert(playersTable).values({
+    id: randomUUID(),
+    clerkUserId,
+    username: username.trim(),
+    height,
+    money: 500,
+    level: 1,
+    xp: 0,
+    careerPath: "street_thug",
+    district: "ali_mendjeli",
+    ownedAssetIds: [],
+    completedMissionIds: [],
+  }).returning();
+  res.status(201).json(serializePlayer(player));
+});
+
+router.put("/player/me", requireAuth, async (req, res) => {
+  const clerkUserId = (req as Request & { clerkUserId: string }).clerkUserId;
+  const update = req.body as Partial<typeof playersTable.$inferInsert>;
+  const [player] = await db.update(playersTable)
+    .set({ ...update, updatedAt: new Date() })
+    .where(eq(playersTable.clerkUserId, clerkUserId))
+    .returning();
+  if (!player) {
+    res.status(404).json({ error: "No cloud save linked yet" });
     return;
   }
   res.json(serializePlayer(player));

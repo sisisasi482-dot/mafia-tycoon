@@ -50,11 +50,14 @@ export function WorldBoundary() {
         </mesh>
       ))}
 
-      {/* ── Boundary walls — solid dark vertical planes ───────────────────── */}
+      {/* ── Boundary walls — kept in the scene graph (structure/placement
+           preserved) but made fully invisible so they no longer read as a
+           black void wall at the play-area edges; the fog + ground/ceiling
+           slabs above still hide the seam. */}
       {VOID_WALLS.map((w, i) => (
         <mesh key={`vw-${i}`} position={[w.x, w.h / 2, w.z]} rotation={[0, w.rotY, 0]}>
           <planeGeometry args={[w.w, w.h]} />
-          <meshBasicMaterial color={WALL_COLOR} side={2 /* THREE.DoubleSide */} />
+          <meshBasicMaterial color={WALL_COLOR} side={2 /* THREE.DoubleSide */} transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
 

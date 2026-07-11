@@ -8,6 +8,8 @@
 import type { PlayerSaveCareerPath } from './playerSaveCareerPath';
 
 export interface PlayerSave {
+  username?: string;
+  height?: number;
   money?: number;
   level?: number;
   xp?: number;

@@ -25,6 +25,7 @@ export * from './missionType';
 export * from './player';
 export * from './playerCareerPath';
 export * from './playerInput';
+export * from './playerLinkInput';
 export * from './playerSave';
 export * from './playerSaveCareerPath';
 export * from './purchaseInput';

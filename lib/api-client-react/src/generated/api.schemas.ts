@@ -26,6 +26,7 @@ export const PlayerCareerPath = {
 export interface Player {
   id: string;
   username: string;
+  height: number;
   money: number;
   level: number;
   xp: number;
@@ -43,6 +44,11 @@ export interface PlayerInput {
   username: string;
 }
 
+export interface PlayerLinkInput {
+  username: string;
+  height: number;
+}
+
 export type PlayerSaveCareerPath = typeof PlayerSaveCareerPath[keyof typeof PlayerSaveCareerPath];
 
 
@@ -54,6 +60,8 @@ export const PlayerSaveCareerPath = {
 } as const;
 
 export interface PlayerSave {
+  username?: string;
+  height?: number;
   money?: number;
   level?: number;
   xp?: number;

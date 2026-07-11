@@ -60,6 +60,12 @@ export const I18N = {
     create_character: "Create Character",
     enter_vehicle: "Press E to enter vehicle",
     exit_vehicle: "Press F to exit vehicle",
+    height: "Height (cm)",
+    confirm: "Confirm",
+    sign_in_google: "Sign in with Google",
+    signed_in_as: "Signed in as",
+    sign_out: "Sign out",
+    cloud_save_hint: "Sign in to save your progress to the cloud",
   },
   ar: {
     start_game: "ابدأ اللعبة",
@@ -106,6 +112,12 @@ export const I18N = {
     create_character: "إنشاء شخصية",
     enter_vehicle: "اضغط E لركوب السيارة",
     exit_vehicle: "اضغط F للنزول من السيارة",
+    height: "الطول (سم)",
+    confirm: "تأكيد",
+    sign_in_google: "تسجيل الدخول عبر جوجل",
+    signed_in_as: "تم تسجيل الدخول باسم",
+    sign_out: "تسجيل الخروج",
+    cloud_save_hint: "سجّل الدخول لحفظ تقدمك في السحابة",
   },
   fr: {
     start_game: "Démarrer",
@@ -152,6 +164,12 @@ export const I18N = {
     create_character: "Créer un Personnage",
     enter_vehicle: "Appuyez sur E pour entrer dans le véhicule",
     exit_vehicle: "Appuyez sur F pour sortir du véhicule",
+    height: "Taille (cm)",
+    confirm: "Confirmer",
+    sign_in_google: "Se connecter avec Google",
+    signed_in_as: "Connecté en tant que",
+    sign_out: "Se déconnecter",
+    cloud_save_hint: "Connectez-vous pour sauvegarder votre progression dans le cloud",
   }
 } as const;
 

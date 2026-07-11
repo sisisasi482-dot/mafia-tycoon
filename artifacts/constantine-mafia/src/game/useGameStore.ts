@@ -41,6 +41,10 @@ export type GameState = {
   // Player
   playerId:           string | null;
   username:           string;
+  /** Player height in centimeters, set during character creation. */
+  height:             number;
+  /** Clerk user id once signed in with Google — enables cloud save sync. */
+  clerkUserId:        string | null;
   money:              number;
   health:             number;
   armor:              number;
@@ -264,6 +268,8 @@ const initialState: Omit<GameState,
 > = {
   playerId:            null,
   username:            '',
+  height:              175,
+  clerkUserId:         null,
   money:               500,
   health:              100,
   armor:               0,

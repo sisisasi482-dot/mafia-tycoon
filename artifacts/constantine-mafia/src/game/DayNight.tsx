@@ -50,7 +50,9 @@ export function DayNight() {
     }
 
     if (ambRef.current) {
-      ambRef.current.intensity = 0.07 + dayFactor * 0.60 + goldenFactor * 0.12;
+      // Raised nighttime floor (was 0.07) so the world stays clearly visible
+      // after dark instead of reading as near-black.
+      ambRef.current.intensity = 0.32 + dayFactor * 0.60 + goldenFactor * 0.12;
       ambColor.setRGB(
         Math.min(1, 0.12 + dayFactor * 0.57 + goldenFactor * 0.18),
         Math.min(1, 0.14 + dayFactor * 0.60 - goldenFactor * 0.04),
@@ -60,7 +62,7 @@ export function DayNight() {
     }
 
     if (hemiRef.current) {
-      hemiRef.current.intensity = 0.08 + dayFactor * 0.35 + goldenFactor * 0.08;
+      hemiRef.current.intensity = 0.20 + dayFactor * 0.35 + goldenFactor * 0.08;
     }
 
     skyColor.setRGB(
@@ -86,7 +88,7 @@ export function DayNight() {
 
   return (
     <>
-      <ambientLight ref={ambRef}    color="#b0c0e0" intensity={0.65} />
+      <ambientLight ref={ambRef}    color="#b0c0e0" intensity={0.85} />
       <directionalLight
         ref={dirRef}
         castShadow
