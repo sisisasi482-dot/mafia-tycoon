@@ -733,6 +733,171 @@ export const NPC_TALKERS: NpcTalker[] = [
     ],
   },
 
+  // ── Electronics shop clerk (inside convenience — sells smartphone) ─────────
+  {
+    id:       'npc-electronics-clerk',
+    label:    '📱 Electronics',
+    worldX:   826,
+    worldZ:   -3,
+    radius:   3.0,
+    dialogue: 'Latest smartphones, just arrived from Algiers. Best models, good price.',
+    interiorId: 'convenience',
+    options: [
+      {
+        id:           'opt-buy-phone',
+        label:        'Buy a smartphone (4,500 DA)',
+        kind:         'buy',
+        cost:         4500,
+        itemId:       'smartphone',
+        responseText: 'Here you go — contacts, dating app, mission tracker, all preloaded. Stay connected.',
+      },
+    ],
+  },
+
+  // ── Bar female NPCs — available for dating via smartphone ──────────────────
+  {
+    id:       'npc-bar-rania',
+    label:    '👩 Rania',
+    worldX:   884,
+    worldZ:   -2.8,
+    radius:   2.5,
+    dialogue: 'I come here every evening after work. The kahwa is excellent, no?',
+    options: [
+      {
+        id:           'opt-rania-chat',
+        label:        'You look interesting — can I get your number?',
+        kind:         'info',
+        responseText: 'Ha… bold one. Fine. Rania has been added to your contacts.',
+      },
+      {
+        id:           'opt-rania-city',
+        label:        'What do you think of Constantine?',
+        kind:         'info',
+        responseText: 'This city has a soul. The gorge, the bridges, the old medina… there is nowhere like it in Algeria.',
+      },
+    ],
+  },
+  {
+    id:       'npc-bar-yasmine',
+    label:    '👩 Yasmine',
+    worldX:   877,
+    worldZ:   -3.6,
+    radius:   2.5,
+    dialogue: 'Excuse me? I am waiting for my sister. She is always late.',
+    options: [
+      {
+        id:           'opt-yasmine-chat',
+        label:        'Maybe I can keep you company in the meantime?',
+        kind:         'info',
+        responseText: 'Smooth. Yasmine seems amused. She hands you her contact. "Don\'t be annoying."',
+      },
+      {
+        id:           'opt-yasmine-work',
+        label:        'Do you work around here?',
+        kind:         'info',
+        responseText: 'I teach at the university. Literature. You probably don\'t read much, do you?',
+      },
+    ],
+  },
+
+  // ── 4 Outdoor restaurants ─────────────────────────────────────────────────
+
+  // Restaurant 1 — Centre-Ville classic (near the old city centre)
+  {
+    id:       'npc-restaurant-le-pont',
+    label:    '🍽 Restaurant Le Pont',
+    worldX:   55,
+    worldZ:   50,
+    radius:   5.5,
+    dialogue: 'Welcome to Le Pont. Finest traditional Algerian cuisine — couscous, chakhchoukha, lamb tajine.',
+    options: [
+      {
+        id: 'opt-lp-couscous', label: 'Couscous du vendredi (300 DA)', kind: 'buy', cost: 300,
+        itemId: 'food', responseText: 'Enjoy — our grandmother\'s recipe, slow-cooked since dawn.',
+      },
+      {
+        id: 'opt-lp-tajine', label: 'Lamb tajine with olives (500 DA)', kind: 'buy', cost: 500,
+        itemId: 'food', responseText: 'Slow-braised since 5 AM. Best tajine north of the Aurès.',
+      },
+      {
+        id: 'opt-lp-coffee', label: 'Café maure (80 DA)', kind: 'buy', cost: 80,
+        responseText: 'Dark, cardamom-spiced. The way your grandfather drank it.',
+      },
+    ],
+  },
+
+  // Restaurant 2 — Ali Mendjeli fast snack (near City A centre)
+  {
+    id:       'npc-snack-constantine',
+    label:    '🥙 Snack Constantine',
+    worldX:   -295,
+    worldZ:   55,
+    radius:   5.0,
+    dialogue: 'Sandwiches, merguez, pizza — fast and cheap. Good for the man on the move.',
+    options: [
+      {
+        id: 'opt-sc-sandwich', label: 'Merguez sandwich (120 DA)', kind: 'buy', cost: 120,
+        itemId: 'food', responseText: 'Hot off the grill. Be careful — spicy!',
+      },
+      {
+        id: 'opt-sc-pizza', label: 'Slice of pizza (90 DA)', kind: 'buy', cost: 90,
+        itemId: 'food', responseText: 'Constantine-style — thick crust, loaded.',
+      },
+      {
+        id: 'opt-sc-soda', label: 'Cold soda (40 DA)', kind: 'buy', cost: 40,
+        responseText: 'Ice cold. Enjoy.',
+      },
+    ],
+  },
+
+  // Restaurant 3 — Café Cirta (City A west, upscale)
+  {
+    id:       'npc-cafe-cirta',
+    label:    '☕ Café Cirta',
+    worldX:   -380,
+    worldZ:   -55,
+    radius:   5.0,
+    dialogue: 'Cirta was Constantine\'s ancient name. Our café carries that history. Sit, rest, eat.',
+    options: [
+      {
+        id: 'opt-cc-pastry', label: 'Makroud + coffee (200 DA)', kind: 'buy', cost: 200,
+        itemId: 'food', responseText: 'Honey-drenched semolina cake, just out of the oven.',
+      },
+      {
+        id: 'opt-cc-harira', label: 'Bowl of harira soup (150 DA)', kind: 'buy', cost: 150,
+        itemId: 'food', responseText: 'Thick, warming. Good for long nights.',
+      },
+      {
+        id: 'opt-cc-info', label: 'Hear any street news?', kind: 'info',
+        responseText: 'The gang from Ali Mendjeli pushed out the Highway Boys last Tuesday. Things are heating up.',
+      },
+    ],
+  },
+
+  // Restaurant 4 — El Djazair (City B, modern)
+  {
+    id:       'npc-restaurant-eldjazair',
+    label:    '🍽 Restaurant El Djazair',
+    worldX:   280,
+    worldZ:   55,
+    radius:   5.5,
+    dialogue: 'Modern Algerian fusion — traditional recipes, contemporary presentation. Welcome.',
+    options: [
+      {
+        id: 'opt-ed-steak', label: 'Grilled kefta plate (450 DA)', kind: 'buy', cost: 450,
+        itemId: 'food', responseText: 'Charcoal-grilled, served with roasted peppers. Excellent choice.',
+      },
+      {
+        id: 'opt-ed-salad', label: 'Salade méchouia (200 DA)', kind: 'buy', cost: 200,
+        itemId: 'food', responseText: 'Roasted peppers and tomatoes — smoky and fresh.',
+      },
+      {
+        id: 'opt-ed-premium', label: 'Chef\'s set menu (900 DA)', kind: 'buy', cost: 900,
+        itemId: 'food', responseText: 'Three courses, premium sourcing. Worth every dinar.',
+      },
+    ],
+  },
+
   // ── Real Estate agent (inside the agency — sells National ID + property) ─
   {
     id:       'npc-real-estate-agent',

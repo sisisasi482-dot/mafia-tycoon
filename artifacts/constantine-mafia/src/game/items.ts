@@ -69,6 +69,30 @@ export const WEAPON_ICONS: Record<string, string> = {
   rifle:   '🔫',
 };
 
+// ─── Electronics / special items ──────────────────────────────────────────────
+
+export interface SpecialItem {
+  id:     string;
+  name:   string;
+  nameAr: string;
+  nameFr: string;
+  icon:   string;
+  price:  number;
+  desc:   string;
+}
+
+export const SPECIAL_ITEMS: SpecialItem[] = [
+  {
+    id:     'smartphone',
+    name:   'Smartphone',
+    nameAr: 'هاتف ذكي',
+    nameFr: 'Smartphone',
+    icon:   '📱',
+    price:  4500,
+    desc:   'Contacts, dating app, mission tracker — never be out of the loop',
+  },
+];
+
 /** Valid single-use redeem codes — each grants a random cash amount (1 k–200 k DA). */
 export const REDEEM_CODES = ['1000k', '200k', '30000k', '600000k', '67k', 'car'] as const;
 export type RedeemCode = typeof REDEEM_CODES[number];

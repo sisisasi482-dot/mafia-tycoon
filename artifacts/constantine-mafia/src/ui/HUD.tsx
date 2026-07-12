@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MiniMap } from './MiniMap';
 import { useHudLayout, useDraggable, DEFAULT_HUD_LAYOUT } from '../game/useHudLayout';
 import { WEAPON_AMMO, WEAPON_ICONS, WEAPON_NAMES } from '../game/items';
+import { SmartphonePanel } from './SmartphonePanel';
 
 // ── Draggable wrapper ──────────────────────────────────────────────────────────
 
@@ -306,7 +307,7 @@ export function HUD() {
         </button>
       </div>
 
-      {/* ── Mini-map toggle (directly under the Pause button) ── */}
+      {/* ── Mini-map toggle ── */}
       <div className="absolute top-16 right-4" style={{ pointerEvents: 'all' }}>
         <button
           onClick={() => setShowMinimap((v) => !v)}
@@ -317,6 +318,23 @@ export function HUD() {
           🗺
         </button>
       </div>
+
+      {/* ── Smartphone button (shown when player owns a phone) ── */}
+      {(store.inventory?.['smartphone'] ?? 0) > 0 && (
+        <div className="absolute top-28 right-4" style={{ pointerEvents: 'all' }}>
+          <button
+            onClick={() => store.setPlayerState({ showSmartphone: !store.showSmartphone, isPaused: !store.showSmartphone })}
+            title="Phone [N]"
+            className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm border text-base transition-colors
+                        ${store.showSmartphone ? 'bg-primary border-primary text-black' : 'bg-black/50 border-white/20 text-white active:bg-white/20'}`}
+          >
+            📱
+          </button>
+        </div>
+      )}
+
+      {/* ── Smartphone overlay ── */}
+      <SmartphonePanel />
     </div>
   );
 }

@@ -92,73 +92,71 @@ function CityAGround() {
         <meshStandardMaterial color="#222227" roughness={0.94} />
       </mesh>
 
-      {/* ── 3. South sidewalk strip (edge z ≈ −35, concrete) ─────────── */}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.03, -38]}>
-        <planeGeometry args={[W, 8]} />
-        <meshStandardMaterial color="#434343" roughness={0.90} />
+      {/* ── 3. South sidewalk strip — raised 4 mm above boulevard to kill z-fight ── */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.05, -39]}>
+        <planeGeometry args={[W, 10]} />
+        <meshStandardMaterial color="#3e3e3e" roughness={0.88} />
       </mesh>
 
-      {/* ── 4. North sidewalk strip (edge z ≈ +35, concrete) ─────────── */}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.03, 38]}>
-        <planeGeometry args={[W, 8]} />
-        <meshStandardMaterial color="#434343" roughness={0.90} />
+      {/* ── 4. North sidewalk strip ──────────────────────────────────────── */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.05, 39]}>
+        <planeGeometry args={[W, 10]} />
+        <meshStandardMaterial color="#3e3e3e" roughness={0.88} />
       </mesh>
 
-      {/* ── 5. South building-zone ground (dark concrete, slightly different) */}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.02, -77]}>
-        <planeGeometry args={[W, 76]} />
+      {/* ── 5. South building-zone ground ────────────────────────────────── */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.015, -82]}>
+        <planeGeometry args={[W, 86]} />
         <meshStandardMaterial color="#191919" roughness={0.98} />
       </mesh>
 
-      {/* ── 6. North building-zone ground ─────────────────────────────── */}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.02, 77]}>
-        <planeGeometry args={[W, 76]} />
+      {/* ── 6. North building-zone ground ────────────────────────────────── */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.015, 82]}>
+        <planeGeometry args={[W, 86]} />
         <meshStandardMaterial color="#191919" roughness={0.98} />
       </mesh>
 
-      {/* ── 7. Kerb/curb edge lines — north and south of boulevard ──────── */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.035, -34]}>
-        <planeGeometry args={[W, 0.5]} />
-        <meshBasicMaterial color="#888888" />
+      {/* ── 7. Raised kerb edge — south and north ────────────────────────── */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.07, -34.3]}>
+        <planeGeometry args={[W, 0.6]} />
+        <meshBasicMaterial color="#999999" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.035, 34]}>
-        <planeGeometry args={[W, 0.5]} />
-        <meshBasicMaterial color="#888888" />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.07, 34.3]}>
+        <planeGeometry args={[W, 0.6]} />
+        <meshBasicMaterial color="#999999" />
       </mesh>
 
-      {/* ── 8. Yellow centre-line dashes along boulevard ────────────────── */}
+      {/* ── 8. Yellow centre-line dashes along boulevard ─────────────────── */}
       {Array.from({ length: 14 }, (_, i) => (
         <mesh
           key={`yd-${i}`}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[-424 + i * 18, 0.04, 0]}
+          position={[-424 + i * 18, 0.045, 0]}
         >
           <planeGeometry args={[8, 0.32]} />
           <meshBasicMaterial color="#d4b800" />
         </mesh>
       ))}
 
-      {/* ── 9. Cross-street intersections — thin bright bands in x direction */}
+      {/* ── 9. Cross-street intersections ────────────────────────────────── */}
       {[-405, -345, -285, -225].map((xCross, i) => (
         <mesh
           key={`cs-${i}`}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[xCross, 0.025, 0]}
+          position={[xCross, 0.03, 0]}
         >
           <planeGeometry args={[2, 68]} />
           <meshStandardMaterial color="#28282e" roughness={0.92} />
         </mesh>
       ))}
 
-      {/* ── 10. Narrow green planter strips flanking the building zones ─── */}
-      {/* South green border */}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.03, -43]}>
-        <planeGeometry args={[W, 5]} />
+      {/* ── 10. Green planter strips — raised above sidewalk ─────────────── */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.06, -45]}>
+        <planeGeometry args={[W, 4]} />
         <meshStandardMaterial color="#1e3018" roughness={0.97} />
       </mesh>
-      {/* North green border */}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.03, 43]}>
-        <planeGeometry args={[W, 5]} />
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.06, 45]}>
+        <planeGeometry args={[W, 4]} />
         <meshStandardMaterial color="#1e3018" roughness={0.97} />
       </mesh>
     </>

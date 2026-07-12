@@ -588,6 +588,73 @@ function WantedDecay() {
   return null;
 }
 
+// ─── Roaming patrol cars — ambient police presence ────────────────────────────
+//
+// Three cruisers roam fixed loop routes independently of the wanted system.
+// They never pursue or arrest — purely visual immersion / world population.
+// Route IDs:
+//   0 → City A boulevard  (x: −435 ↔ −185,  z ≈ −8)
+//   1 → Highway           (x: −148 ↔  148,  z ≈  0)
+//   2 → City B boulevard  (x:  185 ↔  435,  z ≈  8)
+//
+
+const PATROL_ROUTES: Array<{ ax: number; az: number; bx: number; bz: number }> = [
+  { ax: -425, az: -8, bx: -190, bz: -8 },
+  { ax: -140, az:  0, bx:  140, bz:  0 },
+  { ax:  190, az:  8, bx:  430, bz:  8 },
+];
+const PATROL_SPEED = 12; // units per second
+const _patrolFwd   = new THREE.Vector3();
+
+function RoamingPatrolCar({ routeIndex }: { routeIndex: number }) {
+  const groupRef  = useRef<THREE.Group>(null);
+  const route     = PATROL_ROUTES[routeIndex];
+  // Start spread across the route so cars don't bunch at startup
+  const progress  = useRef(routeIndex / PATROL_ROUTES.length);
+  const direction = useRef<1 | -1>(routeIndex % 2 === 0 ? 1 : -1);
+
+  useFrame((_, delta) => {
+    const state = useGameStore.getState();
+    if (state.screen !== 'playing' || state.isPaused || state.indoors) return;
+    if (!groupRef.current) return;
+
+    // Advance along lerp parameter
+    progress.current += direction.current * (PATROL_SPEED / 300) * delta;
+    if (progress.current >= 1) { progress.current = 1; direction.current = -1; }
+    if (progress.current <= 0) { progress.current = 0; direction.current =  1; }
+
+    const t  = progress.current;
+    const nx = route.ax + (route.bx - route.ax) * t;
+    const nz = route.az + (route.bz - route.az) * t;
+
+    // Face direction of travel
+    const dx = (route.bx - route.ax) * direction.current;
+    const dz = (route.bz - route.az) * direction.current;
+    groupRef.current.rotation.y = Math.atan2(-dx, -dz);
+    groupRef.current.position.set(nx, 0.5, nz);
+  });
+
+  return (
+    <group ref={groupRef} position={[route.ax, 0.5, route.az]}>
+      {/* Body */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[2, 0.65, 4.5]} />
+        <meshStandardMaterial color="#1a3aee" roughness={0.35} metalness={0.4} />
+      </mesh>
+      {/* Roof cab */}
+      <mesh castShadow position={[0, 0.57, 0.3]}>
+        <boxGeometry args={[1.7, 0.5, 2]} />
+        <meshStandardMaterial color="#f0f0f0" roughness={0.5} />
+      </mesh>
+      {/* Light bar */}
+      <mesh position={[0, 0.87, 0.3]}>
+        <boxGeometry args={[1.6, 0.12, 0.18]} />
+        <meshBasicMaterial color="#3355ff" />
+      </mesh>
+    </group>
+  );
+}
+
 // ─── Public export ────────────────────────────────────────────────────────────
 
 export function Police() {
@@ -600,6 +667,9 @@ export function Police() {
       {CHECKPOINTS.map((cp) => <CheckpointZone key={cp.id} cp={cp} />)}
       {Array.from({ length: PURSUIT_COUNT }, (_, i) => (
         <PursuitCar key={i} index={i} positions={pursuitPositions} />
+      ))}
+      {PATROL_ROUTES.map((_, i) => (
+        <RoamingPatrolCar key={`patrol-${i}`} routeIndex={i} />
       ))}
       <WantedDecay />
       <WeaponAggressionWatcher />

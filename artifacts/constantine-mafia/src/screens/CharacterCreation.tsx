@@ -49,6 +49,10 @@ export function CharacterCreation() {
       playerPosition: [310, 1, 0], // City B (Modern Downtown) — see worldConstants.SPAWN_XZ
       mapLoadProgress: 0,
       mapReady: false,
+      // Auto-grant national ID on character creation (registration = getting ID papers)
+      ownedAssetIds: ['national_id'],
+      // Starter inventory: phone so players have contacts from day one
+      inventory: { smartphone: 1 },
     });
   };
 
@@ -77,16 +81,33 @@ export function CharacterCreation() {
         >
           {/* ── Scrollable body ── */}
           <div className="p-6 sm:p-10 pb-4 sm:pb-6">
-            <h1 className="text-3xl sm:text-4xl font-black text-white mb-2 uppercase tracking-tighter">
-              {t('create_character', lang)}
-            </h1>
-            <p className="text-gray-400 mb-8 font-medium">
-              {lang === 'ar'
-                ? 'مرحباً بك في قسنطينة. اصنع اسمك.'
-                : lang === 'fr'
-                ? 'Bienvenue à Constantine. Faites-vous un nom.'
-                : 'Welcome to Constantine. Make a name for yourself.'}
-            </p>
+            {/* ── Game title — matches MainMenu branding ── */}
+            <div className="mb-7">
+              <p className="text-[9px] font-bold tracking-[0.3em] text-primary/50 uppercase mb-1">◆ Open World Crime RPG ◆</p>
+              <h1
+                className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-none"
+                style={{
+                  background: 'linear-gradient(180deg,#ffffff 30%,#888888 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 0 24px rgba(212,168,0,0.3))',
+                }}
+              >
+                CONSTANTINE
+              </h1>
+              <div className="flex items-center gap-3 mt-1 mb-3">
+                <div className="h-px w-8 bg-primary/70" />
+                <span className="text-base font-black text-primary uppercase tracking-[0.4em]">MAFIA</span>
+                <div className="h-px w-8 bg-primary/70" />
+              </div>
+              <p className="text-gray-500 text-sm font-medium">
+                {lang === 'ar'
+                  ? 'مرحباً بك في قسنطينة. اصنع اسمك.'
+                  : lang === 'fr'
+                  ? 'Bienvenue à Constantine. Faites-vous un nom.'
+                  : 'Welcome to Constantine. Make a name for yourself.'}
+              </p>
+            </div>
 
             <div className="space-y-6">
               <div>
@@ -119,10 +140,10 @@ export function CharacterCreation() {
                   id="height-input"
                   type="number"
                   value={height}
-                  onChange={(e) => setHeight(Math.max(120, Math.min(220, Number(e.target.value) || 0)))}
+                  onChange={(e) => setHeight(Math.max(140, Math.min(230, Number(e.target.value) || 0)))}
                   className="w-full bg-black/50 border-2 border-white/10 rounded-lg p-4 text-white text-xl focus:border-primary focus:outline-none transition-colors"
-                  min={120}
-                  max={220}
+                  min={140}
+                  max={230}
                 />
               </div>
 

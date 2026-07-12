@@ -188,6 +188,8 @@ export type GameState = {
 
   // ── Inventory panel UI ───────────────────────────────────────────────────
   showInventory:      boolean;
+  /** True while the smartphone overlay is open. */
+  showSmartphone:     boolean;
   /** True while the player is aiming their equipped weapon. */
   aimMode:            boolean;
 
@@ -395,6 +397,7 @@ const initialState: Omit<GameState,
   homeStash:           {},
 
   showInventory:       false,
+  showSmartphone:      false,
   aimMode:             false,
 
   screen:              'main_menu',
