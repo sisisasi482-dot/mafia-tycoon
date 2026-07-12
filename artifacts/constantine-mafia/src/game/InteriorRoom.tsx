@@ -104,7 +104,7 @@ export function InteriorRoom() {
       {layout.glbFurniture?.map((gf, i) => (
         <group key={`glb-${i}`} position={gf.pos} rotation={[0, gf.rotY ?? 0, 0]}>
           <Suspense fallback={null}>
-            <FittedGLB url={glbUrl('glb6', gf.model)} targetSize={gf.scale ?? 1.4} />
+            <FittedGLB set="glb6" model={gf.model} targetSize={[gf.scale ?? 1.4, gf.scale ?? 1.4, gf.scale ?? 1.4]} />
           </Suspense>
         </group>
       ))}

@@ -5,7 +5,7 @@
  * - Type-specific colour palettes and visual accents
  * - Wander AI driven entirely via THREE refs — zero React state per frame
  */
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -699,6 +699,170 @@ function ShopSign({ label }: { label: string }) {
   );
 }
 
+// ─── Dancing NPC (bar patrons) ────────────────────────────────────────────────
+// Sways side-to-side with a slight bounce — purely via useFrame on a ref,
+// zero React state per frame (same pattern as WandererNpc).
+
+function DancingNpcMesh({ color = '#3a2a5a' }: { color?: string }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const t = useRef(Math.random() * Math.PI * 2); // phase offset so all dancers don't sync
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    t.current += delta * 2.8;
+    groupRef.current.rotation.z = Math.sin(t.current) * 0.18;
+    groupRef.current.position.y = Math.abs(Math.sin(t.current * 0.5)) * 0.12;
+  });
+
+  return (
+    <group ref={groupRef}>
+      <FittedGLB set="glb4" model="character-female-c" targetSize={[0.58, 1.9, 0.38]} />
+      {/* Coloured top to distinguish dancers */}
+      <mesh position={[0, 1.1, -0.19]}>
+        <boxGeometry args={[0.48, 0.55, 0.02]} />
+        <meshStandardMaterial color={color} roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+// ─── NPC Street Conversations ─────────────────────────────────────────────────
+// Pairs of nearby NPC talkers occasionally display speech bubbles aimed at
+// each other — makes the world feel inhabited without heavy pathfinding.
+
+const STREET_LINES = [
+  ['Did you hear about the checkpoint last night?', 'Yes — they stopped everyone. Even old Hadj Mustapha.'],
+  ['The price of bread went up again.', 'Everything goes up except our wages.'],
+  ['I heard the gang from Ali Mendjeli is expanding.', 'Let them come. This street has seen worse.'],
+  ['Nice day today, mashAllah.', 'Enjoy it — rain is coming Thursday.'],
+  ['Did you watch the match last night?', 'Missed it. Was working. Who won?'],
+  ['My cousin found work in City B.', 'The new developments? Good for him.'],
+  ['Police were asking about the warehouse fire.', 'I know nothing. I saw nothing.'],
+];
+
+function NpcConversationBubbles() {
+  const [lineIdx, setLineIdx] = useState(0);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    // Show a conversation every 8 seconds, visible for 4 seconds
+    const cycle = () => {
+      setLineIdx((i) => (i + 1) % STREET_LINES.length);
+      setShow(true);
+      setTimeout(() => setShow(false), 4000);
+    };
+    const interval = setInterval(cycle, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!show) return null;
+  const [lineA, lineB] = STREET_LINES[lineIdx];
+
+  // Render at a fixed well-populated street corner in Centre-Ville
+  return (
+    <group position={[25, 0, -12]}>
+      {/* NPC A */}
+      <group position={[-1.2, 0, 0]}>
+        <FittedGLB set="glb4" model="character-male-a" targetSize={[0.6, 2.0, 0.4]} />
+        <Html position={[0, 2.5, 0]} center distanceFactor={14}>
+          <div style={{ background:'rgba(0,0,0,0.85)', border:'1px solid rgba(255,255,255,0.25)', borderRadius:8, padding:'4px 10px', color:'#fff', fontSize:11, maxWidth:180, whiteSpace:'normal', lineHeight:1.4, pointerEvents:'none' }}>
+            {lineA}
+          </div>
+        </Html>
+      </group>
+      {/* NPC B */}
+      <group position={[1.2, 0, 0]} rotation={[0, Math.PI, 0]}>
+        <FittedGLB set="glb4" model="character-female-a" targetSize={[0.56, 1.9, 0.38]} />
+        <Html position={[0, 2.5, 0]} center distanceFactor={14}>
+          <div style={{ background:'rgba(0,0,0,0.85)', border:'1px solid rgba(255,255,255,0.25)', borderRadius:8, padding:'4px 10px', color:'#eee', fontSize:11, maxWidth:180, whiteSpace:'normal', lineHeight:1.4, pointerEvents:'none' }}>
+            {lineB}
+          </div>
+        </Html>
+      </group>
+    </group>
+  );
+}
+
+// ─── Park Activity Zone ───────────────────────────────────────────────────────
+// Near the city park spawn cluster (x:100, z:100). Shows an E-key prompt when
+// the player is within range and grants XP + passes time on interaction.
+
+const PARK_GAMES = [
+  { name: 'Chess',    xp: 30,  duration: 0.05, icon: '♟' },
+  { name: 'Dominos', xp: 20,  duration: 0.03, icon: '🁣' },
+  { name: 'Football',xp: 50,  duration: 0.08, icon: '⚽' },
+];
+
+export function ParkActivityZone() {
+  const screen   = useGameStore((s) => s.screen);
+  const indoors  = useGameStore((s) => s.indoors);
+  const isPaused = useGameStore((s) => s.isPaused);
+  const [hint, setHint]   = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const tickRef = useRef(0);
+  const PARK_X = 100, PARK_Z = 100, PARK_R = 18;
+
+  useFrame((_, delta) => {
+    if (screen !== 'playing' || indoors || isPaused) return;
+    tickRef.current += delta;
+    if (tickRef.current < 0.25) return;
+    tickRef.current = 0;
+    const [px, , pz] = useGameStore.getState().playerPosition;
+    const near = (px - PARK_X) ** 2 + (pz - PARK_Z) ** 2 < PARK_R ** 2;
+    setHint(near);
+  });
+
+  useEffect(() => {
+    if (!hint) return;
+    const handle = (e: KeyboardEvent) => {
+      if (e.key !== 'e' && e.key !== 'E') return;
+      const game = PARK_GAMES[Math.floor(Math.random() * PARK_GAMES.length)];
+      useGameStore.getState().addXp(game.xp);
+      useGameStore.getState().sleep(game.duration);
+      setResult(`${game.icon} You played ${game.name}! +${game.xp} XP`);
+      setTimeout(() => setResult(null), 3000);
+    };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [hint]);
+
+  if (!hint && !result) return null;
+
+  return (
+    <group position={[PARK_X, 0, PARK_Z]}>
+      {/* Park benches */}
+      <mesh position={[3, 0.35, 0]} castShadow>
+        <boxGeometry args={[2.4, 0.12, 0.6]} />
+        <meshStandardMaterial color="#5c3d1a" roughness={0.9} />
+      </mesh>
+      <mesh position={[-3, 0.35, 0]} castShadow>
+        <boxGeometry args={[2.4, 0.12, 0.6]} />
+        <meshStandardMaterial color="#5c3d1a" roughness={0.9} />
+      </mesh>
+      {/* Chess table */}
+      <mesh position={[0, 0.4, 0]} castShadow>
+        <cylinderGeometry args={[0.55, 0.55, 0.06, 8]} />
+        <meshStandardMaterial color="#444444" roughness={0.7} />
+      </mesh>
+
+      {hint && (
+        <Html position={[0, 3.2, 0]} center distanceFactor={16}>
+          <div style={{ background:'rgba(10,10,10,0.9)', border:'1.5px solid #d4a800', borderRadius:10, padding:'7px 16px', color:'#fff', fontSize:13, fontWeight:700, whiteSpace:'nowrap', textAlign:'center', pointerEvents:'none' }}>
+            <span style={{ color:'#d4a800' }}>E</span> — Play chess / dominos / football
+          </div>
+        </Html>
+      )}
+      {result && (
+        <Html position={[0, 4.2, 0]} center distanceFactor={16}>
+          <div style={{ background:'rgba(10,10,10,0.9)', border:'1px solid #22c55e', borderRadius:10, padding:'7px 16px', color:'#22c55e', fontSize:13, fontWeight:700, whiteSpace:'nowrap', textAlign:'center', pointerEvents:'none' }}>
+            {result}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
 /**
  * Renders stationary shopkeeper figures at all shop / dialogue NPC talker
  * positions. Indoor NPCs (relocated inside their shops) only render while the
@@ -731,9 +895,12 @@ export function ShopkeeperNPCs() {
     triggerNpcInteraction(npc);
   };
 
+  // Dancing colour palette — cycles through club colours
+  const DANCE_COLORS = ['#3a2a5a','#2a3a5a','#5a2a3a','#2a5a3a','#5a4a1a','#3a4a2a','#4a2a5a'];
+
   return (
     <>
-      {visibleNpcs.map((npc) => (
+      {visibleNpcs.map((npc, idx) => (
         <group
           key={npc.id}
           position={[npc.worldX, 0, npc.worldZ]}
@@ -741,10 +908,15 @@ export function ShopkeeperNPCs() {
           onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
           onPointerOut={() => { document.body.style.cursor = 'auto'; }}
         >
-          <ShopkeeperMesh x={0} z={0} isArms={npc.shopType === 'ammo'} />
+          {npc.dancing
+            ? <DancingNpcMesh color={DANCE_COLORS[idx % DANCE_COLORS.length]} />
+            : <ShopkeeperMesh x={0} z={0} isArms={npc.shopType === 'ammo'} />
+          }
           <ShopSign label={npc.label} />
         </group>
       ))}
+      {/* Ambient street conversations — outdoor only */}
+      {!indoors && <NpcConversationBubbles />}
     </>
   );
 }

@@ -101,16 +101,38 @@ const JOURNAL_ENTRIES = [
 // ── Chat view ──────────────────────────────────────────────────────────────────
 
 function ChatView({ profile, onBack }: { profile: DatingProfile; onBack: () => void }) {
+  const store   = useGameStore();
+  const rel     = store.relationships?.[profile.id];
+  const relLevel = rel?.level ?? 0;
+  const relStatus = rel?.status ?? 'none';
   const [messages, setMessages] = useState<{ mine: boolean; text: string }[]>([
     { mine: false, text: profile.bio },
   ]);
+  const [proposeResult, setProposeResult] = useState<string | null>(null);
 
   const sendMessage = (prompt: string, response: string) => {
+    store.progressRelationship(profile.id, 12);
     setMessages((prev) => [
       ...prev,
       { mine: true,  text: prompt   },
       { mine: false, text: response },
     ]);
+  };
+
+  const handlePropose = () => {
+    const accepted = store.proposeMarriage(profile.id);
+    if (accepted) {
+      setProposeResult(`💍 ${profile.name} said yes! You are now married.`);
+      setMessages((prev) => [...prev, { mine: false, text: `${profile.name}: Yes… yes! I can't believe it. Of course I'll marry you.` }]);
+    } else {
+      const reason = !store.ownedAssetIds.some((id) => id.startsWith('house_') || id === 'safehouse_cv')
+        ? 'Get a home first — I am not living in the streets.'
+        : relLevel < 80
+        ? 'We barely know each other! Ask me again when we are closer.'
+        : 'I am already taken.';
+      setProposeResult(null);
+      setMessages((prev) => [...prev, { mine: false, text: `${profile.name}: ${reason}` }]);
+    }
   };
 
   return (
@@ -135,6 +157,33 @@ function ChatView({ profile, onBack }: { profile: DatingProfile; onBack: () => v
           }`}>{m.text}</div>
         ))}
       </div>
+
+      {/* Relationship status bar */}
+      <div className="shrink-0 mb-2">
+        <div className="flex items-center justify-between text-[9px] text-gray-500 mb-1">
+          <span>Relationship</span>
+          <span className="text-primary font-bold capitalize">{relStatus} · {relLevel}/100</span>
+        </div>
+        <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${relLevel}%` }} />
+        </div>
+      </div>
+
+      {/* Propose marriage button */}
+      {relLevel >= 80 && relStatus !== 'married' && !store.spouseId && (
+        <button
+          onClick={handlePropose}
+          className="w-full py-2 text-xs font-bold rounded-lg border border-yellow-400/60 text-yellow-400 hover:bg-yellow-400/10 transition-all mb-2 shrink-0"
+        >
+          💍 Propose Marriage
+        </button>
+      )}
+      {relStatus === 'married' && (
+        <div className="text-center text-xs text-yellow-400 font-bold mb-2 shrink-0">💍 Married</div>
+      )}
+      {proposeResult && (
+        <div className="text-center text-xs text-green-400 mb-2 shrink-0">{proposeResult}</div>
+      )}
 
       {/* Quick-reply prompts */}
       <div className="flex flex-col gap-1.5 shrink-0">

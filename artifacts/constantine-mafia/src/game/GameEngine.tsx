@@ -13,7 +13,7 @@ import { Industrial } from './Industrial';
 import { WorldBoundary } from './WorldBoundary';
 import { Camera } from './Camera';
 import { Vehicles } from './Vehicles';
-import { NPCs, ShopkeeperNPCs, ChildNPCs } from './NPCs';
+import { NPCs, ShopkeeperNPCs, ChildNPCs, ParkActivityZone } from './NPCs';
 import { DoorSigns } from './DoorSigns';
 import { DayNight } from './DayNight';
 import { InteriorRoom } from './InteriorRoom';
@@ -23,6 +23,7 @@ import { Houses } from './Houses';
 import { Environment } from './Environment';
 import { Bank } from './Bank';
 import { GangFollowers } from './GangFollowers';
+import { audioManager } from './audio/AudioManager';
 import { AudioManagerBridge } from './audio/AudioManagerBridge';
 import { getActivePlatformConfig, applyPlatformConfig } from './platform/PlatformManager';
 import { useGameStore, FpsCap, IS_MOBILE_DEVICE } from './useGameStore';
@@ -208,6 +209,17 @@ export function GameEngine() {
 
   const inVehicle      = useGameStore((s) => s.inVehicle);
   const indoors        = useGameStore((s) => s.indoors);
+  const interiorId     = useGameStore((s) => s.interiorId);
+
+  // ── Bar ambience: start synthesized music when inside bar, stop on exit ──
+  useEffect(() => {
+    if (interiorId === 'bar_old_city') {
+      audioManager.startBarAmbience();
+    } else {
+      audioManager.stopBarAmbience();
+    }
+    return () => { audioManager.stopBarAmbience(); };
+  }, [interiorId]);
   const screen         = useGameStore((s) => s.screen);
   const cameraMode     = useGameStore((s) => s.cameraMode);
   const togglePause    = useGameStore((s) => s.togglePause);
@@ -226,9 +238,9 @@ export function GameEngine() {
       const remaining = dizzyUntil - now;
       const t = setTimeout(() => setIsDizzy(false), remaining);
       return () => clearTimeout(t);
-    } else {
-      setIsDizzy(false);
     }
+    setIsDizzy(false);
+    return undefined;
   }, [dizzyUntil]);
 
   useAudioContextResume();
@@ -321,6 +333,7 @@ export function GameEngine() {
           {!indoors && <Environment />}
           {!indoors && <Bank />}
           {!indoors && <GangFollowers />}
+          {!indoors && <ParkActivityZone />}
 
           {/* Spatial 3D audio — engine/combat/npc/siren, pooled voices */}
           <AudioManagerBridge />

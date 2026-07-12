@@ -146,14 +146,16 @@ function SingleVehicle({
     if (keys.jump) speedRef.current *= Math.pow(0.75, delta * 60);
 
     const steerInput  = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
-    const steerFactor = Math.min(Math.abs(speedRef.current) / maxFwd, 1);
-    steerAccum.current += steerInput * 1.8 * steerFactor * delta;
-    steerAccum.current *= Math.pow(0.88, delta * 60);
-    steerAccum.current  = THREE.MathUtils.clamp(steerAccum.current, -0.65, 0.65);
+    // Tighter turn radius: higher input multiplier + clamp + faster yaw rate.
+    // At low speed steerFactor ramps from 0→1 so you can't spin on the spot.
+    const steerFactor = Math.min(Math.abs(speedRef.current) / (maxFwd * 0.6), 1);
+    steerAccum.current += steerInput * 3.2 * steerFactor * delta;
+    steerAccum.current *= Math.pow(0.72, delta * 60); // snappier self-centering
+    steerAccum.current  = THREE.MathUtils.clamp(steerAccum.current, -0.90, 0.90);
 
     if (Math.abs(speedRef.current) > 0.05) {
       groupRef.current.rotation.y +=
-        steerAccum.current * Math.sign(speedRef.current) * delta * 2.2;
+        steerAccum.current * Math.sign(speedRef.current) * delta * 4.0;
     }
 
     const fwd = new THREE.Vector3(

@@ -97,6 +97,8 @@ export interface NpcTalker {
   interiorId?: string;
   /** Marks the Driving License examiner — opens the quiz overlay instead of dialogue/shop. */
   quiz?: boolean;
+  /** Bar/club NPCs rendered with a looping sway-dance animation. */
+  dancing?: boolean;
 }
 
 // ─── Interior room layouts ────────────────────────────────────────────────────
@@ -707,7 +709,8 @@ export const NPC_TALKERS: NpcTalker[] = [
     interiorId: 'hospital',
   },
 
-  // ── Bar owner (relocated behind the bar counter) ────────────────────────
+  // ── Bar — 10 NPCs total: owner + 9 patrons/dancers ──────────────────────
+
   {
     id:       'npc-bar-owner',
     label:    '☕ Café Owner',
@@ -799,6 +802,29 @@ export const NPC_TALKERS: NpcTalker[] = [
       },
     ],
   },
+
+  // ── Bar dancing patrons (7 more → 10 total in bar) ───────────────────────
+  { id:'npc-bar-dancer-1', label:'🕺 Khaled',   worldX:876, worldZ:-4.4, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'Best music in Constantine tonight!',
+    options:[{ id:'opt-kh1', label:'Great moves!', kind:'info', responseText:'Ha! Thank you, friend. Join me!' }] },
+  { id:'npc-bar-dancer-2', label:'💃 Meriem',   worldX:882, worldZ:-4.1, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'I come here every Friday. The DJ is amazing.',
+    options:[{ id:'opt-dm2', label:'You dance beautifully.', kind:'info', responseText:'Buy me a coffee and I will teach you.' }] },
+  { id:'npc-bar-dancer-3', label:'🕺 Amine',    worldX:878, worldZ:-1.8, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'I forgot all my problems on this dance floor.',
+    options:[{ id:'opt-am3', label:'Same here.', kind:'info', responseText:'Friday nights are pure magic in Constantine.' }] },
+  { id:'npc-bar-dancer-4', label:'💃 Houria',   worldX:885, worldZ:-4.8, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'I love this track! My cousin knows the DJ.',
+    options:[{ id:'opt-ho4', label:'Really?', kind:'info', responseText:'He plays until 3 AM. Tonight will be good.' }] },
+  { id:'npc-bar-dancer-5', label:'🕺 Redouane', worldX:874, worldZ:-2.4, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'I worked a double shift. Now I dance.',
+    options:[{ id:'opt-rd5', label:'You deserve it.', kind:'info', responseText:'Exactly what I said. Cheers, habibi.' }] },
+  { id:'npc-bar-dancer-6', label:'💃 Lyna',     worldX:886, worldZ:-2.0, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'I only dance to good songs. This is a good song.',
+    options:[{ id:'opt-ly6', label:'I agree.', kind:'info', responseText:'Smart man. Stay for the next one.' }] },
+  { id:'npc-bar-dancer-7', label:'🕺 Sofiane',  worldX:879, worldZ:-5.2, radius:2.5, dancing:true, interiorId:'bar_old_city',
+    dialogue:'Forget the street drama. Here we are all equal.',
+    options:[{ id:'opt-sf7', label:'Well said.', kind:'info', responseText:'One more round and I will believe it myself.' }] },
 
   // ── 4 Outdoor restaurants ─────────────────────────────────────────────────
 
@@ -1026,6 +1052,88 @@ export const NPC_TALKERS: NpcTalker[] = [
       },
     ],
   },
+
+  // ── 10 Job dispatchers (total 13 with bus/taxi/farm above) ───────────────
+
+  // 4. Security guard — City B commercial block
+  { id: 'npc-security-dispatcher', label: '🛡 Security Company', worldX: 260, worldZ: 55, radius: 5,
+    dialogue: 'We need reliable guards for City B warehouses. 1,800 DA/hr, night shift.',
+    options: [
+      { id: 'opt-start-sec', label: 'Start security shift (1,800 DA/hr)', kind: 'job', itemId: 'security_guard',    hourlyRate: 1800, responseText: 'Uniform is yours. Patrol the perimeter every 20 minutes.' },
+      { id: 'opt-end-sec',   label: 'End shift & collect pay',            kind: 'job', itemId: 'security_guard_end', responseText: 'Good work. No incidents tonight.' },
+    ] },
+
+  // 5. Construction foreman — Highway junction
+  { id: 'npc-construction-foreman', label: '🏗 Construction Site', worldX: 0, worldZ: -18, radius: 5,
+    dialogue: 'Highway expansion needs workers. 1,200 DA/hr. Hard hats provided.',
+    options: [
+      { id: 'opt-start-con', label: 'Start construction shift (1,200 DA/hr)', kind: 'job', itemId: 'construction_worker',    hourlyRate: 1200, responseText: 'Start on the eastern ramp. Gloves are in the container.' },
+      { id: 'opt-end-con',   label: 'End shift & collect pay',               kind: 'job', itemId: 'construction_worker_end', responseText: 'Good laying today. See you tomorrow.' },
+    ] },
+
+  // 6. Hospital admin — near hospital exterior
+  { id: 'npc-hospital-admin', label: '🏥 Hospital Admin', worldX: 405, worldZ: 55, radius: 5,
+    dialogue: 'Orderlies needed urgently. Clean record required. 1,600 DA/hr.',
+    options: [
+      { id: 'opt-start-hosp', label: 'Start orderly shift (1,600 DA/hr)', kind: 'job', itemId: 'hospital_orderly',    hourlyRate: 1600, responseText: 'Report to Ward 3. Be gentle with the patients.' },
+      { id: 'opt-end-hosp',   label: 'End shift & collect pay',           kind: 'job', itemId: 'hospital_orderly_end', responseText: 'The patients were well cared for. Thank you.' },
+    ] },
+
+  // 7. Garage mechanic — near Ali Mendjeli garage exterior
+  { id: 'npc-garage-recruiter', label: '🔧 Auto Workshop', worldX: -360, worldZ: 55, radius: 5,
+    dialogue: 'Experienced mechanics wanted. City B is growing — lots of cars, not enough hands. 2,200 DA/hr.',
+    options: [
+      { id: 'opt-start-mec', label: 'Start mechanic shift (2,200 DA/hr)', kind: 'job', itemId: 'mechanic',    hourlyRate: 2200, responseText: 'Bay 3 is yours. Start with the Kangoo — oil change and brakes.' },
+      { id: 'opt-end-mec',   label: 'End shift & collect pay',           kind: 'job', itemId: 'mechanic_end', responseText: 'Five cars done. Excellent work.' },
+    ] },
+
+  // 8. School director — City A cultural zone
+  { id: 'npc-school-director', label: '📚 School Director', worldX: -250, worldZ: 55, radius: 5,
+    dialogue: 'Substitute teachers needed — mathematics and Arabic. 1,400 DA/hr. Professional appearance required.',
+    options: [
+      { id: 'opt-start-tea', label: 'Start teaching shift (1,400 DA/hr)', kind: 'job', itemId: 'teacher',    hourlyRate: 1400, responseText: 'Room 12. Year 4 students. They are a handful — good luck.' },
+      { id: 'opt-end-tea',   label: 'End shift & collect pay',            kind: 'job', itemId: 'teacher_end', responseText: 'The students actually learned something today. Impressive.' },
+    ] },
+
+  // 9. Café supervisor — near Café Cirta
+  { id: 'npc-cafe-supervisor', label: '☕ Café Supervisor', worldX: -415, worldZ: 55, radius: 5,
+    dialogue: 'Friday rush is brutal. Need waiters now. 800 DA/hr plus tips.',
+    options: [
+      { id: 'opt-start-wait', label: 'Start waiter shift (800 DA/hr + tips)', kind: 'job', itemId: 'cafe_waiter',    hourlyRate: 800, responseText: 'Apron is in the back. Tables 5–10 are yours.' },
+      { id: 'opt-end-wait',   label: 'End shift & collect pay',               kind: 'job', itemId: 'cafe_waiter_end', responseText: 'Tips were generous today. You have a way with people.' },
+    ] },
+
+  // 10. Market overseer — Centre-Ville souk
+  { id: 'npc-market-overseer', label: '🛒 Souk Overseer', worldX: 55, worldZ: -55, radius: 5,
+    dialogue: 'We need vendors for the Centre-Ville market. Own stall, 900 DA/hr base.',
+    options: [
+      { id: 'opt-start-vend', label: 'Start vendor shift (900 DA/hr)', kind: 'job', itemId: 'market_vendor',    hourlyRate: 900, responseText: 'Stall 14 near the fountain. Spices and dates. Shout loud.' },
+      { id: 'opt-end-vend',   label: 'End shift & collect pay',        kind: 'job', itemId: 'market_vendor_end', responseText: 'Good sales. People liked your voice.' },
+    ] },
+
+  // 11. Logistics manager — highway delivery hub
+  { id: 'npc-logistics-manager', label: '🚛 Delivery Depot', worldX: 100, worldZ: -18, radius: 5,
+    dialogue: 'Delivery drivers needed — Constantine to Ain Mlila route. Own vehicle preferred. 1,700 DA/hr.',
+    options: [
+      { id: 'opt-start-del', label: 'Start delivery shift (1,700 DA/hr)', kind: 'job', itemId: 'delivery_driver',    hourlyRate: 1700, responseText: 'Three drops: Old City, City B, highway exit 4. Go.' },
+      { id: 'opt-end-del',   label: 'End shift & collect pay',            kind: 'job', itemId: 'delivery_driver_end', responseText: 'All packages arrived. No damage. Excellent.' },
+    ] },
+
+  // 12. Factory supervisor — Ain M\'lila industrial zone
+  { id: 'npc-factory-supervisor', label: '🏭 Factory Floor', worldX: -430, worldZ: -18, radius: 5,
+    dialogue: 'Line workers needed, night shift. 1,100 DA/hr. Safety training provided on day one.',
+    options: [
+      { id: 'opt-start-fac', label: 'Start factory shift (1,100 DA/hr)', kind: 'job', itemId: 'factory_worker',    hourlyRate: 1100, responseText: 'Line 4. Gloves on, ear protection in. Supervisor is Mustapha.' },
+      { id: 'opt-end-fac',   label: 'End shift & collect pay',           kind: 'job', itemId: 'factory_worker_end', responseText: '320 units. Above quota. Nice work.' },
+    ] },
+
+  // 13. Bank branch manager — City B financial district
+  { id: 'npc-bank-manager', label: '🏦 Bank Branch', worldX: 360, worldZ: 55, radius: 5,
+    dialogue: 'Teller positions open at City B branch. Clean record, ID required. 2,500 DA/hr.',
+    options: [
+      { id: 'opt-start-bank', label: 'Start bank teller shift (2,500 DA/hr)', kind: 'job', itemId: 'bank_clerk',    hourlyRate: 2500, responseText: 'Counter 3 is yours. Remember: smile at every customer.' },
+      { id: 'opt-end-bank',   label: 'End shift & collect pay',               kind: 'job', itemId: 'bank_clerk_end', responseText: 'Balanced to the dirham. We will see you tomorrow.' },
+    ] },
 
   // ── Drug dealer — near the gang hideout ─────────────────────────────────
   {

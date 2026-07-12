@@ -186,6 +186,16 @@ export type GameState = {
   /** Stashed items per owned house interior: interiorId → itemId → quantity */
   homeStash:          Record<string, Record<string, number>>;
 
+  // ── Relationships / Family ────────────────────────────────────────────────
+  /** Per-NPC relationship data keyed by NPC id ('rania', 'yasmine', etc.) */
+  relationships:      Record<string, { level: number; datesCount: number; status: 'none' | 'dating' | 'engaged' | 'married'; marriedAt: number }>;
+  /** NPC id of current spouse, null if single. */
+  spouseId:           string | null;
+  /** 0 = no family, 1 = spouse, 2+ = spouse + children */
+  familySize:         number;
+  /** DA deducted per in-game day when family is present */
+  familyExpenses:     number;
+
   // ── Inventory panel UI ───────────────────────────────────────────────────
   showInventory:      boolean;
   /** True while the smartphone overlay is open. */
@@ -279,6 +289,12 @@ export type GameState = {
 
   // ── Inventory panel actions ─────────────────────────────────────────────────
   toggleInventory:    () => void;
+
+  // ── Relationship actions ─────────────────────────────────────────────────────
+  /** Increase relationship level with an NPC by `amount` (default 10). Auto-upgrades status. */
+  progressRelationship: (npcId: string, amount?: number) => void;
+  /** Propose marriage. Returns true (accepted) if level ≥ 80 and player owns a home. */
+  proposeMarriage:      (npcId: string) => boolean;
 };
 
 const initialState: Omit<GameState,
@@ -295,6 +311,7 @@ const initialState: Omit<GameState,
   | 'fireWeapon'     | 'reloadWeapon'    | 'dropWeapon'     | 'redeemCode' | 'buyConsumable'
   | 'startHeist'     | 'recruitGangMember' | 'dismissGangMember' | 'toggleInventory'
   | 'startJob'       | 'endJob'          | 'stashItem'      | 'unstashItem'
+  | 'progressRelationship' | 'proposeMarriage'
 > = {
   playerId:            null,
   username:            '',
@@ -399,6 +416,11 @@ const initialState: Omit<GameState,
   showInventory:       false,
   showSmartphone:      false,
   aimMode:             false,
+
+  relationships:       {},
+  spouseId:            null,
+  familySize:          0,
+  familyExpenses:      0,
 
   screen:              'main_menu',
   mapLoadProgress:     0,
@@ -761,4 +783,36 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // ── Inventory panel ──────────────────────────────────────────────────────
   toggleInventory: () => set((s) => ({ showInventory: !s.showInventory })),
+
+  progressRelationship: (npcId, amount = 10) => set((s) => {
+    const prev = s.relationships[npcId] ?? { level: 0, datesCount: 0, status: 'none' as const, marriedAt: 0 };
+    const newLevel = Math.min(100, prev.level + amount);
+    const newDates = prev.datesCount + 1;
+    let newStatus = prev.status;
+    if (newStatus === 'none'    && newLevel >= 20) newStatus = 'dating';
+    if (newStatus === 'dating'  && newLevel >= 60) newStatus = 'engaged';
+    return {
+      relationships: {
+        ...s.relationships,
+        [npcId]: { level: newLevel, datesCount: newDates, status: newStatus, marriedAt: prev.marriedAt },
+      },
+    };
+  }),
+
+  proposeMarriage: (npcId) => {
+    const s = get();
+    const rel = s.relationships[npcId];
+    const ownsHome = s.ownedAssetIds.some((id) => id.startsWith('house_') || id === 'safehouse_cv');
+    if (!rel || rel.level < 80 || !ownsHome || s.spouseId) return false;
+    set((prev) => ({
+      spouseId:     npcId,
+      familySize:   1,
+      familyExpenses: 3000,
+      relationships: {
+        ...prev.relationships,
+        [npcId]: { ...rel, status: 'married', marriedAt: Date.now() },
+      },
+    }));
+    return true;
+  },
 }));
