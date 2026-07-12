@@ -25,6 +25,7 @@ import { Bank } from './Bank';
 import { GangFollowers } from './GangFollowers';
 import { audioManager } from './audio/AudioManager';
 import { AudioManagerBridge } from './audio/AudioManagerBridge';
+import { barMusicPlayer } from './audio/barMusicPlayer';
 import { getActivePlatformConfig, applyPlatformConfig } from './platform/PlatformManager';
 import { useGameStore, FpsCap, IS_MOBILE_DEVICE } from './useGameStore';
 import { HUD } from '../ui/HUD';
@@ -211,14 +212,15 @@ export function GameEngine() {
   const indoors        = useGameStore((s) => s.indoors);
   const interiorId     = useGameStore((s) => s.interiorId);
 
-  // ── Bar ambience: start synthesized music when inside bar, stop on exit ──
+  // ── Bar music: shuffle real MP3 tracks from public/audio while inside the
+  // bar, stop the instant the player leaves (or unmounts).
   useEffect(() => {
     if (interiorId === 'bar_old_city') {
-      audioManager.startBarAmbience();
+      barMusicPlayer.start();
     } else {
-      audioManager.stopBarAmbience();
+      barMusicPlayer.stop();
     }
-    return () => { audioManager.stopBarAmbience(); };
+    return () => { barMusicPlayer.stop(); };
   }, [interiorId]);
   const screen         = useGameStore((s) => s.screen);
   const cameraMode     = useGameStore((s) => s.cameraMode);

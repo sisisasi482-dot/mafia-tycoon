@@ -3,13 +3,13 @@
  * Lists owned weapons and car keys. Allows equip / unequip.
  * 'K' or clicking Unequip while a weapon is equipped hides the weapon.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../game/useGameStore';
 import {
   WEAPON_IDS, WEAPON_NAMES, WEAPON_ICONS, WEAPON_AMMO,
   CAR_KEY_PREFIX, isCarKey, vehicleIdFromKey, VEHICLE_NAMES_MAP,
-  CONSUMABLES,
+  CONSUMABLES, NATIONAL_ID_ID, DRIVING_LICENSE_ID,
 } from '../game/items';
 
 export function InventoryPanel() {
@@ -23,10 +23,26 @@ export function InventoryPanel() {
   const ammoReserves     = useGameStore((s) => s.ammoReserves);
   const screen           = useGameStore((s) => s.screen);
   const isPaused         = useGameStore((s) => s.isPaused);
+  const username         = useGameStore((s) => s.username);
+  const [viewingId, setViewingId] = useState(false);
 
   const weapons   = ownedAssetIds.filter((id) => WEAPON_IDS.has(id));
   const carKeys   = Object.keys(inventory).filter(isCarKey).filter((k) => (inventory[k] ?? 0) > 0);
   const consumables = CONSUMABLES.filter((c) => (inventory[c.id] ?? 0) > 0);
+  const hasNationalId  = ownedAssetIds.includes(NATIONAL_ID_ID);
+  const hasLicense     = ownedAssetIds.includes(DRIVING_LICENSE_ID);
+
+  const showId = () => {
+    const gs = useGameStore.getState();
+    // Showing valid papers to an officer eases suspicion — small, real effect
+    // rather than a no-op button.
+    if (gs.wantedLevel > 0) gs.setWantedLevel(gs.wantedLevel - 1);
+    gs.setInteractionHint('🪪 ID card shown to officer — identity confirmed');
+    setTimeout(() => {
+      if (useGameStore.getState().interactionHint?.includes('ID card shown'))
+        useGameStore.getState().setInteractionHint(null);
+    }, 2000);
+  };
 
   // 'I' toggles the panel, 'K' unequips (hides) the current weapon.
   useEffect(() => {
@@ -217,8 +233,45 @@ export function InventoryPanel() {
               </section>
             )}
 
+            {/* ── Documents ─────────────────────────────────────────────── */}
+            {(hasNationalId || hasLicense) && (
+              <section>
+                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Documents</p>
+                <div className="space-y-1">
+                  {hasNationalId && (
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-transparent">
+                      <span className="text-xl">🪪</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-bold leading-none">National ID</p>
+                        <p className="text-gray-400 text-[11px] mt-0.5">Permanent · cannot be dropped</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => setViewingId(true)}
+                          className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider transition"
+                        >View</button>
+                        <button
+                          onClick={showId}
+                          className="px-2 py-1 rounded-md bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 text-[10px] font-bold uppercase tracking-wider transition"
+                        >Show</button>
+                      </div>
+                    </div>
+                  )}
+                  {hasLicense && (
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-transparent">
+                      <span className="text-xl">🚗</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-bold leading-none">Driving License</p>
+                        <p className="text-gray-400 text-[11px] mt-0.5">Permanent · cannot be dropped</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Empty state */}
-            {weapons.length === 0 && carKeys.length === 0 && consumables.length === 0 && (
+            {weapons.length === 0 && carKeys.length === 0 && consumables.length === 0 && !hasNationalId && !hasLicense && (
               <div className="text-center py-8 text-gray-600">
                 <p className="text-2xl mb-2">🎒</p>
                 <p className="text-xs uppercase tracking-wider">Inventory empty</p>
@@ -235,6 +288,45 @@ export function InventoryPanel() {
               </p>
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* National ID viewer — its own overlay so it works even if the
+          inventory panel is closed behind it. */}
+      {viewingId && hasNationalId && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70"
+          style={{ pointerEvents: 'all' }}
+          onClick={() => setViewingId(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-80 rounded-2xl overflow-hidden shadow-2xl border-2 border-yellow-500/60 bg-gradient-to-br from-emerald-900 to-emerald-950"
+          >
+            <div className="px-4 py-2 bg-emerald-950/80 border-b border-yellow-500/40 flex items-center justify-between">
+              <span className="text-yellow-400 text-[10px] font-black uppercase tracking-widest">🇩🇿 République Algérienne</span>
+              <button onClick={() => setViewingId(false)} className="text-gray-400 hover:text-white text-sm leading-none">✕</button>
+            </div>
+            <div className="p-4 flex gap-3">
+              <div className="w-16 h-20 rounded-md bg-white/10 border border-white/20 flex items-center justify-center text-3xl shrink-0">🙂</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-black text-lg leading-tight truncate">{username || 'Citizen'}</p>
+                <p className="text-emerald-300 text-[11px] uppercase tracking-wider mt-1">National ID Card</p>
+                <p className="text-emerald-400/70 text-[11px] mt-2">City: Constantine</p>
+                <p className="text-emerald-400/70 text-[11px]">Status: Verified</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { showId(); setViewingId(false); }}
+              className="w-full py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-xs uppercase tracking-widest transition"
+            >Show to Officer</button>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

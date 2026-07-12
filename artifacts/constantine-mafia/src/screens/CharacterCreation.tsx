@@ -10,7 +10,7 @@ export function CharacterCreation() {
   const store = useGameStore();
   const lang = store.language;
   const [username, setUsername] = useState('');
-  const [height, setHeight] = useState(175);
+  const [height, setHeight] = useState('');
   const [, setLocation] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -25,10 +25,15 @@ export function CharacterCreation() {
     // When signed in with Google, link/save this profile to the cloud so
     // progress persists across devices. Local save (useSaveSystem) always
     // continues to work as the primary, offline-first store.
+    // Height is free text in the UI (no numeric restriction), but the save
+    // schema stores it as a number — pull out any digits the player typed
+    // and fall back to the default if none are present.
+    const heightNum = parseInt(height.replace(/[^0-9]/g, ''), 10) || 175;
+
     let clerkUserId: string | null = null;
     if (user) {
       try {
-        await linkMyPlayer.mutateAsync({ data: { username: username.trim(), height } });
+        await linkMyPlayer.mutateAsync({ data: { username: username.trim(), height: heightNum } });
         clerkUserId = user.id;
       } catch (err) {
         console.error('Cloud save link failed, continuing with local save only', err);
@@ -37,7 +42,7 @@ export function CharacterCreation() {
 
     store.setPlayerState({
       username: username.trim(),
-      height,
+      height: heightNum,
       clerkUserId,
       screen: 'playing',
       money: 500,
@@ -138,12 +143,12 @@ export function CharacterCreation() {
                 </label>
                 <input
                   id="height-input"
-                  type="number"
+                  type="text"
                   value={height}
-                  onChange={(e) => setHeight(Math.max(140, Math.min(230, Number(e.target.value) || 0)))}
+                  onChange={(e) => setHeight(e.target.value)}
                   className="w-full bg-black/50 border-2 border-white/10 rounded-lg p-4 text-white text-xl focus:border-primary focus:outline-none transition-colors"
-                  min={140}
-                  max={230}
+                  placeholder={lang === 'ar' ? 'مثال: 175 سم' : 'e.g. 175cm'}
+                  autoComplete="off"
                 />
               </div>
 

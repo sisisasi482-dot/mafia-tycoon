@@ -8,3 +8,7 @@ Each Kenney kit (buildings, vehicles, characters, etc.) usually ships its own di
 **Why:** the game's asset pipeline mirrors a root-level `assest/<set>/` folder into `artifacts/<web-app>/public/<set>/` for Vite to serve at `${BASE_URL}<set>/<model>.glb`. Copying only the `.glb` files (not the sibling `Textures/colormap.png`) silently breaks materials — the model still loads and renders, just without color.
 
 **How to apply:** when adding/updating a Kenney glb set, always check whether its `.glb` files reference `images: [{ uri: "Textures/colormap.png" }]` (search the raw glTF JSON bytes for `colormap.png`), and if so copy/sync that exact texture file into `public/<set>/Textures/colormap.png`. Verify by hash — don't assume a texture from a different kit is a safe substitute unless the original is genuinely missing from the project's uploaded assets.
+
+The path must include the `Textures/` subfolder, not just the set root — a `colormap.png` sitting directly in `public/<set>/` (no `Textures/` child dir) still fails to load even though the file technically exists in the folder, because glTF resolves the URI relative path literally.
+
+If a kit's true source colormap is confirmed missing from every uploaded asset location (not just misplaced), don't fabricate a "close enough" texture from another kit — generate a plain placeholder palette (e.g. via ImageMagick, a flat multi-swatch PNG) and note to the user that it's a stand-in, not the original art.
