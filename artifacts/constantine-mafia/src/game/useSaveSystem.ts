@@ -5,6 +5,16 @@ import { getMyPlayer, saveMyPlayer } from '@workspace/api-client-react';
 
 const SAVE_KEY = 'constantine_mafia_save';
 
+// Module-scoped (not per-component) — several components call useSaveSystem()
+// (MainMenu, PauseMenu), each mounting its own copy of the "pull cloud save
+// on first load" effect below. Without this guard, opening the pause menu
+// shortly after character creation (before the 30s autosave interval writes
+// a local save) re-ran the pull, fetched the cloud player row — which still
+// had ownedAssetIds: [] because linkMyPlayer only sends username/height —
+// and stomped the freshly-granted national_id via setPlayerState. Gate to
+// exactly one attempt per page load, regardless of how many components mount.
+let cloudPullAttempted = false;
+
 // Subset of PERSIST_KEYS that also exists as columns on the cloud player
 // profile (see lib/db/src/schema/players.ts + PlayerSave in openapi.yaml).
 // Fields like inventory/ammo/garage vehicles remain local-only for now —
@@ -132,7 +142,8 @@ export function useSaveSystem() {
   // signed in with Google, pull their cloud profile so returning on a new
   // device (or after clearing storage) doesn't look like a fresh start.
   useEffect(() => {
-    if (!isLoaded || !user || hasSaveGameSnapshot()) return;
+    if (!isLoaded || !user || hasSaveGameSnapshot() || cloudPullAttempted) return;
+    cloudPullAttempted = true;
     let cancelled = false;
     getMyPlayer()
       .then((player) => {

@@ -347,9 +347,87 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     const justPressed  = interactDown && !interactWasDown.current;
     interactWasDown.current = interactDown;
 
+    // Shared handler for "player is standing next to this NPC" — used both
+    // outdoors (world NPCs, no interiorId) and indoors (shop/hospital/bar
+    // NPCs whose interiorId matches the room the player is currently in).
+    // Previously this logic only ran in the outdoor branch below, so E never
+    // did anything for indoor NPCs (hospital doctor, corner store clerk,
+    // weapons dealer, bar owner, license examiner, etc.) — it silently had
+    // no effect no matter how close you stood.
+    const handleNearNpc = (nearNpc: typeof NPC_TALKERS[0]) => {
+      if ((nearNpc as any).shopType === 'hospital') {
+        // Hospital — heals directly, no shop panel
+        const gs = useGameStore.getState();
+        const full = gs.health >= 100;
+        if (!showingDialogue.current) pushHint(full ? `${nearNpc.label}: Already at full health` : `[E] ${nearNpc.label} — Heal (free)`);
+        if (justPressed && !full) {
+          gs.healPlayer(100);
+          pushHint(`⚕ ${nearNpc.label}: Fully healed`);
+          setTimeout(() => { if (currentHint.current?.includes('Fully healed')) pushHint(null); }, 2000);
+        }
+      } else if ((nearNpc as any).shopType) {
+        // Shop NPC — open the Shop panel at the relevant tab
+        if (!showingDialogue.current) pushHint(`[E] Shop · ${nearNpc.label}`);
+        if (justPressed) {
+          useGameStore.getState().setPlayerState({
+            isPaused:    true,
+            activePanel: 'shop',
+            shopNpcTab:  (nearNpc as any).shopType,
+          });
+          pushHint(null);
+        }
+      } else if (nearNpc.options && nearNpc.options.length > 0) {
+        // Multi-option dialogue — open DialogueUI overlay
+        if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
+        if (justPressed && !showingDialogue.current) {
+          useGameStore.getState().setDialogueNpc(nearNpc.id);
+          pushHint(null);
+        }
+      } else if ((nearNpc as any).quiz) {
+        // Driving License examiner — opens the LicenseQuizPanel overlay
+        const gs = useGameStore.getState();
+        const licensed = gs.ownedAssetIds.includes(DRIVING_LICENSE_ID);
+        if (!showingDialogue.current) {
+          pushHint(licensed
+            ? `🪪 ${nearNpc.label} — License already issued`
+            : `[E] ${nearNpc.label} — Take Driving Test`);
+        }
+        if (justPressed && !licensed) {
+          gs.setPlayerState({ isPaused: true, activePanel: 'license_quiz' });
+          pushHint(null);
+        }
+      } else {
+        // All NPC_TALKERS entries now carry shopType, options, or quiz —
+        // this branch is unreachable but kept as a safe fallback.
+        if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
+        if (justPressed && !showingDialogue.current) {
+          showingDialogue.current = true;
+          pushHint(nearNpc.dialogue);
+          if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
+          npcDialogTimer.current = setTimeout(() => {
+            showingDialogue.current = false;
+            currentHint.current = null;
+          }, 3500);
+        }
+      }
+    };
+
     if (indoors && interiorId) {
       const layout = INTERIORS[interiorId];
-      if (layout) {
+
+      // Indoor NPCs first — shopkeepers/doctor/bar owner/examiner all live
+      // inside a room and must take priority over the exit prompt.
+      let nearNpc: typeof NPC_TALKERS[0] | null = null;
+      let minNpcDist = Infinity;
+      for (const npc of NPC_TALKERS) {
+        if (npc.interiorId !== interiorId) continue;
+        const d = Math.hypot(pos.x - npc.worldX, pos.z - npc.worldZ);
+        if (d < npc.radius && d < minNpcDist) { nearNpc = npc; minNpcDist = d; }
+      }
+
+      if (nearNpc) {
+        handleNearNpc(nearNpc);
+      } else if (layout) {
         const exitX = layout.centerX + layout.exitOffsetX;
         const exitZ = layout.centerZ + layout.exitOffsetZ;
         const dist  = Math.hypot(pos.x - exitX, pos.z - exitZ);
@@ -362,7 +440,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
             velocity.current.set(0, 0, 0);
           }
         } else {
-          pushHint(null);
+          if (!showingDialogue.current) pushHint(null);
         }
       }
     } else {
@@ -378,6 +456,9 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
       if (!nearDoor) {
         let minNpcDist = Infinity;
         for (const npc of NPC_TALKERS) {
+          // Outdoors, only consider world NPCs (no interiorId) — indoor
+          // NPCs are handled exclusively in the indoors branch above.
+          if (npc.interiorId) continue;
           const d = Math.hypot(pos.x - npc.worldX, pos.z - npc.worldZ);
           if (d < npc.radius && d < minNpcDist) { nearNpc = npc; minNpcDist = d; }
         }
@@ -410,61 +491,7 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
           }
         }
       } else if (nearNpc) {
-        if ((nearNpc as any).shopType === 'hospital') {
-          // Hospital — heals directly, no shop panel
-          const gs = useGameStore.getState();
-          const full = gs.health >= 100;
-          if (!showingDialogue.current) pushHint(full ? `${nearNpc.label}: Already at full health` : `[E] ${nearNpc.label} — Heal (free)`);
-          if (justPressed && !full) {
-            gs.healPlayer(100);
-            pushHint(`⚕ ${nearNpc.label}: Fully healed`);
-            setTimeout(() => { if (currentHint.current?.includes('Fully healed')) pushHint(null); }, 2000);
-          }
-        } else if ((nearNpc as any).shopType) {
-          // Shop NPC — open the Shop panel at the relevant tab
-          if (!showingDialogue.current) pushHint(`[E] Shop · ${nearNpc.label}`);
-          if (justPressed) {
-            useGameStore.getState().setPlayerState({
-              isPaused:    true,
-              activePanel: 'shop',
-              shopNpcTab:  (nearNpc as any).shopType,
-            });
-            pushHint(null);
-          }
-        } else if (nearNpc.options && nearNpc.options.length > 0) {
-          // Multi-option dialogue — open DialogueUI overlay
-          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
-          if (justPressed && !showingDialogue.current) {
-            useGameStore.getState().setDialogueNpc(nearNpc.id);
-            pushHint(null);
-          }
-        } else if ((nearNpc as any).quiz) {
-          // Driving License examiner — opens the LicenseQuizPanel overlay
-          const gs = useGameStore.getState();
-          const licensed = gs.ownedAssetIds.includes(DRIVING_LICENSE_ID);
-          if (!showingDialogue.current) {
-            pushHint(licensed
-              ? `🪪 ${nearNpc.label} — License already issued`
-              : `[E] ${nearNpc.label} — Take Driving Test`);
-          }
-          if (justPressed && !licensed) {
-            gs.setPlayerState({ isPaused: true, activePanel: 'license_quiz' });
-            pushHint(null);
-          }
-        } else {
-          // All NPC_TALKERS entries now carry shopType, options, or quiz —
-          // this branch is unreachable but kept as a safe fallback.
-          if (!showingDialogue.current) pushHint(`[E] Talk · ${nearNpc.label}`);
-          if (justPressed && !showingDialogue.current) {
-            showingDialogue.current = true;
-            pushHint(nearNpc.dialogue);
-            if (npcDialogTimer.current) clearTimeout(npcDialogTimer.current);
-            npcDialogTimer.current = setTimeout(() => {
-              showingDialogue.current = false;
-              currentHint.current = null;
-            }, 3500);
-          }
-        }
+        handleNearNpc(nearNpc);
       } else {
         if (!showingDialogue.current) pushHint(null);
         if (npcDialogTimer.current && !showingDialogue.current) {

@@ -144,7 +144,9 @@ router.post("/player/me", requireAuth, async (req, res) => {
     xp: 0,
     careerPath: "street_thug",
     district: "ali_mendjeli",
-    ownedAssetIds: [],
+    // Registration = getting ID papers — mirrors the local (non-cloud) path
+    // in CharacterCreation.tsx which grants this on every new character.
+    ownedAssetIds: ["national_id"],
     completedMissionIds: [],
   }).returning();
   res.status(201).json(serializePlayer(player));
