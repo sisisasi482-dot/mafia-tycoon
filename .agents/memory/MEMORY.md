@@ -9,3 +9,5 @@
 - [Clerk cloud save on existing player table](clerk-cloud-save-cross-artifact.md) — add nullable clerkUserId column + parallel /me routes, don't restructure existing table; sync only DB-backed fields.
 - [Gang/Bank heist integration](gang-bank-heist-integration.md) — gang spawn coords duplicated in 2 files, must stay inside player movement clamp; heist payout scales with crew size.
 - [Tasks 2-4 completion](tasks-2-4-completion.md) — full feature list for asset overhaul, economy/jobs, and crime/AI tasks; key patterns for GLB6 furniture, job store actions, checkpoint license check.
+- [Kenney GLB external textures](kenney-glb-external-textures.md) — glTF "Textures/colormap.png" refs must be synced into public/<set>/ or models render untextured; textures differ per kit.
+- Tailwind has no `pointer-events-all` utility (only `-none`/`-auto`) — using it silently no-ops and leaves a parent's `pointer-events-none` in effect, blocking all clicks on that subtree.

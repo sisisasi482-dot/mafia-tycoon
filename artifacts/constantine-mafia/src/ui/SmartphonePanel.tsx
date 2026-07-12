@@ -232,13 +232,13 @@ export function SmartphonePanel() {
       >
         {/* Backdrop */}
         <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-all"
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
           onClick={() => store.setPlayerState({ showSmartphone: false })}
         />
 
         {/* Phone shell */}
         <div
-          className="relative pointer-events-all w-[320px] h-[580px] rounded-[2.5rem] overflow-hidden flex flex-col"
+          className="relative pointer-events-auto w-[320px] h-[580px] rounded-[2.5rem] overflow-hidden flex flex-col"
           style={{
             background: 'linear-gradient(180deg, #0a0c14 0%, #060810 100%)',
             border: '2px solid rgba(255,255,255,0.12)',

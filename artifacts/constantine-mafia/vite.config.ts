@@ -76,12 +76,14 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    hmr: {
+      overlay: false,
+    },
     fs: {
-      strict: true,
       // Needed so the dev server can read the shared /config/platforms/*
       // files, which live outside this artifact's root by design (they are
       // shared across all platform targets, not game-specific).
-      allow: [path.resolve(import.meta.dirname), path.resolve(import.meta.dirname, '..', '..', 'config')],
+      strict: false,
     },
   },
   preview: {
