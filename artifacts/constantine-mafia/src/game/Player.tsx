@@ -248,8 +248,11 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     // Probe from slightly above the player downward. Ignores the player's own
     // mesh (innerRef) and any object tagged noGround so we only snap to
     // terrain / road surfaces, never to NPCs or props.
+    // NOTE: `const pos` is declared after addScaledVector below — use
+    // innerRef.current.position directly here to avoid a TDZ reference error.
+    const ipos = innerRef.current.position;
     groundRaycaster.current.set(
-      new THREE.Vector3(pos.x, pos.y + 4, pos.z),
+      new THREE.Vector3(ipos.x, ipos.y + 4, ipos.z),
       new THREE.Vector3(0, -1, 0),
     );
     const groundHits = groundRaycaster.current
@@ -263,11 +266,11 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     // when nothing is hit, so open sky / out-of-map areas don't drop to y=0.
     const groundY = groundHits.length > 0 ? groundHits[0].point.y : 1;
 
-    if (pos.y > groundY + 0.05) {
+    if (ipos.y > groundY + 0.05) {
       velocity.current.y -= 30 * delta;
     } else {
       velocity.current.y = 0;
-      pos.y = groundY;
+      ipos.y = groundY;
       if (keys.jump) velocity.current.y = 10;
     }
 
