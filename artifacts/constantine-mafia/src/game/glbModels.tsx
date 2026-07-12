@@ -17,6 +17,22 @@ import * as THREE from 'three';
 
 const BASE = import.meta.env.BASE_URL;
 
+/**
+ * Canonical asset-folder mapping — update here to remap all models at once.
+ * Each value is the public-directory folder name served at `${BASE_URL}<folder>/`.
+ *
+ * Logical paths       →  served from
+ * ─────────────────────────────────────────────────────────────────────────
+ * VEHICLES   (glb5)   →  src/assets/glb5  (public/glb5  in the build)
+ * CHARACTERS (glb4)   →  src/assets/glb4  (public/glb4  in the build)
+ * FURNITURE  (glb6)   →  src/assets/glb6  (public/glb6  in the build)
+ */
+export const ASSET_PATHS = {
+  VEHICLES:   'glb5',
+  CHARACTERS: 'glb4',
+  FURNITURE:  'glb6',
+} as const;
+
 export function glbUrl(set: string, model: string): string {
   return `${BASE}${set}/${model}.glb`;
 }

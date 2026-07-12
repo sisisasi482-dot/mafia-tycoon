@@ -4,7 +4,7 @@ import { useKeyboardControls, Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
 import { VEHICLE_RENDER_MAP } from './items';
-import { FittedGLB, glbUrl } from './glbModels';
+import { FittedGLB, glbUrl, ASSET_PATHS } from './glbModels';
 
 /** Vehicle type → glb5 model file (Task 2: New Models). */
 const VEHICLE_MODEL_FILE: Record<VehicleDef['type'], string> = {
@@ -18,7 +18,7 @@ const VEHICLE_MODEL_FILE: Record<VehicleDef['type'], string> = {
 // treats -Z as "forward" (see `fwd` vector below), so every model needs a
 // 180° yaw to line its nose up with the direction the car actually drives.
 const VEHICLE_MODEL_ROTATION_Y = Math.PI;
-Object.values(VEHICLE_MODEL_FILE).forEach((f) => useGLTF.preload(glbUrl('glb5', f)));
+Object.values(VEHICLE_MODEL_FILE).forEach((f) => useGLTF.preload(glbUrl(ASSET_PATHS.VEHICLES, f)));
 
 /* ─── Vehicle definitions (spawn positions 2× scaled) ────────────────────── */
 interface VehicleDef {
@@ -208,7 +208,7 @@ function SingleVehicle({
       {/* Real GLB vehicle model (Task 2: New Models) — replaces the old
           hand-built box body/cab/wheels, fit to the same footprint. */}
       <FittedGLB
-        set="glb5"
+        set={ASSET_PATHS.VEHICLES}
         model={VEHICLE_MODEL_FILE[def.type]}
         targetSize={[bodyW + 0.3, bodyTopY + cabH + 0.16, bodyL]}
         rotationY={VEHICLE_MODEL_ROTATION_Y}

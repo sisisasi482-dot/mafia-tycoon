@@ -1,4 +1,5 @@
 import React from 'react';
+import { useProgress } from '@react-three/drei';
 import { useGameStore } from '../game/useGameStore';
 import loadingImage from '../assets/loading-screen.jpeg';
 
@@ -15,7 +16,13 @@ import loadingImage from '../assets/loading-screen.jpeg';
  * that was already there — no black frame, no re-mount, no flash.
  */
 export function LoadingScreen() {
-  const progress = useGameStore((s) => s.mapLoadProgress);
+  const mapProgress  = useGameStore((s) => s.mapLoadProgress);
+  // useProgress reads @react-three/drei's global asset-loading manager, which
+  // tracks every useGLTF / useTexture call — this makes the bar move in real
+  // time as GLB chunks arrive, not only at coarse milestone snapshots.
+  const { progress: assetProgress } = useProgress();
+  // Take whichever source is further along so the bar never regresses.
+  const progress = Math.max(mapProgress, assetProgress);
 
   return (
     <div className="absolute inset-0 z-[60] bg-black flex flex-col items-center justify-end pb-20 overflow-hidden">

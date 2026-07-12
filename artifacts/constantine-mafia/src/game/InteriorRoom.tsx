@@ -6,7 +6,7 @@
 import React, { Suspense } from 'react';
 import { INTERIORS } from './interiors';
 import { useGameStore } from './useGameStore';
-import { FittedGLB, glbUrl } from './glbModels';
+import { FittedGLB, glbUrl, ASSET_PATHS } from './glbModels';
 
 const WALL_THICK = 0.25;
 
@@ -104,7 +104,7 @@ export function InteriorRoom() {
       {layout.glbFurniture?.map((gf, i) => (
         <group key={`glb-${i}`} position={gf.pos} rotation={[0, gf.rotY ?? 0, 0]}>
           <Suspense fallback={null}>
-            <FittedGLB set="glb6" model={gf.model} targetSize={[gf.scale ?? 1.4, gf.scale ?? 1.4, gf.scale ?? 1.4]} />
+            <FittedGLB set={ASSET_PATHS.FURNITURE} model={gf.model} targetSize={[gf.scale ?? 1.4, gf.scale ?? 1.4, gf.scale ?? 1.4]} />
           </Suspense>
         </group>
       ))}

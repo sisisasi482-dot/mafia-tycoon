@@ -8,6 +8,7 @@ import { GameEngine } from './game/GameEngine';
 import { MainMenu } from './screens/MainMenu';
 import { CharacterCreation } from './screens/CharacterCreation';
 import { LoadingScreen } from './ui/LoadingScreen';
+import { IntroScene } from './ui/IntroScene';
 import { useGameStore } from './game/useGameStore';
 
 const queryClient = new QueryClient();
@@ -109,8 +110,23 @@ function ClerkQueryClientCacheInvalidator() {
 }
 
 function GameApp() {
-  const screen = useGameStore((s) => s.screen);
+  const screen   = useGameStore((s) => s.screen);
   const mapReady = useGameStore((s) => s.mapReady);
+
+  // Show the intro cutscene once, immediately after character creation ends
+  // and the game screen flips to 'playing'. Tracked in local state so it
+  // never needs to touch the game store or survive a full session reset.
+  const [showIntro, setShowIntro] = React.useState(false);
+  const [introSeen, setIntroSeen] = React.useState(false);
+  const prevScreen = React.useRef<string>(screen);
+
+  React.useEffect(() => {
+    if (prevScreen.current === 'character_creation' && screen === 'playing' && !introSeen) {
+      setShowIntro(true);
+      setIntroSeen(true);
+    }
+    prevScreen.current = screen;
+  }, [screen, introSeen]);
 
   return (
     <div className="w-full h-[100dvh] bg-black overflow-hidden relative font-sans text-foreground">
@@ -121,6 +137,9 @@ function GameApp() {
           flips true, then unmounts instantly — no black frame in between. */}
       {screen === 'playing' && <GameEngine />}
       {screen === 'playing' && !mapReady && <LoadingScreen />}
+      {/* Intro cutscene — shown once after character creation, above the
+          loading overlay (z-[70]) so it's visible while assets stream in. */}
+      {showIntro && <IntroScene onDone={() => setShowIntro(false)} />}
 
       {/* Game Over Screen Overlay */}
       {screen === 'game_over' && (

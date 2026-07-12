@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
@@ -90,10 +90,16 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     equippedWeaponId, aimMode,
   } = useGameStore();
 
-  const velocity        = useRef(new THREE.Vector3());
-  const direction       = useRef(new THREE.Vector3());
-  const syncTimer       = useRef(0);
-  const prevInVehicle   = useRef(inVehicle);
+  const { scene } = useThree();
+
+  const velocity          = useRef(new THREE.Vector3());
+  const direction         = useRef(new THREE.Vector3());
+  const syncTimer         = useRef(0);
+  const prevInVehicle     = useRef(inVehicle);
+  // Downward raycaster for terrain ground-snap — reused each frame (no alloc).
+  const groundRaycaster   = useRef(new THREE.Raycaster(
+    new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 12,
+  ));
 
   // Interaction debounce
   const interactWasDown = useRef(false);
@@ -238,11 +244,30 @@ export const Player = forwardRef<THREE.Group, {}>((_, ref) => {
     velocity.current.x = THREE.MathUtils.lerp(velocity.current.x, direction.current.x * speed, 10 * delta);
     velocity.current.z = THREE.MathUtils.lerp(velocity.current.z, direction.current.z * speed, 10 * delta);
 
-    if (innerRef.current.position.y > 1) {
+    // ── Raycast ground check ─────────────────────────────────────────────────
+    // Probe from slightly above the player downward. Ignores the player's own
+    // mesh (innerRef) and any object tagged noGround so we only snap to
+    // terrain / road surfaces, never to NPCs or props.
+    groundRaycaster.current.set(
+      new THREE.Vector3(pos.x, pos.y + 4, pos.z),
+      new THREE.Vector3(0, -1, 0),
+    );
+    const groundHits = groundRaycaster.current
+      .intersectObjects(scene.children, true)
+      .filter((h) => {
+        let o: THREE.Object3D | null = h.object;
+        while (o) { if (o === innerRef.current) return false; o = o.parent; }
+        return !h.object.userData.noGround && h.distance > 0.5;
+      });
+    // Fall back to y=1 (flat-terrain convention used throughout the codebase)
+    // when nothing is hit, so open sky / out-of-map areas don't drop to y=0.
+    const groundY = groundHits.length > 0 ? groundHits[0].point.y : 1;
+
+    if (pos.y > groundY + 0.05) {
       velocity.current.y -= 30 * delta;
     } else {
       velocity.current.y = 0;
-      innerRef.current.position.y = 1;
+      pos.y = groundY;
       if (keys.jump) velocity.current.y = 10;
     }
 

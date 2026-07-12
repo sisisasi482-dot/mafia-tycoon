@@ -292,18 +292,74 @@ export function SmartphonePanel() {
             {/* ── Contacts ── */}
             {tab === 'contacts' && (
               <div className="flex flex-col gap-1.5">
-                {STATIC_CONTACTS.map((c) => (
-                  <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/8 transition-all">
-                    <span className="text-xl shrink-0">{c.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-white">{c.name}</span>
-                        {c.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                {STATIC_CONTACTS.map((c) => {
+                  // Bind each contact to the relevant useGameStore action.
+                  const handleContactTap = () => {
+                    if (c.id === 'c-boss') {
+                      // The Boss → open the Missions panel
+                      store.setPlayerState({ showSmartphone: false, isPaused: true, activePanel: 'missions' });
+                    } else if (c.id === 'c-dealer') {
+                      // The Chemist → open Shop at consumables tab
+                      store.setPlayerState({ showSmartphone: false, isPaused: true, activePanel: 'shop', shopNpcTab: 'consumables' });
+                    } else if (c.id === 'c-mechanic') {
+                      // Mourad Garage → spawn equipped vehicle if owned, or open shop vehicles tab
+                      const owned = store.ownedVehicleInstances;
+                      if (owned.length > 0) {
+                        store.setPlayerState({ showSmartphone: false, isPaused: false });
+                        store.setInteractionHint('🔧 Mourad: Your car is ready — use your car key to spawn it.');
+                        setTimeout(() => store.setInteractionHint(null), 3000);
+                      } else {
+                        store.setPlayerState({ showSmartphone: false, isPaused: true, activePanel: 'shop', shopNpcTab: 'vehicles' });
+                      }
+                    } else if (c.id === 'c-dispatch') {
+                      // Bus Dispatch → start bus driver job
+                      store.setPlayerState({ showSmartphone: false, isPaused: false });
+                      store.startJob('bus_driver', 1500);
+                      store.setInteractionHint('🚌 Bus Dispatch: Route 7 shift started — drive safely!');
+                      setTimeout(() => store.setInteractionHint(null), 3000);
+                    } else if (c.id === 'c-taxi') {
+                      // Taxi Company → start taxi driver job
+                      store.setPlayerState({ showSmartphone: false, isPaused: false });
+                      store.startJob('taxi_driver', 1200);
+                      store.setInteractionHint('🚕 Taxi Company: Shift started — pick up fares!');
+                      setTimeout(() => store.setInteractionHint(null), 3000);
+                    } else if (c.id === 'c-farm') {
+                      // Farm Manager → start farmer job
+                      store.setPlayerState({ showSmartphone: false, isPaused: false });
+                      store.startJob('farmer', 900);
+                      store.setInteractionHint('🌾 Farm Manager: Harvest shift started — good luck!');
+                      setTimeout(() => store.setInteractionHint(null), 3000);
+                    } else if (c.id === 'c-lawyer') {
+                      // Lawyer → show arrest-defense hint
+                      store.setPlayerState({ showSmartphone: false, isPaused: false });
+                      store.setInteractionHint('⚖️ Maître Khelil: "Lower your wanted level and the charges disappear."');
+                      setTimeout(() => store.setInteractionHint(null), 4000);
+                    } else if (c.id === 'c-fixer') {
+                      // Nadir the Fixer → switch to Dating tab for intel
+                      setTab('missions');
+                    } else {
+                      store.setPlayerState({ showSmartphone: false, isPaused: false });
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={handleContactTap}
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/15 transition-all cursor-pointer"
+                    >
+                      <span className="text-xl shrink-0">{c.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-white">{c.name}</span>
+                          {c.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                        </div>
+                        <p className="text-[10px] text-gray-500 truncate">{c.lastMsg}</p>
                       </div>
-                      <p className="text-[10px] text-gray-500 truncate">{c.lastMsg}</p>
+                      <span className="text-gray-600 text-xs shrink-0">›</span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

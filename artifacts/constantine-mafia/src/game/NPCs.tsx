@@ -13,7 +13,7 @@ import { useGameStore } from './useGameStore';
 import { BUILDING_AABBS } from './buildings';
 import { NPC_TALKERS } from './interiors';
 import { triggerNpcInteraction } from './npcInteraction';
-import { FittedGLB, glbUrl } from './glbModels';
+import { FittedGLB, glbUrl, ASSET_PATHS } from './glbModels';
 
 // ─── Character models (Task 2: New Models, from /glb4) ───────────────────────
 // One glb4 character file per pedestrian template + a dedicated file for
@@ -40,9 +40,9 @@ function npcModelFile(def: NpcDef): string {
   return CITIZEN_MODEL_FILE[def.modelType];
 }
 
-Object.values(CITIZEN_MODEL_FILE).forEach((f) => useGLTF.preload(glbUrl('glb4', f)));
-useGLTF.preload(glbUrl('glb4', POLICE_MODEL_FILE));
-useGLTF.preload(glbUrl('glb4', GANG_MODEL_FILE));
+Object.values(CITIZEN_MODEL_FILE).forEach((f) => useGLTF.preload(glbUrl(ASSET_PATHS.CHARACTERS, f)));
+useGLTF.preload(glbUrl(ASSET_PATHS.CHARACTERS, POLICE_MODEL_FILE));
+useGLTF.preload(glbUrl(ASSET_PATHS.CHARACTERS, GANG_MODEL_FILE));
 
 // ─── Click-to-interact flavor lines (wandering NPCs have no shop/dialogue) ───
 // Clicking opens a short, no-cost interaction via the shared interactionHint
@@ -247,7 +247,7 @@ function NpcMesh({ def, onRef, onClick }: NpcMeshProps) {
           Replaces the old stacked-box mannequin (legs/torso/arms/head) with
           a real character model fit to the same footprint the boxes used to
           occupy, so every accessory below still lines up correctly. */}
-      <FittedGLB set="glb4" model={npcModelFile(def)} targetSize={[0.62, 2.05, 0.42]} />
+      <FittedGLB set={ASSET_PATHS.CHARACTERS} model={npcModelFile(def)} targetSize={[0.62, 2.05, 0.42]} />
 
       {/* Sporty side stripe */}
       {model === 'male_sporty' && (
@@ -716,7 +716,7 @@ function DancingNpcMesh({ color = '#3a2a5a' }: { color?: string }) {
 
   return (
     <group ref={groupRef}>
-      <FittedGLB set="glb4" model="character-female-c" targetSize={[0.58, 1.9, 0.38]} />
+      <FittedGLB set={ASSET_PATHS.CHARACTERS} model="character-female-c" targetSize={[0.58, 1.9, 0.38]} />
       {/* Coloured top to distinguish dancers */}
       <mesh position={[0, 1.1, -0.19]}>
         <boxGeometry args={[0.48, 0.55, 0.02]} />
