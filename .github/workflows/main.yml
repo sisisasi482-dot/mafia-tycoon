@@ -24,7 +24,7 @@ jobs:
           java-version: 17
 
       - run: pnpm install --no-frozen-lockfile 
-      - run: pnpm build
+      - run: PORT=3000 pnpm build 
       - run: pnpm exec cap sync android
 
       - name: Build APK
