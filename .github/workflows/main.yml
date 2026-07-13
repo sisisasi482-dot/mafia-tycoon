@@ -7,6 +7,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: artifacts/constantine-mafia
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,9 +27,15 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - run: pnpm install --no-frozen-lockfile 
-      - run: PORT=3000 BASE_PATH=/ pnpm build
-      - run: pnpm exec cap sync android
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build game
+        run: PORT=3000 BASE_PATH=/ pnpm run build
+
+      - name: Sync Capacitor
+        run: pnpm run cap:sync
 
       - name: Build APK
         run: |
@@ -36,4 +46,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: artifacts/constantine-mafia/android/app/build/outputs/apk/debug/app-debug.apk
