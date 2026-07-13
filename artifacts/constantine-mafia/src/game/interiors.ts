@@ -91,6 +91,10 @@ export interface NpcTalker {
   worldZ:   number;
   radius:   number;
   dialogue: string;
+  /** Optional pool of alternate opening lines — when present, one is picked
+   *  at random (Math.random()) each time the player talks to this NPC,
+   *  instead of always showing the same static `dialogue` line. */
+  dialogueVariants?: string[];
   options?: DialogueOption[];
   shopType?: 'consumables' | 'ammo' | 'weapons' | 'vehicles' | 'hospital' | 'hotel';
   /** Interior the NPC stands inside (relocated from the outdoor city scene). Undefined = outdoor NPC. */
@@ -718,6 +722,13 @@ export const NPC_TALKERS: NpcTalker[] = [
     worldZ:   -3.2,
     radius:   3.2,
     dialogue: 'Welcome to Café Constantine. Best kahwa in the city, my friend.',
+    dialogueVariants: [
+      'Welcome to Café Constantine. Best kahwa in the city, my friend.',
+      'Back again? Sit anywhere you like, habibi.',
+      'This place has seen a hundred years of gossip. Pull up a chair.',
+      'Careful with the coffee tonight — I made it extra strong.',
+      'Every mafia deal in this city starts at this counter, you know.',
+    ],
     interiorId: 'bar_old_city',
     options: [
       {
@@ -765,6 +776,12 @@ export const NPC_TALKERS: NpcTalker[] = [
     worldZ:   -2.8,
     radius:   2.5,
     dialogue: 'I come here every evening after work. The kahwa is excellent, no?',
+    dialogueVariants: [
+      'I come here every evening after work. The kahwa is excellent, no?',
+      'Oh, it\'s you again. Still hanging around this bar?',
+      'Do you always stare before saying hello?',
+      'The music tonight is better than usual, don\'t you think?',
+    ],
     options: [
       {
         id:           'opt-rania-chat',
@@ -787,6 +804,12 @@ export const NPC_TALKERS: NpcTalker[] = [
     worldZ:   -3.6,
     radius:   2.5,
     dialogue: 'Excuse me? I am waiting for my sister. She is always late.',
+    dialogueVariants: [
+      'Excuse me? I am waiting for my sister. She is always late.',
+      'Still no sign of her. Typical.',
+      'You keep coming back here — should I be worried?',
+      'This café has the only decent wifi in the old city, that\'s why I stay.',
+    ],
     options: [
       {
         id:           'opt-yasmine-chat',
@@ -806,24 +829,31 @@ export const NPC_TALKERS: NpcTalker[] = [
   // ── Bar dancing patrons (7 more → 10 total in bar) ───────────────────────
   { id:'npc-bar-dancer-1', label:'🕺 Khaled',   worldX:876, worldZ:-4.4, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'Best music in Constantine tonight!',
+    dialogueVariants:['Best music in Constantine tonight!', 'You feel that bassline? Unreal.', 'I haven\'t stopped dancing in an hour!'],
     options:[{ id:'opt-kh1', label:'Great moves!', kind:'info', responseText:'Ha! Thank you, friend. Join me!' }] },
   { id:'npc-bar-dancer-2', label:'💃 Meriem',   worldX:882, worldZ:-4.1, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'I come here every Friday. The DJ is amazing.',
+    dialogueVariants:['I come here every Friday. The DJ is amazing.', 'This is my favorite spot in the whole city.', 'Careful, my dance moves are contagious.'],
     options:[{ id:'opt-dm2', label:'You dance beautifully.', kind:'info', responseText:'Buy me a coffee and I will teach you.' }] },
   { id:'npc-bar-dancer-3', label:'🕺 Amine',    worldX:878, worldZ:-1.8, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'I forgot all my problems on this dance floor.',
+    dialogueVariants:['I forgot all my problems on this dance floor.', 'Work can wait. Tonight is for dancing.', 'You should see me on a good night — I never stop.'],
     options:[{ id:'opt-am3', label:'Same here.', kind:'info', responseText:'Friday nights are pure magic in Constantine.' }] },
   { id:'npc-bar-dancer-4', label:'💃 Houria',   worldX:885, worldZ:-4.8, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'I love this track! My cousin knows the DJ.',
+    dialogueVariants:['I love this track! My cousin knows the DJ.', 'This song always gets me moving.', 'My cousin promised the DJ will play until dawn.'],
     options:[{ id:'opt-ho4', label:'Really?', kind:'info', responseText:'He plays until 3 AM. Tonight will be good.' }] },
   { id:'npc-bar-dancer-5', label:'🕺 Redouane', worldX:874, worldZ:-2.4, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'I worked a double shift. Now I dance.',
+    dialogueVariants:['I worked a double shift. Now I dance.', 'Twelve hours on my feet, and I still have moves left.', 'This is how I unwind after a long week.'],
     options:[{ id:'opt-rd5', label:'You deserve it.', kind:'info', responseText:'Exactly what I said. Cheers, habibi.' }] },
   { id:'npc-bar-dancer-6', label:'💃 Lyna',     worldX:886, worldZ:-2.0, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'I only dance to good songs. This is a good song.',
+    dialogueVariants:['I only dance to good songs. This is a good song.', 'I have standards — this DJ meets them.', 'Not every night is worth dancing. Tonight is.'],
     options:[{ id:'opt-ly6', label:'I agree.', kind:'info', responseText:'Smart man. Stay for the next one.' }] },
   { id:'npc-bar-dancer-7', label:'🕺 Sofiane',  worldX:879, worldZ:-5.2, radius:2.5, dancing:true, interiorId:'bar_old_city',
     dialogue:'Forget the street drama. Here we are all equal.',
+    dialogueVariants:['Forget the street drama. Here we are all equal.', 'No gangs, no politics — just music in here.', 'This floor is the only peace this city has left.'],
     options:[{ id:'opt-sf7', label:'Well said.', kind:'info', responseText:'One more round and I will believe it myself.' }] },
 
   // ── 4 Outdoor restaurants ─────────────────────────────────────────────────

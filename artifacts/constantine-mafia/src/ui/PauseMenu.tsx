@@ -55,17 +55,11 @@ export function PauseMenu() {
             <MobileMenuButton active={store.activePanel === 'missions'}    onClick={() => store.setActivePanel('missions')}>
               📋 <span className="hidden md:inline">{t('missions', lang)}</span><span className="md:hidden">Missions</span>
             </MobileMenuButton>
-            {/* Central Shop menu removed — Weapons and Vehicles are now only
-                reachable by physically visiting the Weapon Store / Car
-                Dealership NPCs. This button still opens the shop panel for
-                Inventory / Ammo / Supplies / Properties, which have no
-                dedicated physical gating. */}
-            <MobileMenuButton
-              active={store.activePanel === 'shop'}
-              onClick={() => { store.setPlayerState({ shopNpcTab: null }); store.setActivePanel('shop'); }}
-            >
-              🎒 <span className="hidden md:inline">Inventory</span><span className="md:hidden">Inv.</span>
-            </MobileMenuButton>
+            {/* Shop/Properties/Ammo are reached only by physically visiting
+                the relevant NPC (Weapon Store, Car Dealership, etc.) — the
+                Pause menu no longer has a generic Shop entry. The player's
+                actual Inventory (Food / Keys / ID Card) is its own dedicated
+                HUD button + panel, isolated from the shop UI entirely. */}
 
             <div className="hidden md:flex flex-1" />
             <button

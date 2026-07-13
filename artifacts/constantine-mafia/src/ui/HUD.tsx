@@ -319,9 +319,21 @@ export function HUD() {
         </button>
       </div>
 
+      {/* ── Inventory button (directly under Map/Pause) ── */}
+      <div className="absolute top-28 right-4" style={{ pointerEvents: 'all' }}>
+        <button
+          onClick={() => store.toggleInventory()}
+          title="Inventory [I]"
+          className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm border text-base transition-colors
+                      ${store.showInventory ? 'bg-primary border-primary text-black' : 'bg-black/50 border-white/20 text-white active:bg-white/20'}`}
+        >
+          🎒
+        </button>
+      </div>
+
       {/* ── Smartphone button (shown when player owns a phone) ── */}
       {(store.inventory?.['smartphone'] ?? 0) > 0 && (
-        <div className="absolute top-28 right-4" style={{ pointerEvents: 'all' }}>
+        <div className="absolute top-40 right-4" style={{ pointerEvents: 'all' }}>
           <button
             onClick={() => store.setPlayerState({ showSmartphone: !store.showSmartphone, isPaused: !store.showSmartphone })}
             title="Phone [N]"

@@ -1,36 +1,33 @@
 /**
- * Inventory Panel (press 'I' to toggle).
- * Lists owned weapons and car keys. Allows equip / unequip.
- * 'K' or clicking Unequip while a weapon is equipped hides the weapon.
+ * Inventory Panel (press 'I' or the HUD 🎒 button to toggle).
+ *
+ * Deliberately isolated from the Shop/Properties/Ammo/Weapons UI — this
+ * panel only ever shows three categories: Food, Keys, and ID Card. Weapon
+ * equip/holster and shop-tab access live elsewhere (equip via the world
+ * NPC shop panels; holster via 'K' while a weapon is equipped in HUD).
  */
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../game/useGameStore';
 import {
-  WEAPON_IDS, WEAPON_NAMES, WEAPON_ICONS, WEAPON_AMMO,
-  CAR_KEY_PREFIX, isCarKey, vehicleIdFromKey, VEHICLE_NAMES_MAP,
-  CONSUMABLES, NATIONAL_ID_ID, DRIVING_LICENSE_ID,
+  isCarKey, vehicleIdFromKey, VEHICLE_NAMES_MAP,
+  CONSUMABLES, NATIONAL_ID_ID,
 } from '../game/items';
 
 export function InventoryPanel() {
   const showInventory    = useGameStore((s) => s.showInventory);
   const toggleInventory  = useGameStore((s) => s.toggleInventory);
   const ownedAssetIds    = useGameStore((s) => s.ownedAssetIds);
-  const equippedWeaponId = useGameStore((s) => s.equippedWeaponId);
   const equippedVehicleId= useGameStore((s) => s.equippedVehicleId);
   const inventory        = useGameStore((s) => s.inventory);
-  const weaponMags       = useGameStore((s) => s.weaponMags);
-  const ammoReserves     = useGameStore((s) => s.ammoReserves);
   const screen           = useGameStore((s) => s.screen);
   const isPaused         = useGameStore((s) => s.isPaused);
   const username         = useGameStore((s) => s.username);
   const [viewingId, setViewingId] = useState(false);
 
-  const weapons   = ownedAssetIds.filter((id) => WEAPON_IDS.has(id));
   const carKeys   = Object.keys(inventory).filter(isCarKey).filter((k) => (inventory[k] ?? 0) > 0);
-  const consumables = CONSUMABLES.filter((c) => (inventory[c.id] ?? 0) > 0);
+  const food      = CONSUMABLES.filter((c) => (inventory[c.id] ?? 0) > 0);
   const hasNationalId  = ownedAssetIds.includes(NATIONAL_ID_ID);
-  const hasLicense     = ownedAssetIds.includes(DRIVING_LICENSE_ID);
 
   const showId = () => {
     const gs = useGameStore.getState();
@@ -44,7 +41,7 @@ export function InventoryPanel() {
     }, 2000);
   };
 
-  // 'I' toggles the panel, 'K' unequips (hides) the current weapon.
+  // 'I' toggles the panel.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const s = useGameStore.getState();
@@ -52,15 +49,6 @@ export function InventoryPanel() {
 
       if (e.code === 'KeyI') {
         s.toggleInventory();
-        return;
-      }
-      if (e.code === 'KeyK') {
-        s.setPlayerState({ equippedWeaponId: null, aimMode: false });
-        s.setInteractionHint('🔫 Weapon holstered');
-        setTimeout(() => {
-          if (useGameStore.getState().interactionHint === '🔫 Weapon holstered')
-            useGameStore.getState().setInteractionHint(null);
-        }, 1500);
       }
     };
     window.addEventListener('keydown', handler);
@@ -68,19 +56,6 @@ export function InventoryPanel() {
   }, []);
 
   if (screen !== 'playing') return null;
-
-  const equip = (weaponId: string) => {
-    useGameStore.getState().setPlayerState({ equippedWeaponId: weaponId, aimMode: false });
-    useGameStore.getState().setInteractionHint(`🔫 ${WEAPON_NAMES[weaponId] ?? weaponId} equipped`);
-    setTimeout(() => {
-      if (useGameStore.getState().interactionHint?.includes('equipped'))
-        useGameStore.getState().setInteractionHint(null);
-    }, 1500);
-  };
-
-  const unequip = () => {
-    useGameStore.getState().setPlayerState({ equippedWeaponId: null, aimMode: false });
-  };
 
   const equipKey = (keyId: string) => {
     const vehicleId = vehicleIdFromKey(keyId);
@@ -103,13 +78,14 @@ export function InventoryPanel() {
           className="absolute top-16 right-16 w-72 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl z-50"
           style={{ pointerEvents: 'all' }}
         >
-          {/* Header */}
+          {/* Header — clean, isolated from Shop/Ammo UI; 'X' close top-right */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <span className="text-yellow-400 font-black text-xs uppercase tracking-widest">🎒 Inventory</span>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-[10px]">[I] close · [K] holster</span>
+              <span className="text-gray-500 text-[10px]">[I] close</span>
               <button
                 onClick={toggleInventory}
+                aria-label="Close inventory"
                 className="text-gray-500 hover:text-white text-sm leading-none"
               >✕</button>
             </div>
@@ -117,66 +93,34 @@ export function InventoryPanel() {
 
           <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
 
-            {/* ── Weapons ───────────────────────────────────────────────── */}
-            {weapons.length > 0 && (
+            {/* ── Food ──────────────────────────────────────────────────── */}
+            {food.length > 0 && (
               <section>
-                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Weapons</p>
+                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Food</p>
                 <div className="space-y-1">
-                  {weapons.map((wid) => {
-                    const cfg     = WEAPON_AMMO[wid];
-                    const icon    = WEAPON_ICONS[wid] ?? '🔪';
-                    const name    = WEAPON_NAMES[wid] ?? wid;
-                    const mag     = cfg ? (weaponMags[wid] ?? cfg.magSize) : null;
-                    const reserve = cfg ? (ammoReserves[cfg.ammoType] ?? 0) : null;
-                    const active  = equippedWeaponId === wid;
-                    return (
-                      <div
-                        key={wid}
-                        onClick={() => active ? unequip() : equip(wid)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all
-                          ${active
-                            ? 'bg-yellow-400/20 border border-yellow-400/50'
-                            : 'bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        <span className="text-xl">{icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-bold leading-none">{name}</p>
-                          {cfg && mag !== null && (
-                            <p className="text-gray-400 text-[11px] mt-0.5">
-                              {mag}/{cfg.magSize} mag · {reserve} reserve
-                            </p>
-                          )}
-                          {!cfg && (
-                            <p className="text-gray-500 text-[11px] mt-0.5">∞ melee</p>
-                          )}
-                        </div>
-                        {active && (
-                          <span className="text-yellow-400 text-[10px] font-black uppercase tracking-wider shrink-0">
-                            EQUIPPED
-                          </span>
-                        )}
+                  {food.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => useGameStore.getState().useConsumable(item.id)}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer
+                                 bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/20 transition"
+                    >
+                      <span className="text-xl">{item.icon}</span>
+                      <div className="flex-1">
+                        <p className="text-white text-sm font-bold">{item.name}</p>
+                        <p className="text-gray-400 text-[11px]">{item.desc}</p>
                       </div>
-                    );
-                  })}
+                      <span className="text-gray-300 text-sm font-bold shrink-0">×{inventory[item.id]}</span>
+                    </div>
+                  ))}
                 </div>
-                {equippedWeaponId && (
-                  <button
-                    onClick={unequip}
-                    className="mt-1.5 w-full text-center text-gray-500 text-[11px] py-1.5 rounded-lg
-                               hover:bg-white/5 hover:text-gray-300 transition border border-transparent
-                               hover:border-white/10"
-                  >
-                    [K] Holster / Unequip
-                  </button>
-                )}
               </section>
             )}
 
-            {/* ── Car Keys ──────────────────────────────────────────────── */}
+            {/* ── Keys ──────────────────────────────────────────────────── */}
             {carKeys.length > 0 && (
               <section>
-                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Car Keys</p>
+                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Keys</p>
                 <div className="space-y-1">
                   {carKeys.map((keyId) => {
                     const vehicleId = vehicleIdFromKey(keyId);
@@ -209,85 +153,39 @@ export function InventoryPanel() {
               </section>
             )}
 
-            {/* ── Consumables ───────────────────────────────────────────── */}
-            {consumables.length > 0 && (
+            {/* ── ID Card ───────────────────────────────────────────────── */}
+            {hasNationalId && (
               <section>
-                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Consumables</p>
-                <div className="space-y-1">
-                  {consumables.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => useGameStore.getState().useConsumable(item.id)}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer
-                                 bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/20 transition"
-                    >
-                      <span className="text-xl">{item.icon}</span>
-                      <div className="flex-1">
-                        <p className="text-white text-sm font-bold">{item.name}</p>
-                        <p className="text-gray-400 text-[11px]">{item.desc}</p>
-                      </div>
-                      <span className="text-gray-300 text-sm font-bold shrink-0">×{inventory[item.id]}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* ── Documents ─────────────────────────────────────────────── */}
-            {(hasNationalId || hasLicense) && (
-              <section>
-                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Documents</p>
-                <div className="space-y-1">
-                  {hasNationalId && (
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-transparent">
-                      <span className="text-xl">🪪</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-bold leading-none">National ID</p>
-                        <p className="text-gray-400 text-[11px] mt-0.5">Permanent · cannot be dropped</p>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          onClick={() => setViewingId(true)}
-                          className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider transition"
-                        >View</button>
-                        <button
-                          onClick={showId}
-                          className="px-2 py-1 rounded-md bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 text-[10px] font-bold uppercase tracking-wider transition"
-                        >Show</button>
-                      </div>
-                    </div>
-                  )}
-                  {hasLicense && (
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-transparent">
-                      <span className="text-xl">🚗</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-bold leading-none">Driving License</p>
-                        <p className="text-gray-400 text-[11px] mt-0.5">Permanent · cannot be dropped</p>
-                      </div>
-                    </div>
-                  )}
+                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">ID Card</p>
+                <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-transparent">
+                  <span className="text-xl">🪪</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-bold leading-none">National ID</p>
+                    <p className="text-gray-400 text-[11px] mt-0.5">Permanent · cannot be dropped</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => setViewingId(true)}
+                      className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider transition"
+                    >View</button>
+                    <button
+                      onClick={showId}
+                      className="px-2 py-1 rounded-md bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 text-[10px] font-bold uppercase tracking-wider transition"
+                    >Show</button>
+                  </div>
                 </div>
               </section>
             )}
 
             {/* Empty state */}
-            {weapons.length === 0 && carKeys.length === 0 && consumables.length === 0 && !hasNationalId && !hasLicense && (
+            {food.length === 0 && carKeys.length === 0 && !hasNationalId && (
               <div className="text-center py-8 text-gray-600">
                 <p className="text-2xl mb-2">🎒</p>
                 <p className="text-xs uppercase tracking-wider">Inventory empty</p>
-                <p className="text-[11px] text-gray-700 mt-1">Visit a shop to buy weapons or vehicles</p>
+                <p className="text-[11px] text-gray-700 mt-1">Food, car keys, and your ID card will appear here</p>
               </div>
             )}
           </div>
-
-          {/* Combat hint footer */}
-          {equippedWeaponId && (
-            <div className="border-t border-white/10 px-4 py-2">
-              <p className="text-gray-500 text-[10px] text-center">
-                Right-click → Aim · Left-click → Fire · [K] → Holster
-              </p>
-            </div>
-          )}
         </motion.div>
       )}
 

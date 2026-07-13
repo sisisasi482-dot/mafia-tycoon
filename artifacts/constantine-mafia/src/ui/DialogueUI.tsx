@@ -2,7 +2,7 @@
  * DialogueUI — shown when an NPC talker with multiple dialogue options is approached.
  * Handles buy / info / conflict / shop / job / drug_deal interactions.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../game/useGameStore';
 import { NPC_TALKERS, type DialogueOption } from '../game/interiors';
@@ -22,6 +22,23 @@ export function DialogueUI() {
   const npc    = npcId ? NPC_TALKERS.find((n) => n.id === npcId) : null;
 
   const [response, setResponse] = useState<string | null>(null);
+  const [openingLine, setOpeningLine] = useState<string | null>(null);
+
+  // Pick a random opening line (when the NPC offers variants) once per
+  // interaction, so repeat conversations don't always show the same text.
+  useEffect(() => {
+    if (!npc) {
+      setOpeningLine(null);
+      return;
+    }
+    if (npc.dialogueVariants && npc.dialogueVariants.length > 0) {
+      const pick = npc.dialogueVariants[Math.floor(Math.random() * npc.dialogueVariants.length)];
+      setOpeningLine(pick);
+    } else {
+      setOpeningLine(npc.dialogue);
+    }
+    setResponse(null);
+  }, [npcId]);
 
   if (!npc) return null;
 
@@ -122,7 +139,7 @@ export function DialogueUI() {
 
           {/* Dialogue text */}
           <p className="text-white/90 text-sm italic leading-relaxed">
-            {response ?? npc.dialogue}
+            {response ?? openingLine ?? npc.dialogue}
           </p>
 
           {/* Option buttons (before selection) */}
