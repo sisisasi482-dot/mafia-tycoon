@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { useGameStore } from '../game/useGameStore';
 import {
   WORLD_BOUNDS, LANDMARKS, MAP_DISTRICTS, clampDistrictRect,
@@ -13,26 +13,17 @@ const SW = 110; const SH = 110;
 function wx(x: number) { return ((x - WX0) / WW) * SW; }
 function wz(z: number) { return ((z - WZ0) / WH) * SH; }
 
-export const MiniMap = memo(function MiniMap() {
-  const [px, , pz] = useGameStore((s) => s.playerPosition);
-  const rotY       = useGameStore((s) => s.playerRotationY);
-  const district   = districtAt(px, pz);
-
-  const mx = wx(px);
-  const mz = wz(pz);
-
-  const sin = Math.sin(rotY);
-  const cos = Math.cos(rotY);
-  const tip = { x: mx - sin * 5,  y: mz - cos * 5  };
-  const lr  = { x: mx + cos * 3,  y: mz - sin * 3  };
-  const ll  = { x: mx - cos * 3,  y: mz + sin * 3  };
-
+/**
+ * Static base layer (district zones, gorge, bridge, highway, landmark
+ * icons, compass) — none of this depends on the player's position, so it's
+ * computed once and memoized. Previously it was rebuilt from scratch on
+ * every ~10Hz position sync tick even though only the player arrow moves;
+ * splitting it out avoids ~15+ needless SVG element reconciliations per
+ * update on a HUD element that's always on screen.
+ */
+const StaticMapLayer = memo(function StaticMapLayer({ district }: { district: string | null }) {
   return (
-    <svg
-      viewBox={`0 0 ${SW} ${SH}`}
-      style={{ display: 'block', width: '100%', height: '100%' }}
-      shapeRendering="crispEdges"
-    >
+    <>
       <rect x={0} y={0} width={SW} height={SH} fill="#06060f" />
 
       {/* District fill zones — real bounds from game/constants.ts, clamped to the drawable world */}
@@ -68,16 +59,41 @@ export const MiniMap = memo(function MiniMap() {
         <text key={m.id} x={wx(m.x)} y={wz(m.z) + 1.6} fontSize={5} textAnchor="middle">{m.icon}</text>
       ))}
 
-      {/* Player arrow — live position + heading */}
+      {/* Compass N */}
+      <text x={SW - 7} y={8} fill="#444" fontSize={5.5} fontFamily="monospace" textAnchor="middle">N</text>
+    </>
+  );
+});
+
+export const MiniMap = memo(function MiniMap() {
+  const [px, , pz] = useGameStore((s) => s.playerPosition);
+  const rotY       = useGameStore((s) => s.playerRotationY);
+  const district   = districtAt(px, pz);
+
+  const mx = wx(px);
+  const mz = wz(pz);
+
+  const sin = Math.sin(rotY);
+  const cos = Math.cos(rotY);
+  const tip = { x: mx - sin * 5,  y: mz - cos * 5  };
+  const lr  = { x: mx + cos * 3,  y: mz - sin * 3  };
+  const ll  = { x: mx - cos * 3,  y: mz + sin * 3  };
+
+  return (
+    <svg
+      viewBox={`0 0 ${SW} ${SH}`}
+      style={{ display: 'block', width: '100%', height: '100%' }}
+      shapeRendering="crispEdges"
+    >
+      <StaticMapLayer district={district} />
+
+      {/* Player arrow — the only part that actually needs to re-render on each position sync */}
       <polygon
         points={`${tip.x},${tip.y} ${lr.x},${lr.y} ${ll.x},${ll.y}`}
         fill="#00ff88"
         stroke="#000"
         strokeWidth={0.5}
       />
-
-      {/* Compass N */}
-      <text x={SW - 7} y={8} fill="#444" fontSize={5.5} fontFamily="monospace" textAnchor="middle">N</text>
     </svg>
   );
 });

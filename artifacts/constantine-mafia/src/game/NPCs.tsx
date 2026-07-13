@@ -549,14 +549,29 @@ export function ChildNPCs() {
   const totalChildren = CHILD_CLUSTERS.length * CHILD_PLACEMENTS.length;
   const refs     = useRef<(THREE.Group | null)[]>(Array.from({ length: totalChildren }, () => null));
 
+  // Purely decorative bounce/spin — not tied to any core mechanic, so skip
+  // the whole per-child trig update for clusters the player isn't anywhere
+  // near instead of animating all 24 children on every frame regardless of
+  // where the player actually is on the map.
+  const CLUSTER_CULL_RADIUS_SQ = 70 * 70;
+
   useFrame(({ clock }) => {
     if (screen !== 'playing' || isPaused) return;
     const t = clock.getElapsedTime();
-    refs.current.forEach((g, i) => {
-      if (!g) return;
-      const localIdx = i % CHILD_PLACEMENTS.length;
-      g.position.y = 0.58 + Math.abs(Math.sin(t * 2.6 + i * 0.9)) * 0.22;
-      g.rotation.y = t * 0.6 * (localIdx % 2 === 0 ? 1 : -1) + localIdx * 0.8;
+    const [px, , pz] = useGameStore.getState().playerPosition;
+
+    CHILD_CLUSTERS.forEach((cluster, ci) => {
+      const dx = px - cluster.cx;
+      const dz = pz - cluster.cz;
+      if (dx * dx + dz * dz > CLUSTER_CULL_RADIUS_SQ) return; // out of view — skip this cluster entirely
+
+      const base = ci * CHILD_PLACEMENTS.length;
+      for (let localIdx = 0; localIdx < CHILD_PLACEMENTS.length; localIdx++) {
+        const g = refs.current[base + localIdx];
+        if (!g) continue;
+        g.position.y = 0.58 + Math.abs(Math.sin(t * 2.6 + (base + localIdx) * 0.9)) * 0.22;
+        g.rotation.y = t * 0.6 * (localIdx % 2 === 0 ? 1 : -1) + localIdx * 0.8;
+      }
     });
   });
 
@@ -740,11 +755,35 @@ const STREET_LINES = [
   ['Police were asking about the warehouse fire.', 'I know nothing. I saw nothing.'],
 ];
 
+// Ambient-only feature — purely decorative flavor dialogue with no gameplay
+// effect, so it's gated on player proximity to the street corner it's
+// anchored to. Skips mounting the two character models, their Html DOM
+// overlays, and the recurring interval/timeout churn entirely whenever the
+// player is elsewhere on the (very large) map, instead of keeping it live
+// at all times just because the player happens to be outdoors somewhere.
+const CONVERSATION_X = 25;
+const CONVERSATION_Z = -12;
+const CONVERSATION_RADIUS_SQ = 80 * 80;
+
 function NpcConversationBubbles() {
   const [lineIdx, setLineIdx] = useState(0);
   const [show, setShow] = useState(false);
+  const [nearby, setNearby] = useState(false);
+
+  // Cheap proximity poll — far lighter than a useFrame subscription for a
+  // decoration that only needs to react on the order of once per second.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const [px, , pz] = useGameStore.getState().playerPosition;
+      const dx = px - CONVERSATION_X;
+      const dz = pz - CONVERSATION_Z;
+      setNearby(dx * dx + dz * dz <= CONVERSATION_RADIUS_SQ);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
+    if (!nearby) { setShow(false); return; }
     // Show a conversation every 8 seconds, visible for 4 seconds
     const cycle = () => {
       setLineIdx((i) => (i + 1) % STREET_LINES.length);
@@ -753,14 +792,14 @@ function NpcConversationBubbles() {
     };
     const interval = setInterval(cycle, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [nearby]);
 
-  if (!show) return null;
+  if (!nearby || !show) return null;
   const [lineA, lineB] = STREET_LINES[lineIdx];
 
   // Render at a fixed well-populated street corner in Centre-Ville
   return (
-    <group position={[25, 0, -12]}>
+    <group position={[CONVERSATION_X, 0, CONVERSATION_Z]}>
       {/* NPC A */}
       <group position={[-1.2, 0, 0]}>
         <FittedGLB set="glb4" model="character-male-a" targetSize={[0.6, 2.0, 0.4]} />
