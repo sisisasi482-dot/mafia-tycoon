@@ -38,11 +38,11 @@ jobs:
 
       - name: Build iPhone
         run: |
-       cd ios/App
-       xcodebuild \
-       -project App.xcodeproj \
-       -scheme App \
-       -configuration Release \
-       -destination generic/platform=iOS \
-       CODE_SIGNING_ALLOWED=NO \
-       build  
+          cd ios/App
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
