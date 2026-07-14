@@ -47,7 +47,7 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 function PixelRatioController({ enabled }: { enabled: boolean }) {
   const { gl } = useThree();
   useEffect(() => {
-    const cap = Math.min(window.devicePixelRatio, 2) * getActivePlatformConfig().quality.resolutionScale;
+    const cap = Math.min(window.devicePixelRatio, 1.2) * getActivePlatformConfig().quality.resolutionScale;
     gl.setPixelRatio(enabled ? cap : Math.min(1, cap));
   }, [enabled, gl]);
   return null;
@@ -295,7 +295,7 @@ export function GameEngine() {
           {/* Base background & fog — DayNight overwrites these every frame */}
           <color attach="background" args={['#050810']} />
           {/* Fog far distance 2× expanded for the larger map */}
-          <fog attach="fog" args={['#080818', 120, 700]} />
+          <fog attach="fog" args={['#080818', 80, 500]} />
 
           {/* Starfield is a pure decorative shader cost — skip on mobile */}
           {!IS_MOBILE_DEVICE && (
