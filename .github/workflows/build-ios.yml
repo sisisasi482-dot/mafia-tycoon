@@ -33,5 +33,5 @@ jobs:
 
       - name: Show Xcode schemes
         run: |
-          cd ios
-          xcodebuild -list -workspace project.xcworkspace
+         cd ios/App
+         xcodebuild -list -project App.xcodeproj 
