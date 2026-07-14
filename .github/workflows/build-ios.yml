@@ -33,7 +33,7 @@ jobs:
 
       - name: Install CocoaPods
         run: |
-          cd ios
+          cd ios/App
           pod install
 
       - name: Show Xcode schemes
