@@ -8,7 +8,7 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './useGameStore';
-import { CHECKPOINTS, DYNAMIC_CHECKPOINT_ROADS, type Checkpoint, type RoadSegment } from './police';
+import { CHECKPOINTS, DYNAMIC_CHECKPOINT_ROADS, type Checkpoint, type RoadSegment } from './PoliceData';
 import { audioManager } from './audio/AudioManager';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
