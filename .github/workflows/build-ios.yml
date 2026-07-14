@@ -31,11 +31,6 @@ jobs:
       - name: Sync Capacitor
         run: pnpm run cap:sync
 
-      - name: Install CocoaPods
-        run: |
-          cd ios/App
-          pod install
-
       - name: Show Xcode schemes
         run: |
           cd ios
