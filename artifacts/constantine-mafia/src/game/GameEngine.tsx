@@ -86,6 +86,9 @@ function ShadowsController({ enabled }: { enabled: boolean }) {
     gl.shadowMap.enabled = enabled;
     if (enabled) gl.shadowMap.type = THREE.PCFSoftShadowMap;
 
+    gl.shadowMap.width = 512;
+    gl.shadowMap.height = 512;
+    
     scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!('castShadow' in mesh)) return;
