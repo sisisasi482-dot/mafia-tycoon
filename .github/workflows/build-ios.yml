@@ -1,4 +1,4 @@
-name: Build iOS IPA
+name: Build iOS Archive
 
 on:
   workflow_dispatch:
@@ -31,18 +31,18 @@ jobs:
       - name: Sync Capacitor
         run: pnpm run cap:sync
 
-      - name: Show Xcode schemes
+      - name: Archive iOS App
         run: |
           cd ios/App
-          xcodebuild -list -project App.xcodeproj
-
-      - name: Build iPhone
-        run: |
-          cd ios/App
-          xcodebuild \
+          xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+            -archivePath $PWD/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive
+          path: artifacts/constantine-mafia/ios/App/App.xcarchive
