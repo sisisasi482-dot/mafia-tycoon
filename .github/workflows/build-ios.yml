@@ -35,3 +35,13 @@ jobs:
         run: |
          cd ios/App
          xcodebuild -list -project App.xcodeproj 
+
+         - name: Build iOS
+          run: |
+          cd ios/App
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            build 
