@@ -141,8 +141,8 @@ function TextureQualityController({ quality }: { quality: 'low' | 'medium' | 'hi
   useEffect(() => {
     const max = gl.capabilities.getMaxAnisotropy();
     THREE.Texture.DEFAULT_ANISOTROPY =
-      quality === 'high'   ? max :
-      quality === 'medium' ? Math.min(4, max) : 1;
+      quality === 'high'   ? Math.min(2.5, max) :
+      quality === 'medium' ? Math.min(1.5, max) : 1;
   }, [quality, gl]);
   return null;
 }
