@@ -4,43 +4,39 @@ on:
   workflow_dispatch:
 
 jobs:
-  ios-build:
+  build-ios:
     runs-on: macos-latest
 
+    defaults:
+      run:
+        working-directory: artifacts/constantine-mafia
+
     steps:
-      - name: Download project
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install packages
-        run: npm install
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
-      - name: Capacitor sync
-        run: npx cap sync ios
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Install Pods
+      - name: Build game
+        run: PORT=3000 BASE_PATH=/ pnpm run build
+
+      - name: Sync Capacitor
+        run: pnpm run cap:sync
+
+      - name: Install CocoaPods
         run: |
           cd ios
           pod install
 
-      - name: Get Scheme
+      - name: Show Xcode schemes
         run: |
           cd ios
           xcodebuild -list -workspace project.xcworkspace
-
-      - name: Build Archive
-        run: |
-          cd ios
-          xcodebuild \
-          -workspace project.xcworkspace \
-          -scheme project \
-          -configuration Release \
-          -sdk iphoneos \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGNING_REQUIRED=NO \
-          archive \
-          -archivePath build/project.xcarchive
