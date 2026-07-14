@@ -1,0 +1,46 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ios-build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install packages
+        run: npm install
+
+      - name: Capacitor sync
+        run: npx cap sync ios
+
+      - name: Install Pods
+        run: |
+          cd ios
+          pod install
+
+      - name: Get Scheme
+        run: |
+          cd ios
+          xcodebuild -list -workspace project.xcworkspace
+
+      - name: Build Archive
+        run: |
+          cd ios
+          xcodebuild \
+          -workspace project.xcworkspace \
+          -scheme project \
+          -configuration Release \
+          -sdk iphoneos \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
+          archive \
+          -archivePath build/project.xcarchive
