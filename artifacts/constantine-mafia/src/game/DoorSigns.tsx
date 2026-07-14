@@ -13,7 +13,7 @@ import { useGameStore } from './useGameStore';
 import { DOOR_TRIGGERS } from './interiors';
 
 /** Signs only render for doors within this distance — keeps DOM/Html node count low. */
-const SIGN_VISIBLE_RADIUS = 40;
+const SIGN_VISIBLE_RADIUS = 30;
 
 function DoorSign({ label, color }: { label: string; color: string }) {
   return (
