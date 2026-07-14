@@ -42,6 +42,18 @@ jobs:
             -archivePath $PWD/App.xcarchive \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Create IPA
+        run: |
+          cd ios/App
+          mkdir Payload
+          cp -R App.xcarchive/Products/Applications/App.app Payload/
+          zip -r App.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: App-IPA
+          path: artifacts/constantine-mafia/ios/App/App.ipa
+
       - uses: actions/upload-artifact@v4
         with:
           name: ios-archive
