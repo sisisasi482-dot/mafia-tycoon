@@ -1,0 +1,60 @@
+name: Build iOS Archive
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: artifacts/constantine-mafia
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build game
+        run: PORT=3000 BASE_PATH=/ pnpm run build
+
+      - name: Sync Capacitor
+        run: pnpm run cap:sync
+
+      - name: Archive iOS App
+        run: |
+          cd ios/App
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath $PWD/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Create IPA
+        run: |
+          cd ios/App
+          mkdir Payload
+          cp -R App.xcarchive/Products/Applications/App.app Payload/
+          zip -r App.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: App-IPA
+          path: artifacts/constantine-mafia/ios/App/App.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive
+          path: artifacts/constantine-mafia/ios/App/App.xcarchive

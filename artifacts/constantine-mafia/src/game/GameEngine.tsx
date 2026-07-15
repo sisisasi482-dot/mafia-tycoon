@@ -3,26 +3,36 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { KeyboardControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+
 import { Player, ControlsMap } from './Player';
-import { City } from './City';
-import { Terrain } from './Terrain';
-import { CityA } from './CityA';
-import { CityB } from './CityB';
-import { Highway } from './Highway';
-import { Industrial } from './Industrial';
-import { WorldBoundary } from './WorldBoundary';
+
+const City = React.lazy(() => import('./City'));
+const Terrain = React.lazy(() => import('./Terrain'));
+const CityA = React.lazy(() => import('./CityA'));
+const CityB = React.lazy(() => import('./CityB'));
+const Highway = React.lazy(() => import('./Highway'));
+const Industrial = React.lazy(() => import('./Industrial'));
+const WorldBoundary = React.lazy(() => import('./WorldBoundary'));
+
 import { Camera } from './Camera';
-import { Vehicles } from './Vehicles';
-import { NPCs, ShopkeeperNPCs, ChildNPCs, ParkActivityZone } from './NPCs';
-import { DoorSigns } from './DoorSigns';
+
+const Vehicles = React.lazy(() => import('./Vehicles'));
+const NPCs = React.lazy(() => import('./NPCs').then(m => ({ default: m.NPCs })));
+const ShopkeeperNPCs = React.lazy(() => import('./NPCs').then(m => ({ default: m.ShopkeeperNPCs })));
+const ChildNPCs = React.lazy(() => import('./NPCs').then(m => ({ default: m.ChildNPCs })));
+const ParkActivityZone = React.lazy(() => import('./NPCs').then(m => ({ default: m.ParkActivityZone })));
+
+const DoorSigns = React.lazy(() => import('./DoorSigns'));
 import { DayNight } from './DayNight';
 import { InteriorRoom } from './InteriorRoom';
-import { Traffic } from './Traffic';
-import { Police } from './Police';
-import { Houses } from './Houses';
-import { Environment } from './Environment';
-import { Bank } from './Bank';
-import { GangFollowers } from './GangFollowers';
+
+const Traffic = React.lazy(() => import('./Traffic'));
+const Police = React.lazy(() => import('./Police'));
+const Houses = React.lazy(() => import('./Houses'));
+const Environment = React.lazy(() => import('./Environment'));
+const Bank = React.lazy(() => import('./Bank'));
+const GangFollowers = React.lazy(() => import('./GangFollowers'));
+
 import { audioManager } from './audio/AudioManager';
 import { AudioManagerBridge } from './audio/AudioManagerBridge';
 import { barMusicPlayer } from './audio/barMusicPlayer';
@@ -47,7 +57,7 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 function PixelRatioController({ enabled }: { enabled: boolean }) {
   const { gl } = useThree();
   useEffect(() => {
-    const cap = Math.min(window.devicePixelRatio, 2) * getActivePlatformConfig().quality.resolutionScale;
+    const cap = Math.min(window.devicePixelRatio, 1.2) * getActivePlatformConfig().quality.resolutionScale;
     gl.setPixelRatio(enabled ? cap : Math.min(1, cap));
   }, [enabled, gl]);
   return null;
@@ -86,6 +96,9 @@ function ShadowsController({ enabled }: { enabled: boolean }) {
     gl.shadowMap.enabled = enabled;
     if (enabled) gl.shadowMap.type = THREE.PCFSoftShadowMap;
 
+    gl.shadowMap.width = 512;
+    gl.shadowMap.height = 512;
+    
     scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!('castShadow' in mesh)) return;
@@ -138,8 +151,8 @@ function TextureQualityController({ quality }: { quality: 'low' | 'medium' | 'hi
   useEffect(() => {
     const max = gl.capabilities.getMaxAnisotropy();
     THREE.Texture.DEFAULT_ANISOTROPY =
-      quality === 'high'   ? max :
-      quality === 'medium' ? Math.min(4, max) : 1;
+      quality === 'high'   ? Math.min(2.5, max) :
+      quality === 'medium' ? Math.min(1.5, max) : 1;
   }, [quality, gl]);
   return null;
 }
@@ -295,7 +308,7 @@ export function GameEngine() {
           {/* Base background & fog — DayNight overwrites these every frame */}
           <color attach="background" args={['#050810']} />
           {/* Fog far distance 2× expanded for the larger map */}
-          <fog attach="fog" args={['#080818', 120, 700]} />
+          <fog attach="fog" args={['#080818', 80, 500]} />
 
           {/* Starfield is a pure decorative shader cost — skip on mobile */}
           {!IS_MOBILE_DEVICE && (

@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: artifacts/constantine-mafia
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build game
+        run: PORT=3000 BASE_PATH=/ pnpm run build
+
+      - name: Sync Capacitor
+        run: pnpm run cap:sync
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: artifacts/constantine-mafia/android/app/build/outputs/apk/debug/app-debug.apk
