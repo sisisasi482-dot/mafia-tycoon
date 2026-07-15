@@ -1,28 +1,38 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, Suspense } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { KeyboardControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+
 import { Player, ControlsMap } from './Player';
-import { City } from './City';
-import { Terrain } from './Terrain';
-import { CityA } from './CityA';
-import { CityB } from './CityB';
-import { Highway } from './Highway';
-import { Industrial } from './Industrial';
-import { WorldBoundary } from './WorldBoundary';
+
+const City = React.lazy(() => import('./City'));
+const Terrain = React.lazy(() => import('./Terrain'));
+const CityA = React.lazy(() => import('./CityA'));
+const CityB = React.lazy(() => import('./CityB'));
+const Highway = React.lazy(() => import('./Highway'));
+const Industrial = React.lazy(() => import('./Industrial'));
+const WorldBoundary = React.lazy(() => import('./WorldBoundary'));
+
 import { Camera } from './Camera';
-import { Vehicles } from './Vehicles';
-import { NPCs, ShopkeeperNPCs, ChildNPCs, ParkActivityZone } from './NPCs';
-import { DoorSigns } from './DoorSigns';
+
+const Vehicles = React.lazy(() => import('./Vehicles'));
+const NPCs = React.lazy(() => import('./NPCs').then(m => ({ default: m.NPCs })));
+const ShopkeeperNPCs = React.lazy(() => import('./NPCs').then(m => ({ default: m.ShopkeeperNPCs })));
+const ChildNPCs = React.lazy(() => import('./NPCs').then(m => ({ default: m.ChildNPCs })));
+const ParkActivityZone = React.lazy(() => import('./NPCs').then(m => ({ default: m.ParkActivityZone })));
+
+const DoorSigns = React.lazy(() => import('./DoorSigns'));
 import { DayNight } from './DayNight';
 import { InteriorRoom } from './InteriorRoom';
-import { Traffic } from './Traffic';
-import { Police } from './Police';
-import { Houses } from './Houses';
-import { Environment } from './Environment';
-import { Bank } from './Bank';
-import { GangFollowers } from './GangFollowers';
+
+const Traffic = React.lazy(() => import('./Traffic'));
+const Police = React.lazy(() => import('./Police'));
+const Houses = React.lazy(() => import('./Houses'));
+const Environment = React.lazy(() => import('./Environment'));
+const Bank = React.lazy(() => import('./Bank'));
+const GangFollowers = React.lazy(() => import('./GangFollowers'));
+
 import { audioManager } from './audio/AudioManager';
 import { AudioManagerBridge } from './audio/AudioManagerBridge';
 import { barMusicPlayer } from './audio/barMusicPlayer';
