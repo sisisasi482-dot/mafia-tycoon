@@ -11,7 +11,7 @@ const TRACKS = [
   'music2.mp3',
   'music3.mp3',
   'music4.mp3',
-].map((f) => `/audio/${f}`);
+].map((f) => `${window.location.origin}/audio/${f}`);
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
