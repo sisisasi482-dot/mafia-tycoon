@@ -12,6 +12,7 @@ import {
   isCarKey,
   vehicleIdFromKey,
   VEHICLE_NAMES_MAP,
+  HOUSE_KEY_PREFIX,
 } from '../game/items';
 
 // ─── Static catalogs (same as before — unchanged) ─────────────────────────────
@@ -33,6 +34,9 @@ const VEHICLES = [
   { id: 'moto',       name: 'Motorcycle',   nameAr: 'دراجة نارية',   nameFr: 'Moto',         price: 22000,  icon: '🏍️', desc: 'Weave through roadblocks and traffic' },
   { id: 'police_car', name: 'Police Crown', nameAr: 'سيارة الشرطة',  nameFr: 'Voiture BRI',  price: 450000, icon: '🚓', desc: 'Seized BRI cruiser — requires serious connections' },
 ];
+
+/** Homes (as opposed to garages/businesses) — these grant a House Key on purchase. */
+const HOME_PROPERTY_IDS = new Set(['safehouse_cv', 'house_1', 'house_2', 'house_3']);
 
 const PROPERTIES = [
   { id: 'garage_am',  name: 'Garage – Ali Mendjeli',       nameAr: 'كراج علي منجلي',               nameFr: 'Garage Ali Mendjeli',       price: 15000,  icon: '🏚️', desc: 'Entry-level vehicle storage' },
@@ -512,10 +516,14 @@ export function ShopPanel() {
   const handleBuy = (id: string, price: number) => {
     if (store.money < price) return;
     if (store.ownedAssetIds.includes(id)) return;
-    const isVehicle = tab === 'vehicles';
-    const carKeyId  = isVehicle ? `${CAR_KEY_PREFIX}${id}` : null;
+    const isVehicle  = tab === 'vehicles';
+    const isProperty = tab === 'properties';
+    const carKeyId   = isVehicle ? `${CAR_KEY_PREFIX}${id}` : null;
+    // Homes (not garages) grant a matching House Key so the Inventory panel
+    // can offer remote Lock Door / Unlock Door without walking to the door.
+    const houseKeyId = isProperty && HOME_PROPERTY_IDS.has(id) ? `${HOUSE_KEY_PREFIX}${id}` : null;
     const existing  = new Set(store.ownedAssetIds);
-    const toAdd     = [id, ...(carKeyId ? [carKeyId] : [])].filter((x) => !existing.has(x));
+    const toAdd     = [id, ...(carKeyId ? [carKeyId] : []), ...(houseKeyId ? [houseKeyId] : [])].filter((x) => !existing.has(x));
     const newOwned  = [...store.ownedAssetIds, ...toAdd];
     store.setPlayerState({
       money:             store.money - price,

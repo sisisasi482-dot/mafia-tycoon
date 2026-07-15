@@ -46,16 +46,49 @@ Array.from(new Set(ALL_HW_PLACEMENTS.map((p) => glbUrl(p.set, p.model)))).forEac
   (url) => useGLTF.preload(url),
 );
 
+/**
+ * The `glb3` (road kit) models ship without their `Textures/colormap.png`
+ * atlas — the .glb files reference it, but the file was never included
+ * under public/glb3/. Three's GLTFLoader silently fails the texture fetch
+ * and falls back to the material's flat base color, which for this kit's
+ * "colormap" material defaults to white — that's the literal cause of the
+ * "white squares/holes" reported in the middle of the City A ↔ City B
+ * highway (and on every other glb3 prop: lights, signs, barriers, the
+ * bridge). Rather than guess at a substitute atlas image (risks visibly
+ * wrong colours), every glb3 mesh gets a flat asphalt-grey material
+ * instead of the broken white default — visually smooth, no artifacts.
+ */
+const MISSING_TEXTURE_SETS = new Set(['glb3']);
+const FALLBACK_ROAD_COLOR = new THREE.Color('#4a4a4e');
+
 // ─── Single GLB instance ──────────────────────────────────────────────────────
 function GLBInstance({ placement }: { placement: GLBPlacement }) {
   const url = glbUrl(placement.set, placement.model);
   const { scene } = useGLTF(url);
   const cloned = useMemo(() => {
     const c = scene.clone(true);
+    const needsFallback = MISSING_TEXTURE_SETS.has(placement.set);
     c.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
         obj.castShadow    = true;
         obj.receiveShadow = true;
+        if (needsFallback) {
+          const mesh = obj as THREE.Mesh;
+          const applyFallback = (mat: THREE.Material): THREE.Material => {
+            if (mat instanceof THREE.MeshStandardMaterial) {
+              // Clone first — `scene.clone(true)` clones objects/geometry but
+              // shares material references with the cached useGLTF scene, so
+              // mutating in place would affect every instance of this model.
+              const clone = mat.clone();
+              clone.map   = null;
+              clone.color = FALLBACK_ROAD_COLOR.clone();
+              return clone;
+            }
+            return mat;
+          };
+          if (Array.isArray(mesh.material)) mesh.material = mesh.material.map(applyFallback);
+          else if (mesh.material) mesh.material = applyFallback(mesh.material);
+        }
       }
     });
     return c;

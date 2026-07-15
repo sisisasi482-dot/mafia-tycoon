@@ -682,7 +682,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       const keyId = 'car_key_renault';
       set((st) => ({
         redeemedCodes: [...st.redeemedCodes, trimmed],
-        inventory: { ...st.inventory, [keyId]: (st.inventory[keyId] ?? 0) + 1 },
+        // Car keys are ownership items, kept in `ownedAssetIds` (same place
+        // the Car Dealership purchase flow grants them) — NOT `inventory`,
+        // which is reserved for stackable consumables. Keeping both key
+        // sources in one array is what lets the Inventory panel's key
+        // interaction menu (Spawn/Despawn/Lock/Unlock) see every key
+        // regardless of how it was acquired.
+        ownedAssetIds: st.ownedAssetIds.includes(keyId) ? st.ownedAssetIds : [...st.ownedAssetIds, keyId],
       }));
       return { ok: true, amount: 0, msg: '🚗 Free Renault 25 key added to your inventory!' };
     }

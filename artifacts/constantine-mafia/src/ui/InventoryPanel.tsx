@@ -2,30 +2,54 @@
  * Inventory Panel (press 'I' or the HUD 🎒 button to toggle).
  *
  * Deliberately isolated from the Shop/Properties/Ammo/Weapons UI — this
- * panel only ever shows three categories: Food, Keys, and ID Card. Weapon
- * equip/holster and shop-tab access live elsewhere (equip via the world
- * NPC shop panels; holster via 'K' while a weapon is equipped in HUD).
+ * panel only ever shows four categories: Food, Car Keys, House Keys, and
+ * ID Card. Weapon equip/holster and shop-tab access live elsewhere (equip
+ * via the world NPC shop panels; holster via 'K' while a weapon is
+ * equipped in HUD).
+ *
+ * Car Keys and House Keys are tap-to-expand rows exposing the full
+ * Spawn/Despawn/Lock/Unlock (cars) and Lock/Unlock Door (houses) menu —
+ * both act on world state via the store's existing vehicle/property
+ * actions, so this UI works as a remote control without walking up to
+ * the car or door.
  */
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../game/useGameStore';
 import {
   isCarKey, vehicleIdFromKey, VEHICLE_NAMES_MAP,
+  isHouseKey, propertyIdFromKey,
   CONSUMABLES, NATIONAL_ID_ID,
 } from '../game/items';
+
+/** Human-readable labels for lockable homes — mirrors ShopPanel's PROPERTIES catalog. */
+const HOUSE_NAMES_MAP: Record<string, string> = {
+  safehouse_cv: 'Safehouse – Centre-Ville',
+  house_1:      'House – Old City Villa',
+  house_2:      'House – Riverside',
+  house_3:      'House – Hilltop Residence',
+};
 
 export function InventoryPanel() {
   const showInventory    = useGameStore((s) => s.showInventory);
   const toggleInventory  = useGameStore((s) => s.toggleInventory);
   const ownedAssetIds    = useGameStore((s) => s.ownedAssetIds);
   const equippedVehicleId= useGameStore((s) => s.equippedVehicleId);
+  const ownedVehicleInstances = useGameStore((s) => s.ownedVehicleInstances);
+  const lockedVehicleIds = useGameStore((s) => s.lockedVehicleIds);
+  const lockedPropertyIds= useGameStore((s) => s.lockedPropertyIds);
   const inventory        = useGameStore((s) => s.inventory);
   const screen           = useGameStore((s) => s.screen);
   const isPaused         = useGameStore((s) => s.isPaused);
   const username         = useGameStore((s) => s.username);
   const [viewingId, setViewingId] = useState(false);
+  const [openKeyMenu, setOpenKeyMenu] = useState<string | null>(null);
 
-  const carKeys   = Object.keys(inventory).filter(isCarKey).filter((k) => (inventory[k] ?? 0) > 0);
+  // Car keys are ownership items granted by both the Car Dealership and the
+  // "car" redeem code — both write into `ownedAssetIds`, not the stackable
+  // `inventory` record (see useGameStore.ts).
+  const carKeys   = ownedAssetIds.filter(isCarKey);
+  const houseKeys = ownedAssetIds.filter(isHouseKey);
   const food      = CONSUMABLES.filter((c) => (inventory[c.id] ?? 0) > 0);
   const hasNationalId  = ownedAssetIds.includes(NATIONAL_ID_ID);
 
@@ -57,14 +81,38 @@ export function InventoryPanel() {
 
   if (screen !== 'playing') return null;
 
-  const equipKey = (keyId: string) => {
-    const vehicleId = vehicleIdFromKey(keyId);
-    useGameStore.getState().setPlayerState({ equippedVehicleId: vehicleId });
-    useGameStore.getState().setInteractionHint(`🚗 ${VEHICLE_NAMES_MAP[vehicleId] ?? vehicleId} key selected — press Spawn Car`);
+  const flashHint = (msg: string, match: string) => {
+    useGameStore.getState().setInteractionHint(msg);
     setTimeout(() => {
-      if (useGameStore.getState().interactionHint?.includes('key selected'))
+      if (useGameStore.getState().interactionHint?.includes(match))
         useGameStore.getState().setInteractionHint(null);
-    }, 2500);
+    }, 2200);
+  };
+
+  const handleSpawnCar = (vehicleId: string) => {
+    const gs = useGameStore.getState();
+    const [px, , pz] = gs.playerPosition;
+    const ry = gs.playerRotationY;
+    const spawnX = px - Math.sin(ry) * 4;
+    const spawnZ = pz - Math.cos(ry) * 4;
+    gs.spawnOwnedVehicle(vehicleId, [spawnX, 1, spawnZ], ry);
+    gs.setPlayerState({ equippedVehicleId: vehicleId });
+    flashHint(`🚗 ${VEHICLE_NAMES_MAP[vehicleId] ?? vehicleId} spawned nearby`, 'spawned');
+  };
+
+  const handleDespawnCar = (instanceId: string, vehicleId: string) => {
+    useGameStore.getState().despawnOwnedVehicle(instanceId);
+    flashHint(`🚗 ${VEHICLE_NAMES_MAP[vehicleId] ?? vehicleId} despawned`, 'despawned');
+  };
+
+  const handleToggleVehicleLock = (instanceId: string, nowLocked: boolean) => {
+    useGameStore.getState().toggleVehicleLock(instanceId);
+    flashHint(nowLocked ? '🔒 Car locked' : '🔓 Car unlocked', nowLocked ? 'locked' : 'unlocked');
+  };
+
+  const handleToggleDoorLock = (propertyId: string, label: string, nowLocked: boolean) => {
+    useGameStore.getState().togglePropertyLock(propertyId);
+    flashHint(nowLocked ? `🔒 ${label} locked` : `🔓 ${label} unlocked`, nowLocked ? 'locked' : 'unlocked');
   };
 
   return (
@@ -117,7 +165,7 @@ export function InventoryPanel() {
               </section>
             )}
 
-            {/* ── Keys ──────────────────────────────────────────────────── */}
+            {/* ── Car Keys — tap to open Spawn/Despawn/Lock/Unlock menu ──── */}
             {carKeys.length > 0 && (
               <section>
                 <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">Keys</p>
@@ -126,25 +174,96 @@ export function InventoryPanel() {
                     const vehicleId = vehicleIdFromKey(keyId);
                     const vname     = VEHICLE_NAMES_MAP[vehicleId] ?? vehicleId;
                     const active    = equippedVehicleId === vehicleId;
+                    const instance  = ownedVehicleInstances.find((v) => v.vehicleId === vehicleId);
+                    const locked    = instance ? lockedVehicleIds.includes(instance.id) : false;
+                    const menuOpen  = openKeyMenu === keyId;
                     return (
-                      <div
-                        key={keyId}
-                        onClick={() => equipKey(keyId)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all
-                          ${active
-                            ? 'bg-blue-500/20 border border-blue-500/40'
-                            : 'bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        <span className="text-xl">🔑</span>
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-bold">{vname}</p>
-                          <p className="text-gray-400 text-[11px]">×{inventory[keyId]} key{(inventory[keyId] ?? 0) > 1 ? 's' : ''}</p>
+                      <div key={keyId} className="rounded-lg overflow-hidden">
+                        <div
+                          onClick={() => setOpenKeyMenu(menuOpen ? null : keyId)}
+                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-all
+                            ${active || menuOpen
+                              ? 'bg-blue-500/20 border border-blue-500/40'
+                              : 'bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/20'
+                            }`}
+                        >
+                          <span className="text-xl">🔑</span>
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-bold">{vname}</p>
+                            <p className="text-gray-400 text-[11px]">
+                              {instance ? (locked ? 'Spawned · Locked' : 'Spawned · Unlocked') : 'Not spawned'}
+                            </p>
+                          </div>
+                          <span className="text-gray-500 text-[10px] shrink-0">{menuOpen ? '▲' : '▼'}</span>
                         </div>
-                        {active && (
-                          <span className="text-blue-400 text-[10px] font-black uppercase tracking-wider shrink-0">
-                            SELECTED
-                          </span>
+                        {menuOpen && (
+                          <div className="flex flex-wrap gap-1.5 px-3 py-2 bg-black/40 border-x border-b border-white/10 rounded-b-lg">
+                            {!instance ? (
+                              <button
+                                onClick={() => handleSpawnCar(vehicleId)}
+                                className="px-2.5 py-1.5 rounded-md border border-green-700/40 text-green-400 text-[10px] font-bold uppercase tracking-wide hover:bg-green-900/20 transition"
+                              >🚗 Spawn Car</button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleToggleVehicleLock(instance.id, !locked)}
+                                  className={`px-2.5 py-1.5 rounded-md border text-[10px] font-bold uppercase tracking-wide transition
+                                    ${locked
+                                      ? 'border-yellow-500/50 text-yellow-400 hover:bg-yellow-900/20'
+                                      : 'border-blue-500/40 text-blue-400 hover:bg-blue-900/20'}`}
+                                >{locked ? '🔓 Unlock Car' : '🔒 Lock Car'}</button>
+                                <button
+                                  onClick={() => handleDespawnCar(instance.id, vehicleId)}
+                                  className="px-2.5 py-1.5 rounded-md border border-red-800/40 text-red-500 text-[10px] font-bold uppercase tracking-wide hover:bg-red-900/20 transition"
+                                >🚫 Despawn Car</button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* ── House Keys — tap to open Lock/Unlock Door menu ─────────── */}
+            {houseKeys.length > 0 && (
+              <section>
+                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5 px-1">House Keys</p>
+                <div className="space-y-1">
+                  {houseKeys.map((keyId) => {
+                    const propertyId = propertyIdFromKey(keyId);
+                    const label      = HOUSE_NAMES_MAP[propertyId] ?? propertyId;
+                    const locked     = lockedPropertyIds.includes(propertyId);
+                    const menuOpen   = openKeyMenu === keyId;
+                    return (
+                      <div key={keyId} className="rounded-lg overflow-hidden">
+                        <div
+                          onClick={() => setOpenKeyMenu(menuOpen ? null : keyId)}
+                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-all
+                            ${menuOpen
+                              ? 'bg-amber-500/20 border border-amber-500/40'
+                              : 'bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/20'
+                            }`}
+                        >
+                          <span className="text-xl">🗝️</span>
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-bold">{label}</p>
+                            <p className="text-gray-400 text-[11px]">{locked ? 'Locked' : 'Unlocked'}</p>
+                          </div>
+                          <span className="text-gray-500 text-[10px] shrink-0">{menuOpen ? '▲' : '▼'}</span>
+                        </div>
+                        {menuOpen && (
+                          <div className="flex flex-wrap gap-1.5 px-3 py-2 bg-black/40 border-x border-b border-white/10 rounded-b-lg">
+                            <button
+                              onClick={() => handleToggleDoorLock(propertyId, label, !locked)}
+                              className={`px-2.5 py-1.5 rounded-md border text-[10px] font-bold uppercase tracking-wide transition
+                                ${locked
+                                  ? 'border-yellow-500/50 text-yellow-400 hover:bg-yellow-900/20'
+                                  : 'border-blue-500/40 text-blue-400 hover:bg-blue-900/20'}`}
+                            >{locked ? '🔓 Unlock Door' : '🔒 Lock Door'}</button>
+                          </div>
                         )}
                       </div>
                     );
@@ -178,11 +297,11 @@ export function InventoryPanel() {
             )}
 
             {/* Empty state */}
-            {food.length === 0 && carKeys.length === 0 && !hasNationalId && (
+            {food.length === 0 && carKeys.length === 0 && houseKeys.length === 0 && !hasNationalId && (
               <div className="text-center py-8 text-gray-600">
                 <p className="text-2xl mb-2">🎒</p>
                 <p className="text-xs uppercase tracking-wider">Inventory empty</p>
-                <p className="text-[11px] text-gray-700 mt-1">Food, car keys, and your ID card will appear here</p>
+                <p className="text-[11px] text-gray-700 mt-1">Food, keys, and your ID card will appear here</p>
               </div>
             )}
           </div>

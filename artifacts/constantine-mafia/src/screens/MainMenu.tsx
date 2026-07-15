@@ -99,7 +99,12 @@ export function MainMenu() {
           )}
 
           <button
-            onClick={() => store.setScreen('character_creation')}
+            onClick={() => {
+              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              audioCtx.resume();
+              store.setScreen('character_creation');
+            }}
+
             className="w-full py-5 px-8 font-black rounded-lg text-lg uppercase tracking-[0.2em] transition-all"
             style={{
               background: 'linear-gradient(135deg, #d4a800 0%, #f0c820 50%, #d4a800 100%)',

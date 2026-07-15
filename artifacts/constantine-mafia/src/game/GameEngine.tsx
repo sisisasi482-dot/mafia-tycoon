@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, Suspense } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { KeyboardControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -316,26 +316,37 @@ export function GameEngine() {
           {/* Camera anchor for the active vehicle */}
           <group ref={vehicleRef} />
 
-          {/* World geometry */}
-          {!indoors && <City />}
-          {!indoors && <Terrain />}
-          {!indoors && <CityA />}
-          {!indoors && <CityB />}
-          {!indoors && <Highway />}
-          {!indoors && <Industrial />}
-          {!indoors && <WorldBoundary />}
-          {!indoors && <Vehicles activeVehicleRef={vehicleRef} />}
-          {!indoors && <NPCs />}
-          {!indoors && <ChildNPCs />}
-          {!indoors && <DoorSigns />}
-          <ShopkeeperNPCs />
-          {!indoors && <Traffic />}
-          {!indoors && <Police />}
-          {!indoors && <Houses />}
-          {!indoors && <Environment />}
-          {!indoors && <Bank />}
-          {!indoors && <GangFollowers />}
-          {!indoors && <ParkActivityZone />}
+          {/* World geometry - معدل للأداء في الموبايل */}
+          {!indoors && (
+            <group>
+              <City />
+              <Terrain />
+              <Highway />
+              <Industrial />
+
+              {/* تظهر فقط في البيسي لتخفيف الضغط على الموبايل */}
+              {!IS_MOBILE_DEVICE && (
+                <>
+                  <CityA />
+                  <CityB />
+                  <Traffic />
+                  <Police />
+                </>
+              )}
+
+              <WorldBoundary />
+              <Vehicles activeVehicleRef={vehicleRef} />
+              <NPCs />
+              <ChildNPCs />
+              <DoorSigns />
+              <ShopkeeperNPCs />
+              <Houses />
+              <Environment />
+              <Bank />
+              <GangFollowers />
+              <ParkActivityZone />
+            </group>
+          )}
 
           {/* Spatial 3D audio — engine/combat/npc/siren, pooled voices */}
           <AudioManagerBridge />
